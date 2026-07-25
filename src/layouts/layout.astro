@@ -3,15 +3,78 @@
 const { title = 'Gym Up' } = Astro.props;
 ---
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title}</title>
+    <meta name="description" content="Gym Up — Transforma tu cuerpo, supera tus límites. Tracking de entrenamiento para toda la familia." />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#ff4d4d" />
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="⚡ Gym Up — Transforma tu cuerpo" />
+    <meta property="og:description" content="Tracking de entrenamiento para toda la familia. Rutinas personalizadas, progreso visual y resultados reales." />
+    <meta property="og:image" content="/og-image.png" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="⚡ Gym Up — Transforma tu cuerpo" />
+    <meta name="twitter:description" content="Tracking de entrenamiento para toda la familia." />
+    
+    <title>⚡ Gym Up — Transforma tu cuerpo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   </head>
   <body>
+    <nav class="navbar">
+      <div class="nav-container">
+        <a href="/" class="nav-logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">GYM<span class="logo-accent">UP</span></span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Funciones</a>
+          <a href="#how-it-works">Cómo funciona</a>
+          <a href="#cta" class="nav-cta">Empezar</a>
+        </div>
+      </div>
+    </nav>
     <main>
       <slot />
     </main>
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-brand">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">GYM<span class="logo-accent">UP</span></span>
+          <p>Transforma tu cuerpo, supera tus límites.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4>Producto</h4>
+            <a href="#features">Funciones</a>
+            <a href="#how-it-works">Cómo funciona</a>
+            <a href="#cta">Precios</a>
+          </div>
+          <div class="footer-col">
+            <h4>Soporte</h4>
+            <a href="#">FAQ</a>
+            <a href="#">Contacto</a>
+            <a href="#">Términos</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2026 Gym Up. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>

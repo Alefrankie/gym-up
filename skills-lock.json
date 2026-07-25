@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "scrollfilm": {
+      "source": "valladxres/scrollfilm-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "9a0b83005bb39e557270d34eb2522e3ea1eb748fccc25a11dba483354044ceaa"
+    }
+  }
+}
