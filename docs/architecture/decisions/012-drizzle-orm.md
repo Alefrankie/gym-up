@@ -36,7 +36,7 @@ Use **Drizzle ORM** as the data layer for both backends:
 - **Migrations are plain SQL.** Drizzle Kit emits versioned `.sql` files (e.g. `db/migrations/0000_init.sql`) that the team can read, edit, and apply via standard tools. Round 6's Supabase migration can start from a hand-tuned copy of the same SQL.
 - **Type-safety end-to-end.** Repository methods take and return Drizzle-inferred types; no parallel DTOs.
 - **Lightweight runtime.** No schema introspection at query time, no shadow DB, no global state. Plays well with Astro SSR + Vercel functions.
-- **Fits ADR-007.** The abstract `XxxRepository` is the component-facing contract; the Drizzle-backed implementation lives entirely in `src/lib/repositories/sqlite/`. Components remain agnostic.
+- **Fits ADR-007.** The abstract `XxxRepository` is the component-facing contract; the Drizzle-backed concrete implementation lives entirely in the per-context `infrastructure/sqlite/` folder (e.g. `src/lib/contexts/<context>/infrastructure/sqlite/<entity>.repository.ts`). Components remain agnostic. The `supabase/` sibling folder is created empty so the Round 6 swap only adds files, not directories.
 
 ## Consequences
 

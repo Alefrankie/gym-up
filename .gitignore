@@ -36,6 +36,13 @@ Thumbs.db
 supabase/.branches
 supabase/.temp
 
+# Local SQLite database (development)
+local.db
+local.db-journal
+local.db-wal
+local.db-shm
+*.db
+
 # Test coverage
 coverage/
 

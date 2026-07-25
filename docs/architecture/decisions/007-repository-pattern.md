@@ -88,7 +88,7 @@ class StartWorkoutUseCase {
 - Every entity has an abstract `XxxRepository` class in `domain/ports/`.
 - Every entity has a `SupabaseXxxRepository` and `SqliteXxxRepository` in `infrastructure/`.
 - Use cases depend on the abstract class via constructor injection.
-- Composition root (`src/lib/composition/container.ts`) wires concrete impls based on config.
+- The per-context composition file (e.g. `src/lib/contexts/<context>/<context>.composition.ts`, per [ADR-010](./010-per-context-composition.md)) wires concrete impls based on config. **No central `container.ts` or `composition-root.ts`** — each context owns its own wiring.
 - Tests use `SqliteXxxRepository` with a test DB seeded per test.
 - E2E tests use `SqliteXxxRepository` with a fresh DB per run.
 

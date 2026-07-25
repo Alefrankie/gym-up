@@ -1,0 +1,31 @@
+{
+  "name": "gym-up",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Workout tracker with routines, progress, and family sharing",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/vercel": "^8.1.0",
+    "astro": "^5.1.5",
+    "better-sqlite3": "^11.7.0",
+    "drizzle-orm": "^0.36.4",
+    "typescript": "^5.7.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "drizzle-kit": "^0.28.1",
+    "vitest": "^2.1.8"
+  }
+}
