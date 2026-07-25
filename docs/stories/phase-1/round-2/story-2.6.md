@@ -41,5 +41,5 @@ User finishes workout → summary displayed → status updated.
 
 - [ ] `T2.6-01` - Add finish button + validation
 - [ ] `T2.6-02` - Update workout status
-- [ ] `T2.6-03` - Create WorkoutSummary component
+- [ ] `T2.6-03` - Create `src/components/workout-summary.astro`
 - [ ] `T2.6-04` - Calculate volume + duration

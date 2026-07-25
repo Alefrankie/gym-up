@@ -43,7 +43,7 @@ Exercise-specific charts with Chart.js React island.
 ## Tasks
 
 - [ ] `T3.2-01` - Create progress page
-- [ ] `T3.2-02` - Create ProgressChart React island
+- [ ] `T3.2-02` - Create `src/components/progress-chart.tsx` React island
 - [ ] `T3.2-03` - Add exercise selector
 - [ ] `T3.2-04` - Add date range filter
 - [ ] `T3.2-05` - Handle unit display

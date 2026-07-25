@@ -16,17 +16,17 @@ blocked_by: ["story-2.2"]
 blocks: ["story-2.4"]
 ---
 
-# Story 2.3 — ExerciseCard
+# Story 2.3 — `exercise-card`
 
 Parent: [../readme.md](../readme.md)
 
 ## Summary
 
-ExerciseCard component for logging sets with reps, weight, notes.
+`exercise-card` component for logging sets with reps, weight, notes.
 
 ## Happy Path
 
-1. Workout page renders ExerciseCard per exercise.
+1. Workout page renders `exercise-card` per exercise.
 2. Pre-populated with target sets count.
 3. Each set: reps input, weight input (with unit label), checkmark.
 4. Notes field (optional).
@@ -40,7 +40,7 @@ ExerciseCard component for logging sets with reps, weight, notes.
 
 ## Tasks
 
-- [ ] `T2.3-01` - Create ExerciseCard component
+- [ ] `T2.3-01` - Create `src/components/exercise-card.astro`
 - [ ] `T2.3-02` - Add set input rows
 - [ ] `T2.3-03` - Add unit label
 - [ ] `T2.3-04` - Add notes field

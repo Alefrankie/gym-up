@@ -22,12 +22,12 @@ Parent: [../readme.md](../readme.md)
 
 ## Summary
 
-Save analyzed meals, show history, daily calorie summary vs goal.
+Save analyzed meals, show history, daily calorie summary vs goal. Photo blobs are saved to the local filesystem via the same `StorageService` interface used by [story-4.2](../round-4/story-4.2.md); thumbnails are served through an authenticated route.
 
 ## Happy Path
 
 1. After analysis, user taps "Save".
-2. Photo uploaded to storage. DB record created.
+2. Photo persisted to local filesystem + `nutrition_entries` DB record created.
 3. History page shows past meals with thumbnails.
 4. Dashboard shows daily calorie bar (consumed vs goal).
 5. User can set daily calorie goal in settings.
@@ -41,8 +41,8 @@ Save analyzed meals, show history, daily calorie summary vs goal.
 
 ## Tasks
 
-- [ ] `T5.3-01` - Save nutrition entry (photo + DB record)
-- [ ] `T5.3-02` - Create NutritionHistory component
-- [ ] `T5.3-03` - Create DailyCalorieBar component
+- [ ] `T5.3-01` - Save nutrition entry (local photo + DB record)
+- [ ] `T5.3-02` - Create `src/components/nutrition-history.astro`
+- [ ] `T5.3-03` - Create `src/components/daily-calorie-bar.astro`
 - [ ] `T5.3-04` - Add calorie goal to settings
 - [ ] `T5.3-05` - Add daily summary to dashboard

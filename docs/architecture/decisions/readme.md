@@ -15,3 +15,4 @@ Parent: [../readme.md](../readme.md) · Up: [../../README.md](../README.md)
 | [ADR-009](./009-object-mothers.md) | Object Mothers Test Pattern with @faker-js/faker | ✅ Accepted |
 | [ADR-010](./010-per-context-composition.md) | Per-Context Composition Files | ✅ Accepted |
 | [ADR-011](./011-implements-not-extends.md) | Abstract Classes as Interfaces (implements, not extends) | ✅ Accepted |
+| [ADR-012](./012-drizzle-orm.md) | Drizzle ORM as SQLite/Postgres Abstraction | ✅ Accepted |

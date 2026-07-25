@@ -41,3 +41,7 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+
+# Local agent / crew state
+# (.agents/skills/ is shared and tracked; .crew/ is per-session local state)
+.crew/

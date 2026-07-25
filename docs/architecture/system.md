@@ -176,7 +176,7 @@ gym-up/
 │   ├── types/
 │   │   └── index.ts
 │   └── layouts/
-│       └── Layout.astro
+│       └── layout.astro
 ├── supabase/
 │   └── migrations/
 │       └── 001_initial_schema.sql
@@ -407,8 +407,8 @@ Per [ADR-002](./decisions/002-chartjs-react-island.md), interactive components a
 
 ```astro
 ---
-// src/components/RestTimer.astro
-import RestTimerSvelte from './RestTimer.svelte';
+// src/components/rest-timer.astro
+import RestTimerSvelte from './rest-timer.svelte';
 ---
 <RestTimerSvelte client:visible defaultSeconds={90} />
 ```
@@ -417,8 +417,8 @@ import RestTimerSvelte from './RestTimer.svelte';
 
 ```astro
 ---
-// src/components/ProgressChart.astro
-import ProgressChartReact from './ProgressChart.tsx';
+// src/components/progress-chart.astro
+import ProgressChartReact from './progress-chart.tsx';
 ---
 <ProgressChartReact client:visible data={chartData} type="weight" />
 ```
@@ -428,5 +428,6 @@ import ProgressChartReact from './ProgressChart.tsx';
 **Full guide:** [../deployment/vercel.md](../deployment/vercel.md) (TODO)
 
 - Astro with `@astrojs/vercel` adapter
-- Env vars: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+- Dev / local: `STORAGE_BACKEND=sqlite` (no external services needed)
+- Prod: `STORAGE_BACKEND=supabase` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`
 - Supabase free tier (500MB DB, 1GB storage)

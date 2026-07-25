@@ -43,8 +43,8 @@ UI for capturing food photos and displaying AI analysis results.
 
 ## Tasks
 
-- [ ] `T5.2-01` - Create MealPhotoCapture component
+- [ ] `T5.2-01` - Create `src/components/meal-photo-capture.astro`
 - [ ] `T5.2-02` - Add compression logic
-- [ ] `T5.2-03` - Create NutritionResult component
+- [ ] `T5.2-03` - Create `src/components/nutrition-result.astro`
 - [ ] `T5.2-04` - Add edit/adjust functionality
 - [ ] `T5.2-05` - Create nutrition page

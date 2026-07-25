@@ -6,9 +6,35 @@ Component-level detail. For page-level behavior see feature files in [../prd/fea
 
 ---
 
+## Conventions
+
+### Filenames: kebab-case
+
+All component filenames are **kebab-case**, regardless of framework. Do not use PascalCase for filenames even when the framework conventionally does so.
+
+| Framework | ❌ PascalCase | ✅ kebab-case |
+|-----------|---------------|---------------|
+| Astro     | `Navigation.astro` | `navigation.astro` |
+| Astro     | `ExerciseCard.astro` | `exercise-card.astro` |
+| React     | `RestTimer.tsx` | `rest-timer.tsx` |
+| Svelte    | `FamilyMemberCard.svelte` | `family-member-card.svelte` |
+| TS module | `AuthForm.ts` | `auth-form.ts` |
+
+**Why:** consistent filesystem layout across frameworks makes glob paths, code search, and refactors predictable. PascalCase is reserved for the *exported class/function name inside the file* (e.g. `export function RestTimer(...)` inside `rest-timer.tsx`).
+
+**Implementation note:** when a framework requires a 1:1 filename-to-export mapping for routing or auto-registration (rare in this project), keep the export PascalCase but the file kebab-case.
+
+### Other rules
+
+- One component per file.
+- Props interface defined inline above the component (no separate `.types.ts` for simple cases).
+- Repository access goes through the abstract `XxxRepository` per [ADR-007](./decisions/007-repository-pattern.md); never import a concrete Supabase/SQLite client from a component.
+
+---
+
 ## Navigation
 
-**File**: `src/components/Navigation.astro`
+**File**: `src/components/navigation.astro`
 **Feature**: [workout-tracking](../prd/features/workout-tracking.md)
 
 | Icon | Label | Route |
@@ -26,7 +52,7 @@ Active link highlighted. Hidden on landing/login/register.
 
 ## ExerciseCard
 
-**File**: `src/components/ExerciseCard.astro`
+**File**: `src/components/exercise-card.astro`
 **Feature**: [workout-tracking](../prd/features/workout-tracking.md) FR-WT-008
 
 | Prop | Type | Description |
@@ -44,7 +70,7 @@ Pre-populated with target sets. Each set: reps, weight, checkmark. Checkmark →
 
 ## RestTimer
 
-**File**: `src/components/RestTimer.tsx`
+**File**: `src/components/rest-timer.tsx`
 **Feature**: [workout-tracking](../prd/features/workout-tracking.md) FR-WT-011
 
 React island. Client-side only, no DB persistence.
@@ -59,7 +85,7 @@ Starts on set checkmark tap. Countdown 90s. +30s extend. Skip. Vibration/sound o
 
 ## WorkoutSummary
 
-**File**: `src/components/WorkoutSummary.astro`
+**File**: `src/components/workout-summary.astro`
 **Feature**: [workout-tracking](../prd/features/workout-tracking.md) FR-WT-012
 
 | Prop | Type | Description |
@@ -73,7 +99,7 @@ Starts on set checkmark tap. Countdown 90s. +30s extend. Skip. Vibration/sound o
 
 ## ProgressChart
 
-**File**: `src/components/ProgressChart.tsx`
+**File**: `src/components/progress-chart.tsx`
 **Feature**: [progress](../prd/features/progress.md) FR-PR-002
 
 React island via Chart.js [ADR-002](./decisions/002-chartjs-react-island.md).
@@ -90,7 +116,7 @@ React island via Chart.js [ADR-002](./decisions/002-chartjs-react-island.md).
 
 ## PhotoGallery
 
-**File**: `src/components/PhotoGallery.astro`
+**File**: `src/components/photo-gallery.astro`
 **Feature**: [private-photos](../prd/features/private-photos.md) FR-PP-005
 
 | Prop | Type | Description |
@@ -104,7 +130,7 @@ Grid layout. Tap → fullscreen. Delete option. Photos private per [ADR-005](./d
 
 ## PhotoUpload
 
-**File**: `src/components/PhotoUpload.astro`
+**File**: `src/components/photo-upload.astro`
 **Feature**: [private-photos](../prd/features/private-photos.md) FR-PP-001
 
 | Prop | Type | Description |
@@ -117,7 +143,7 @@ File input (jpg, png, webp). Max 5MB. Client-side resize. Upload to `progress-ph
 
 ## FamilyMemberCard
 
-**File**: `src/components/FamilyMemberCard.astro`
+**File**: `src/components/family-member-card.astro`
 **Feature**: [public-view](../prd/features/public-view.md) FR-PV-005
 
 | Prop | Type | Description |
@@ -132,7 +158,7 @@ File input (jpg, png, webp). Max 5MB. Client-side resize. Upload to `progress-ph
 
 ## AuthForm
 
-**File**: `src/components/AuthForm.astro`
+**File**: `src/components/auth-form.astro`
 **Feature**: [workout-tracking](../prd/features/workout-tracking.md) FR-WT-001
 
 | Prop | Type | Description |

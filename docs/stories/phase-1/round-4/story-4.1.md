@@ -22,14 +22,14 @@ Parent: [../readme.md](../readme.md)
 
 ## Summary
 
-Family page shows all members with stats. Tap to view member progress.
+Family page shows all members with stats. Tap to view member progress. Reads through the local `ProfileRepository` / `WorkoutRepository` — no Supabase.
 
 ## Happy Path
 
 1. User opens `/family`.
 2. Fetches all profiles.
 3. Computes stats per profile.
-4. Renders FamilyMemberCard list.
+4. Renders `family-member-card` list.
 5. Tap member → `/family/[user_id]` (read-only progress).
 
 ## Acceptance Criteria
@@ -42,6 +42,6 @@ Family page shows all members with stats. Tap to view member progress.
 ## Tasks
 
 - [ ] `T4.1-01` - Create family page
-- [ ] `T4.1-02` - Create FamilyMemberCard
+- [ ] `T4.1-02` - Create `src/components/family-member-card.astro`
 - [ ] `T4.1-03` - Compute member stats
 - [ ] `T4.1-04` - Create member profile page

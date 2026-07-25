@@ -22,15 +22,15 @@ Parent: [../readme.md](../readme.md)
 
 ## Summary
 
-Create Navigation component and apply layout to all pages.
+Create the navigation component and apply the layout to all pages. Uses the local stack — no Supabase.
 
 ## Happy Path
 
-1. Create `Navigation.astro` with links: Home, History, Progress, Photos, Family, Settings.
+1. Create `src/components/navigation.astro` (kebab-case per [components.md](../../architecture/components.md#conventions)) with links: Home, History, Progress, Photos, Family, Settings.
 2. Bottom nav on mobile, sidebar on desktop.
 3. Active link highlighted.
 4. Hidden on landing, login, register pages.
-5. Apply `Layout.astro` to all authenticated pages.
+5. Apply `src/layouts/layout.astro` to all authenticated pages.
 
 ## Acceptance Criteria
 
@@ -40,6 +40,6 @@ Create Navigation component and apply layout to all pages.
 
 ## Tasks
 
-- [ ] `T1.4-01` - Create Navigation component
+- [ ] `T1.4-01` - Create `src/components/navigation.astro`
 - [ ] `T1.4-02` - Add responsive styles
-- [ ] `T1.4-03` - Apply layout to pages
+- [ ] `T1.4-03` - Create `src/layouts/layout.astro` and apply to authenticated pages

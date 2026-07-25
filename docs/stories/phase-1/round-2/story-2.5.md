@@ -27,7 +27,7 @@ Rest timer React island between sets.
 ## Happy Path
 
 1. User taps checkmark on a set.
-2. RestTimer component appears (90s countdown).
+2. `rest-timer` component appears (90s countdown).
 3. User can +30s or skip.
 4. Timer reaches 0 → auto-hide.
 
@@ -38,6 +38,6 @@ Rest timer React island between sets.
 
 ## Tasks
 
-- [ ] `T2.5-01` - Create RestTimer React island
+- [ ] `T2.5-01` - Create `src/components/rest-timer.tsx` React island
 - [ ] `T2.5-02` - Wire to checkmark tap
 - [ ] `T2.5-03` - Add +30s and skip
