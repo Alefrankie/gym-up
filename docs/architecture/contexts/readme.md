@@ -2,7 +2,7 @@
 
 Parent: [../readme.md](../readme.md) · Up: [../../README.md](../README.md)
 
-Feature-level architecture context. One context per feature. Hexagonal architecture with clear layer separation.
+Feature-level architecture context. One context per feature. **Hexagonal architecture (ports and adapters)** with clear layer separation. Per [ADR-013](../decisions/013-hexagonal-architecture.md).
 
 ## Folder Structure
 

@@ -96,8 +96,112 @@ export const DisplayNameRules = {
 
 ### Ports
 
-- `AuthPort` (interface) — signUp, signIn, signOut, getSession, onAuthStateChange.
-- `SessionPort` (interface) — getToken, refreshToken, clearSession.
+- `AuthPort` (abstract class) — signUp, signIn, signOut, getSession, onAuthStateChange.
+- `SessionPort` (abstract class) — getToken, refreshToken, clearSession.
+
+---
+
+## Application
+
+### Use Cases
+
+| Use case | Purpose | Status |
+|----------|---------|--------|
+| RegisterUserUseCase | Validate input, call AuthPort.signUp, persist session | planned |
+| LoginUserUseCase | Validate input, call AuthPort.signIn, persist session | planned |
+| LogoutUserUseCase | Call AuthPort.signOut, clear session | planned |
+
+### Orchestration
+
+1. `RegisterUserUseCase` receives `RegisterDTO` → validates password length → calls `AuthPort.signUp(data)` → stores session via `KeyValueStorage` → returns `Session`.
+2. `LoginUserUseCase` receives `LoginDTO` → validates fields → calls `AuthPort.signIn(data)` → stores session via `KeyValueStorage` → returns `Session`.
+3. `LogoutUserUseCase` → calls `AuthPort.signOut()` → clears session from `KeyValueStorage`.
+
+---
+
+## Infrastructure
+
+Per [ADR-007](../decisions/007-repository-pattern.md) and [ADR-011](../decisions/011-implements-not-extends.md).
+
+### Abstract Classes (Contracts)
+
+```ts
+// src/lib/contexts/auth/domain/ports/auth-port.ts
+abstract class AuthPort {
+  abstract signUp(data: RegisterDTO): Promise<Session>;
+  abstract signIn(data: LoginDTO): Promise<Session>;
+  abstract signOut(): Promise<void>;
+  abstract getSession(): Promise<Session | null>;
+  abstract onAuthStateChange(callback: (event: AuthEvent) => void): void;
+}
+
+// src/lib/contexts/auth/domain/ports/session-port.ts
+abstract class SessionPort {
+  abstract getToken(): Promise<string | null>;
+  abstract refreshToken(): Promise<void>;
+  abstract clearSession(): Promise<void>;
+}
+```
+
+### Supabase Implementation (Production)
+
+```ts
+// src/lib/contexts/auth/infrastructure/supabase/supabase-auth.adapter.ts
+class SupabaseAuthAdapter implements AuthPort {
+  constructor(private supabase: SupabaseClient) {}
+  async signUp(data: RegisterDTO) { /* supabase.auth.signUp(...) */ }
+  async signIn(data: LoginDTO) { /* supabase.auth.signInWithPassword(...) */ }
+  async signOut() { /* supabase.auth.signOut() */ }
+  async getSession() { /* supabase.auth.getSession() */ }
+  onAuthStateChange(callback) { /* supabase.auth.onAuthStateChange(...) */ }
+}
+```
+
+### SQLite Implementation (Local Dev / Tests)
+
+```ts
+// src/lib/contexts/auth/infrastructure/sqlite/sqlite-auth.adapter.ts
+class SqliteAuthAdapter implements AuthPort {
+  constructor(private db: Database) {}
+  async signUp(data: RegisterDTO) { /* INSERT INTO users + sessions table */ }
+  async signIn(data: LoginDTO) { /* SELECT + password hash verify */ }
+  async signOut() { /* DELETE session */ }
+  async getSession() { /* SELECT active session */ }
+  onAuthStateChange(callback) { /* no-op for local */ }
+}
+```
+
+### Composition File
+
+Per [ADR-010](../decisions/010-per-context-composition.md):
+
+```ts
+// src/lib/contexts/auth/auth.composition.ts
+const authPort: AuthPort = useSupabase
+  ? new SupabaseAuthAdapter(supabaseClient)
+  : new SqliteAuthAdapter(sqliteDb);
+
+const sessionPort: SessionPort = useSupabase
+  ? new SupabaseSessionAdapter(supabaseClient)
+  : new SqliteSessionAdapter(sqliteDb);
+
+export const registerUserUseCase = new RegisterUserUseCase(authPort, kvStorage);
+export const loginUserUseCase = new LoginUserUseCase(authPort, sessionPort, kvStorage);
+export const logoutUserUseCase = new LogoutUserUseCase(authPort, sessionPort);
+```
+
+---
+
+## UI
+
+### Components
+
+- `auth-form.svelte` — Login/register form. Handles client-side validation, calls use cases, redirects on success.
+
+### Pages
+
+- `/login` — Login page. Renders AuthForm in login mode.
+- `/register` — Registration page. Renders AuthForm in register mode.
 
 ---
 

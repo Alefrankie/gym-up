@@ -49,6 +49,24 @@ Astro in SSR mode with `@astrojs/vercel` adapter. Per [ADR-001](./decisions/001-
 
 File naming: **kebab-case** throughout. All TypeScript files in domain layer use `[context].types.ts`, `[context].constants.ts`, etc.
 
+The project follows **hexagonal architecture (ports and adapters)** organized per feature context. Each context under `src/lib/contexts/` is a self-contained module:
+
+```
+src/lib/contexts/<context>/
+  <context>.composition.ts   ← wires concrete adapters based on STORAGE_BACKEND
+  domain/                     ← business rules, entities, ports (abstract classes)
+  application/                ← use cases, orchestration (depends only on domain)
+  infrastructure/             ← adapters: supabase/ and sqlite/ subfolders
+  ui/                         ← context-specific components (Astro, Svelte, React)
+```
+
+**Dependency flow:** `domain → application → infrastructure ← composition`. Domain never imports from application, infrastructure, or UI. Application imports only domain ports. Infrastructure implements domain ports. The composition file at the context root wires everything together.
+
+→ Full layer rules: [contexts/readme.md](./contexts/readme.md)
+→ ADR-007: Repository pattern — [decisions/007-repository-pattern.md](./decisions/007-repository-pattern.md)
+→ ADR-010: Per-context composition — [decisions/010-per-context-composition.md](./decisions/010-per-context-composition.md)
+→ ADR-013: Hexagonal architecture — [decisions/013-hexagonal-architecture.md](./decisions/013-hexagonal-architecture.md)
+
 ```
 gym-up/
 ├── src/

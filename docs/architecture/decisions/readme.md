@@ -16,3 +16,4 @@ Parent: [../readme.md](../readme.md) · Up: [../../README.md](../README.md)
 | [ADR-010](./010-per-context-composition.md) | Per-Context Composition Files | ✅ Accepted |
 | [ADR-011](./011-implements-not-extends.md) | Abstract Classes as Interfaces (implements, not extends) | ✅ Accepted |
 | [ADR-012](./012-drizzle-orm.md) | Drizzle ORM as SQLite/Postgres Abstraction | ✅ Accepted |
+| [ADR-013](./013-hexagonal-architecture.md) | Hexagonal Architecture (Ports and Adapters) per Context | ✅ Accepted |

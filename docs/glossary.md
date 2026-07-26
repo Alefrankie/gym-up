@@ -9,6 +9,7 @@ Domain terms used across documentation.
 | Term | Definition | Canonical home |
 |------|------------|----------------|
 | ADR | Architecture Decision Record. Documents a significant architectural decision. | [architecture/decisions/readme.md](./architecture/decisions/readme.md) |
+| Adapter | Concrete class that implements a domain port. Lives in infrastructure layer. | [architecture/decisions/007-repository-pattern.md](./architecture/decisions/007-repository-pattern.md) |
 | Auth | Authentication. Supabase Auth with email/password. | [architecture/contexts/auth/readme.md](./architecture/contexts/auth/readme.md) |
 
 ## C
@@ -17,6 +18,7 @@ Domain terms used across documentation.
 |------|------------|----------------|
 | Calories | Energy unit for nutrition. Measured in kcal. | [architecture/contexts/nutrition/readme.md](./architecture/contexts/nutrition/readme.md) |
 | Completed | Workout status. Requires ≥1 entry. | [architecture/contexts/workout-tracking/readme.md](./architecture/contexts/workout-tracking/readme.md) |
+| Composition Root | Per-context file that wires concrete adapters to abstract ports. | [architecture/decisions/010-per-context-composition.md](./architecture/decisions/010-per-context-composition.md) |
 
 ## D
 
@@ -43,6 +45,7 @@ Domain terms used across documentation.
 
 | Term | Definition | Canonical home |
 |------|------------|----------------|
+| Hexagonal Architecture | Ports and adapters pattern. Domain at center, adapters at edges, wired by composition. | [architecture/decisions/013-hexagonal-architecture.md](./architecture/decisions/013-hexagonal-architecture.md) |
 | Hombre | Male routine type. One of two valid values. | [architecture/database-schema.md](./architecture/database-schema.md) |
 
 ## I
@@ -104,6 +107,12 @@ Domain terms used across documentation.
 | Set | One group of repetitions of an exercise. | [architecture/contexts/workout-tracking/readme.md](./architecture/contexts/workout-tracking/readme.md) |
 | Signed URL | Temporary secure URL for private storage files. Expires in 1 hour. | [architecture/contexts/private-photos/readme.md](./architecture/contexts/private-photos/readme.md) |
 | Streak | Consecutive days with completed workouts. | [architecture/contexts/progress/readme.md](./architecture/contexts/progress/readme.md) |
+
+## U
+
+| Term | Definition | Canonical home |
+|------|------------|----------------|
+| Use Case | Single business action in the application layer. Orchestrates domain and ports. | [architecture/contexts/readme.md](./architecture/contexts/readme.md) |
 
 ## V
 

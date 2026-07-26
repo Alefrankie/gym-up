@@ -33,16 +33,18 @@ Business intent, who we build for, what we build.
 
 How the system is shaped, how data moves, where state lives.
 
-- [architecture/readme.md](./architecture/readme.md) — section index
-- [architecture/system.md](./architecture/system.md) — topology, rendering strategy, stack
+**Pattern:** Hexagonal architecture (ports and adapters) organized per feature context. Each context has Domain → Application → Infrastructure → UI layers with a per-context composition file. See [ADR-013](./architecture/decisions/013-hexagonal-architecture.md).
+
+- [architecture/readme.md](./architecture/readme.md) — section index + pattern overview
+- [architecture/system.md](./architecture/system.md) — topology, rendering strategy, stack, project structure
 - [architecture/database-schema.md](./architecture/database-schema.md) — PostgreSQL DDL, seed data, RLS
 - [architecture/components.md](./architecture/components.md) — UI component specs
 - [glossary.md](./glossary.md) — domain terms
 - **Decisions — [architecture/decisions/](./architecture/decisions/)**
   - [architecture/decisions/readme.md](./architecture/decisions/readme.md) — ADR index
-  - ADR-001 through ADR-006
+  - ADR-001 through ADR-013
 - **Contexts — [architecture/contexts/](./architecture/contexts/)**
-  - [architecture/contexts/readme.md](./architecture/contexts/readme.md) — context specs by feature
+  - [architecture/contexts/readme.md](./architecture/contexts/readme.md) — context specs by feature, layer rules
 
 ---
 
