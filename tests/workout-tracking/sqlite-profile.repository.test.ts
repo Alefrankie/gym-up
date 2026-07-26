@@ -3,36 +3,27 @@
 // AC-1.1-06: SqliteProfileRepository compiles and is wired via the
 // per-context composition. This test exercises its public API end-to-end
 // against an in-memory SQLite database.
+//
+// Fixture migration (golden-rules: Test Fixtures):
+//   - Story 1.1: single-table fixture (profiles only).
+//   - Story 1.2: expanded to all 8 canonical tables (contract drift fix).
+//   - Assertions unchanged.
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-
-import { profiles } from '@db/schema';
 import { SqliteProfileRepository } from '@/lib/contexts/workout-tracking/infrastructure/sqlite/sqlite-profile.repository';
 import type { ProfileRepository } from '@/lib/contexts/workout-tracking/domain/profile.repository';
+import { createTestDb, type TestDbHandle } from './test-db';
 
-let sqlite: Database.Database;
-let db: BetterSQLite3Database<{ profiles: typeof profiles }>;
+let handle: TestDbHandle;
 let repo: ProfileRepository;
 
 beforeAll(() => {
-  sqlite = new Database(':memory:');
-  sqlite.exec(`
-    CREATE TABLE profiles (
-      id TEXT PRIMARY KEY,
-      display_name TEXT NOT NULL,
-      routine_type TEXT NOT NULL,
-      weight_unit TEXT NOT NULL DEFAULT 'kg',
-      created_at INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-  `);
-  db = drizzle(sqlite, { schema: { profiles } });
-  repo = new SqliteProfileRepository(db);
+  handle = createTestDb();
+  repo = new SqliteProfileRepository(handle.db);
 });
 
 afterAll(() => {
-  sqlite.close();
+  handle.close();
 });
 
 describe('SqliteProfileRepository', () => {

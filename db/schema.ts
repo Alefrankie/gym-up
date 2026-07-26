@@ -47,3 +47,161 @@ export const profiles = sqliteTable('profiles', {
 
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
+
+/**
+ * Exercise catalog (seed data per ADR-003).
+ * Read-all (no userId): exercises are shared across all users.
+ * `muscleGroup` enables filtering (chest, back, legs, etc.).
+ */
+export const exercises = sqliteTable('exercises', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull().unique(),
+  muscleGroup: text('muscle_group').notNull(),
+});
+
+export type Exercise = typeof exercises.$inferSelect;
+export type NewExercise = typeof exercises.$inferInsert;
+
+/**
+ * Routine header (hombre / mujer). Seed data per ADR-003.
+ * `type` mirrors profiles.routineType; routines are global, not per-user.
+ */
+export const routines = sqliteTable('routines', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(),
+  type: text('type', { enum: ['hombre', 'mujer'] }).notNull(),
+});
+
+export type Routine = typeof routines.$inferSelect;
+export type NewRoutine = typeof routines.$inferInsert;
+
+/**
+ * One day of a routine (e.g. "Monday — Chest + Shoulders + Triceps").
+ * Cascade-delete with parent routine.
+ * `dayNumber` 1-7, unique per routine.
+ */
+export const routineDays = sqliteTable('routine_days', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  routineId: text('routine_id')
+    .notNull()
+    .references(() => routines.id, { onDelete: 'cascade' }),
+  dayNumber: integer('day_number').notNull(),
+  dayName: text('day_name').notNull(),
+  focus: text('focus').notNull(),
+});
+
+export type RoutineDay = typeof routineDays.$inferSelect;
+export type NewRoutineDay = typeof routineDays.$inferInsert;
+
+/**
+ * Exercise slot inside a routine day (target sets/reps/order).
+ * Cascade-delete with parent routine_day.
+ */
+export const routineExercises = sqliteTable('routine_exercises', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  routineDayId: text('routine_day_id')
+    .notNull()
+    .references(() => routineDays.id, { onDelete: 'cascade' }),
+  exerciseId: text('exercise_id')
+    .notNull()
+    .references(() => exercises.id, { onDelete: 'cascade' }),
+  targetSets: integer('target_sets').notNull().default(4),
+  targetReps: integer('target_reps').notNull().default(10),
+  exerciseOrder: integer('exercise_order').notNull(),
+});
+
+export type RoutineExercise = typeof routineExercises.$inferSelect;
+export type NewRoutineExercise = typeof routineExercises.$inferInsert;
+
+/**
+ * A workout session: user + routine_day + date.
+ * `workoutDate` stored as ms-since-epoch (DATE in Postgres Round 6).
+ * `status`: 'in_progress' | 'completed'.
+ * Visibility: write-own (userId), read-all (ADR-004).
+ */
+export const workouts = sqliteTable('workouts', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  routineDayId: text('routine_day_id')
+    .notNull()
+    .references(() => routineDays.id),
+  workoutDate: integer('workout_date', { mode: 'timestamp_ms' })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+  status: text('status', { enum: ['in_progress', 'completed'] })
+    .notNull()
+    .default('in_progress'),
+  startedAt: integer('started_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+});
+
+export type Workout = typeof workouts.$inferSelect;
+export type NewWorkout = typeof workouts.$inferInsert;
+
+/**
+ * A single set logged inside a workout.
+ * Cascade-delete with parent workout.
+ * `weight` is stored in KG per ADR-006 (display conversion at UI).
+ */
+export const workoutEntries = sqliteTable('workout_entries', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  workoutId: text('workout_id')
+    .notNull()
+    .references(() => workouts.id, { onDelete: 'cascade' }),
+  exerciseId: text('exercise_id')
+    .notNull()
+    .references(() => exercises.id),
+  setNumber: integer('set_number').notNull(),
+  reps: integer('reps').notNull(),
+  weight: integer('weight').notNull().default(0),
+  completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  notes: text('notes'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type WorkoutEntry = typeof workoutEntries.$inferSelect;
+export type NewWorkoutEntry = typeof workoutEntries.$inferInsert;
+
+/**
+ * Progress photo metadata. Owner-only per ADR-005.
+ * `storagePath` is the relative path to the file on local filesystem
+ * (Round 6 swaps to Supabase Storage).
+ * Round 1: `./uploads/photos/{user_id}/{timestamp}.jpg`.
+ */
+export const progressPhotos = sqliteTable('progress_photos', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  storagePath: text('storage_path').notNull(),
+  photoDate: integer('photo_date', { mode: 'timestamp_ms' })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+  caption: text('caption'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type ProgressPhoto = typeof progressPhotos.$inferSelect;
+export type NewProgressPhoto = typeof progressPhotos.$inferInsert;
