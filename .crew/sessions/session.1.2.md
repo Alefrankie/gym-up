@@ -261,7 +261,7 @@ Ampliar `db/schema.ts` con 7 tablas usando Drizzle `sqliteTable`. Generar migrac
 ---
 
 ## User Decision (Phase 4/5 checkpoint)
-**Stop here — story 1.2 done.** User elected to close the workflow without Phase 3 (Julian static analysis), Phase 4 (Fely QA), or Phase 5 (Fely Learning).
+**Stop here ï¿½ story 1.2 done.** User elected to close the workflow without Phase 3 (Julian static analysis), Phase 4 (Fely QA), or Phase 5 (Fely Learning).
 
 ## Final Status
 - **Tests**: 49/49 passing
