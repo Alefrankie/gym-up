@@ -98,6 +98,30 @@ status: quarantine
 
 When adding a new named export to a module that is already mocked with `vi.mock()` in existing test files: grep test directories for the module path and add the new export to every mock factory — otherwise components receive `undefined` instead of the real value and tests crash with no clear assertion failure.
 
+---
+
+trigger: "before writing import statements in Astro/Vite projects"
+scope: skill
+confidence: 1
+last-used: 2026-07-27
+status: quarantine
+
+---
+
+Check tsconfig.json and vitest.config.ts for path aliases before writing imports. Astro/Vite projects use `@/` prefix for src directory, not `@lib/` or other custom prefixes. Reason: Project 1.3 had import failures due to incorrect path aliases.
+
+---
+
+trigger: "when adding new required fields to a database schema"
+scope: skill
+confidence: 1
+last-used: 2026-07-27
+status: quarantine
+
+---
+
+Update all test fixtures that create records in the modified table. Schema changes affect all tests that create records in modified tables. Reason: Project 1.3 had 7 test failures after adding email and password_hash fields to profiles table.
+
 **Why:** Story 3.8 — added `DRIFT_MESSAGE` export to `use-zone-matrix-mismatch.ts`. The existing `package-list-drift-disabled.test.tsx` mocked the whole module but omitted `DRIFT_MESSAGE` in the factory. Component crashed at runtime in tests (undefined used as JSX string).
 
 **How to apply:** After `export const FOO = ...` in a mocked module, run `grep -r "from '@/.../that-module'" tests/` and check each mock factory for the new export.

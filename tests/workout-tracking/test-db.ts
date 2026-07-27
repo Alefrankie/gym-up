@@ -24,9 +24,17 @@ export interface TestDbHandle {
 const DDL = `
   CREATE TABLE profiles (
     id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
     display_name TEXT NOT NULL,
     routine_type TEXT NOT NULL,
     weight_unit TEXT NOT NULL DEFAULT 'kg',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    expires_at INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   );
   CREATE TABLE exercises (

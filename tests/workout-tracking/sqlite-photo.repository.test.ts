@@ -31,11 +31,23 @@ beforeAll(async () => {
 
   const [owner] = await handle.db
     .insert(profiles)
-    .values({ displayName: 'Owner', routineType: 'hombre', weightUnit: 'kg' })
+    .values({ 
+      email: 'owner@example.com',
+      passwordHash: 'hashed_password',
+      displayName: 'Owner', 
+      routineType: 'hombre', 
+      weightUnit: 'kg' 
+    })
     .returning();
   const [other] = await handle.db
     .insert(profiles)
-    .values({ displayName: 'Other', routineType: 'mujer', weightUnit: 'kg' })
+    .values({ 
+      email: 'other@example.com',
+      passwordHash: 'hashed_password',
+      displayName: 'Other', 
+      routineType: 'mujer', 
+      weightUnit: 'kg' 
+    })
     .returning();
   ownerId = owner.id;
   otherId = other.id;

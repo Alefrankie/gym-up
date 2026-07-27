@@ -1,0 +1,28 @@
+---
+// src/pages/logout.astro
+//
+// Logout page.
+// Handles user logout by destroying session and clearing cookie.
+
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest, createClearSessionCookie } from '../lib/auth/cookie-helpers';
+
+// Get session from cookie
+const sessionId = getSessionIdFromRequest(Astro.request);
+
+if (sessionId) {
+  // Logout user
+  const authService = getAuthService();
+  await authService.logout(sessionId);
+}
+
+// Clear session cookie and redirect to home
+const clearCookie = createClearSessionCookie();
+return new Response(null, {
+  status: 302,
+  headers: {
+    'Location': '/',
+    'Set-Cookie': clearCookie,
+  },
+});
+---

@@ -35,6 +35,8 @@ export const profiles = sqliteTable('profiles', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
   displayName: text('display_name').notNull(),
   routineType: text('routine_type', { enum: ['hombre', 'mujer'] }).notNull(),
   weightUnit: text('weight_unit', { enum: ['kg', 'lbs'] })
@@ -205,3 +207,25 @@ export const progressPhotos = sqliteTable('progress_photos', {
 
 export type ProgressPhoto = typeof progressPhotos.$inferSelect;
 export type NewProgressPhoto = typeof progressPhotos.$inferInsert;
+
+/**
+ * User session. Stores session data for authentication.
+ * Round 1: SQLite sessions table with httpOnly cookie.
+ * Round 6: Supabase Auth handles sessions.
+ */
+export const sessions = sqliteTable('sessions', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  expiresAt: integer('expires_at', { mode: 'timestamp' })
+    .notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;

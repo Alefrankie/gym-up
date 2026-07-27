@@ -1,0 +1,62 @@
+---
+// src/pages/login.astro
+//
+// Login page.
+// Handles user login with email and password.
+
+import Layout from '../layouts/layout.astro';
+import AuthForm from '../components/auth-form.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { createSessionCookie, getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+
+// Check if user is already logged in
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (sessionId) {
+  return Astro.redirect('/dashboard');
+}
+
+// Handle form submission
+let error: string | undefined;
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    // Validate input
+    if (!email || !password) {
+      error = 'Email y contraseña son requeridos';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      error = 'Email inválido';
+    } else {
+      // Login user
+      const authService = getAuthService();
+      const session = await authService.login({
+        email,
+        password,
+      });
+
+      // Set session cookie and redirect
+      const cookie = createSessionCookie(session.sessionId, session.expiresAt);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': '/dashboard',
+          'Set-Cookie': cookie,
+        },
+      });
+    }
+  } catch (e) {
+    if (e instanceof Error) {
+      error = e.message;
+    } else {
+      error = 'Error al iniciar sesión';
+    }
+  }
+}
+---
+
+<Layout title="Iniciar Sesión — Gym Up">
+  <AuthForm mode="login" error={error} />
+</Layout>

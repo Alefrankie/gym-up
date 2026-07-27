@@ -3,10 +3,10 @@ story_id: "1.3"
 round: "round-1"
 parent_spec: "../../architecture/contexts/workout-tracking/readme.md"
 size: "M"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-07-27"
+completed: "2026-07-27"
+owner: "Julian"
 implements:
   architecture_features: ["workout-tracking"]
   prd_requirements: ["FR-WT-001", "FR-WT-002", "FR-WT-003", "FR-WT-004"]
@@ -59,11 +59,11 @@ interface AuthService {
 
 ## Tasks
 
-- [ ] `T1.3-01` - Create `auth-form.astro` component
-- [ ] `T1.3-02` - Create `LocalAuthService` implementing the `AuthService` interface
-- [ ] `T1.3-03` - Add `sessions` table migration + repository
-- [ ] `T1.3-04` - Create `/register` page
-- [ ] `T1.3-05` - Create `/login` page
-- [ ] `T1.3-06` - Add session cookie helpers (httpOnly, SameSite=Lax, Secure in prod)
-- [ ] `T1.3-07` - Add auth redirect logic (logged-in users skip `/login` and `/register`)
-- [ ] `T1.3-08` - Wire `LocalAuthService` into the per-context composition root (ADR-010)
+- [x] `T1.3-01` - Create `auth-form.astro` component
+- [x] `T1.3-02` - Create `LocalAuthService` implementing the `AuthService` interface
+- [x] `T1.3-03` - Add `sessions` table migration + repository
+- [x] `T1.3-04` - Create `/register` page
+- [x] `T1.3-05` - Create `/login` page
+- [x] `T1.3-06` - Add session cookie helpers (httpOnly, SameSite=Lax, Secure in prod)
+- [x] `T1.3-07` - Add auth redirect logic (logged-in users skip `/login` and `/register`)
+- [x] `T1.3-08` - Wire `LocalAuthService` into the per-context composition root (ADR-010)

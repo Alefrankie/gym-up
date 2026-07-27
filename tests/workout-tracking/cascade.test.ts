@@ -35,7 +35,13 @@ beforeAll(async () => {
 
   const [p] = await handle.db
     .insert(profiles)
-    .values({ displayName: 'Cascade Tester', routineType: 'hombre', weightUnit: 'kg' })
+    .values({ 
+      email: 'cascade@example.com',
+      passwordHash: 'hashed_password',
+      displayName: 'Cascade Tester', 
+      routineType: 'hombre', 
+      weightUnit: 'kg' 
+    })
     .returning();
   profileId = p.id;
 
@@ -117,7 +123,13 @@ describe('Cascade FK — parent-child chains', () => {
     // already deleted the original profile's children.
     const [p2] = await handle.db
       .insert(profiles)
-      .values({ displayName: 'Cascade2', routineType: 'mujer', weightUnit: 'kg' })
+      .values({ 
+        email: 'cascade2@example.com',
+        passwordHash: 'hashed_password',
+        displayName: 'Cascade2', 
+        routineType: 'mujer', 
+        weightUnit: 'kg' 
+      })
       .returning();
     const [r2] = await handle.db
       .insert(routines)

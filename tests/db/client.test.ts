@@ -18,12 +18,16 @@ describe('db client — type contract (AC-1.1-04)', () => {
   it('Profile type resolves to the canonical row shape', () => {
     const sample: Profile = {
       id: '00000000-0000-0000-0000-000000000000',
+      email: 'ada@example.com',
+      passwordHash: 'hashed_password',
       displayName: 'Ada',
       routineType: 'mujer',
       weightUnit: 'kg',
       createdAt: new Date(),
     };
     expect(sample.id).toBeTypeOf('string');
+    expect(sample.email).toBeTypeOf('string');
+    expect(sample.passwordHash).toBeTypeOf('string');
     expect(sample.displayName).toBeTypeOf('string');
     expect(['hombre', 'mujer']).toContain(sample.routineType);
     expect(['kg', 'lbs']).toContain(sample.weightUnit);
@@ -31,6 +35,8 @@ describe('db client — type contract (AC-1.1-04)', () => {
 
   it('NewProfile type lets id and createdAt be omitted', () => {
     const insert: NewProfile = {
+      email: 'grace@example.com',
+      passwordHash: 'hashed_password',
       displayName: 'Grace',
       routineType: 'hombre',
       weightUnit: 'lbs',
@@ -68,6 +74,8 @@ describe('db client — runtime smoke against in-memory sqlite', () => {
     sqlite.exec(`
       CREATE TABLE profiles (
         id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
         display_name TEXT NOT NULL,
         routine_type TEXT NOT NULL,
         weight_unit TEXT NOT NULL DEFAULT 'kg',
@@ -87,6 +95,8 @@ describe('db client — runtime smoke against in-memory sqlite', () => {
       .insert(profiles)
       .values({
         id,
+        email: 'linus@example.com',
+        passwordHash: 'hashed_password',
         displayName: 'Linus',
         routineType: 'hombre',
         weightUnit: 'kg',
@@ -106,6 +116,8 @@ describe('db client — runtime smoke against in-memory sqlite', () => {
       .insert(profiles)
       .values({
         id,
+        email: 'hopper@example.com',
+        passwordHash: 'hashed_password',
         displayName: 'Hopper',
         routineType: 'mujer',
         weightUnit: 'lbs',

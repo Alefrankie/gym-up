@@ -8,8 +8,8 @@
 //
 // Per ADR-011: `implements`, not `extends`.
 //
-// Note: `email` is not yet a column on `profiles` (Round 1); the auth
-// round (1.3) adds it. For now `findByEmail` returns undefined.
+// Note: `email` column was added in story 1.3 (LocalAuthService).
+// `findByEmail` now queries the email column.
 
 import { eq } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
@@ -24,9 +24,9 @@ export class SqliteProfileRepository implements ProfileRepository {
     return row[0];
   }
 
-  async findByEmail(_email: string): Promise<Profile | undefined> {
-    // Email column lands in story 1.3 (LocalAuthService). Stub for now.
-    return undefined;
+  async findByEmail(email: string): Promise<Profile | undefined> {
+    const row = await this.db.select().from(profiles).where(eq(profiles.email, email)).limit(1);
+    return row[0];
   }
 
   async create(input: NewProfile): Promise<Profile> {

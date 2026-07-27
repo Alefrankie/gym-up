@@ -29,6 +29,8 @@ afterAll(() => {
 describe('SqliteProfileRepository', () => {
   it('create() persists and returns a profile', async () => {
     const created = await repo.create({
+      email: 'ada@example.com',
+      passwordHash: 'hashed_password',
       displayName: 'Ada',
       routineType: 'mujer',
       weightUnit: 'kg',
@@ -41,6 +43,8 @@ describe('SqliteProfileRepository', () => {
 
   it('findById() returns the persisted profile', async () => {
     const created = await repo.create({
+      email: 'linus@example.com',
+      passwordHash: 'hashed_password',
       displayName: 'Linus',
       routineType: 'hombre',
       weightUnit: 'lbs',
@@ -56,6 +60,8 @@ describe('SqliteProfileRepository', () => {
 
   it('update() mutates the requested fields and returns the updated row', async () => {
     const created = await repo.create({
+      email: 'grace@example.com',
+      passwordHash: 'hashed_password',
       displayName: 'Grace',
       routineType: 'hombre',
       weightUnit: 'kg',
@@ -71,8 +77,15 @@ describe('SqliteProfileRepository', () => {
     ).rejects.toThrow(/not found/i);
   });
 
-  it('findByEmail() returns undefined in Round 1 (email column lands in 1.3)', async () => {
-    const found = await repo.findByEmail('anyone@example.com');
-    expect(found).toBeUndefined();
+  it('findByEmail() returns the profile by email', async () => {
+    const created = await repo.create({
+      email: 'findme@example.com',
+      passwordHash: 'hashed_password',
+      displayName: 'Find Me',
+      routineType: 'hombre',
+      weightUnit: 'kg',
+    });
+    const found = await repo.findByEmail('findme@example.com');
+    expect(found?.id).toBe(created.id);
   });
 });

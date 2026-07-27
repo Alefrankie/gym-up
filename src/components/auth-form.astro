@@ -1,0 +1,287 @@
+---
+// src/components/auth-form.astro
+//
+// Authentication form component for both register and login.
+// Uses Astro's server-side rendering.
+
+interface Props {
+  mode: 'register' | 'login';
+  error?: string;
+}
+
+const { mode, error } = Astro.props;
+const isRegister = mode === 'register';
+---
+
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1 class="auth-title">
+        {isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}
+      </h1>
+      <p class="auth-subtitle">
+        {isRegister 
+          ? 'Únete a Gym Up y transforma tu cuerpo'
+          : 'Bienvenido de vuelta'
+        }
+      </p>
+    </div>
+
+    {error && (
+      <div class="auth-error">
+        <span class="error-icon">⚠️</span>
+        <span class="error-message">{error}</span>
+      </div>
+    )}
+
+    <form method="POST" class="auth-form">
+      {isRegister && (
+        <div class="form-group">
+          <label for="displayName" class="form-label">Nombre</label>
+          <input
+            type="text"
+            id="displayName"
+            name="displayName"
+            class="form-input"
+            placeholder="Tu nombre"
+            required
+          />
+        </div>
+      )}
+
+      <div class="form-group">
+        <label for="email" class="form-label">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          class="form-input"
+          placeholder="tu@email.com"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Contraseña</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          class="form-input"
+          placeholder="••••••••"
+          minlength="6"
+          required
+        />
+      </div>
+
+      {isRegister && (
+        <>
+          <div class="form-group">
+            <label class="form-label">Tipo de Rutina</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="routineType" value="hombre" required />
+                <span class="radio-label">Hombre</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="routineType" value="mujer" required />
+                <span class="radio-label">Mujer</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Unidad de Peso</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="weightUnit" value="kg" checked />
+                <span class="radio-label">KG</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="weightUnit" value="lbs" />
+                <span class="radio-label">LBS</span>
+              </label>
+            </div>
+          </div>
+        </>
+      )}
+
+      <button type="submit" class="btn btn-primary btn-full">
+        {isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      {isRegister ? (
+        <p>¿Ya tienes cuenta? <a href="/login">Iniciar Sesión</a></p>
+      ) : (
+        <p>¿No tienes cuenta? <a href="/register">Crear Cuenta</a></p>
+      )}
+    </div>
+  </div>
+</div>
+
+<style>
+  .auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+
+  .auth-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .auth-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .auth-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .auth-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+  }
+
+  .auth-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    color: #fca5a5;
+  }
+
+  .error-icon {
+    font-size: 1rem;
+  }
+
+  .error-message {
+    font-size: 0.875rem;
+  }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .form-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    color: #fff;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #ff4d4d;
+    box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.2);
+  }
+
+  .form-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .radio-group {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+
+  .radio-option input[type="radio"] {
+    accent-color: #ff4d4d;
+  }
+
+  .radio-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff4d4d 0%, #ff6b6b 100%);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -10px rgba(255, 77, 77, 0.5);
+  }
+
+  .btn-full {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .auth-footer a {
+    color: #ff4d4d;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .auth-footer a:hover {
+    text-decoration: underline;
+  }
+</style>

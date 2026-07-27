@@ -50,6 +50,8 @@ beforeAll(async () => {
 
   // 1. Profile
   const profile = await profileRepo.create({
+    email: 'smoke@example.com',
+    passwordHash: 'hashed_password',
     displayName: 'Smoke Tester',
     routineType: 'hombre',
     weightUnit: 'kg',
