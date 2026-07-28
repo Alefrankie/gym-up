@@ -365,3 +365,30 @@ When a fix corrects what a shared function returns for an edge case, grep for OT
 **Why:** Bug 86bade5n1 (lab-benchmarking) — `restore-param-modal.tsx` already contained `getLBTOriginalValue(parameter) === 'Unknown'`, written in anticipation of exactly this contract, but it was unreachable because the function actually returned `'null'`. The fix didn't just correct a bug — it activated a previously-dead branch elsewhere that needed its own test coverage, which would have been missed without explicitly grepping all call sites first.
 
 **How to apply:** In Alefrank's Phase 1.5 alignment or Phase 2 plan, when Angel's blast radius lists a shared utility function, grep every call site for comparisons against the value the fix will now start returning — any match is either (a) previously-dead code the fix will activate (needs new test coverage), or (b) evidence the intended contract already existed elsewhere and the bug was pure implementation drift, not spec ambiguity.
+
+---
+trigger: "appending markdown content with unicode characters via PowerShell on Windows"
+scope: skill
+confidence: 1
+last-used: 2026-07-28
+status: quarantine
+
+---
+
+**Never use inline PowerShell here-strings (`@"..."@`) to append markdown content containing em-dash (—), check marks (✅), warning signs (⚠️), or other non-ASCII characters.** PowerShell here-strings on Windows can corrupt UTF-8 multibyte sequences, producing mojibake like `â€"` or `âœ…` in the written file. Use one of:
+1. `insert_edit_into_file` / `replace_string_in_file` tools (preserves UTF-8).
+2. A temp `.ps1` file written with `[System.IO.File]::WriteAllText` using `[System.Text.UTF8Encoding]::new($false)`.
+3. `Get-Content -Encoding UTF8` to read, modify, `Set-Content -Encoding UTF8` to write.
+
+Reason: session 1.4 had multiple PowerShell appends corrupt the session log with `â€"`, `âš ï¸`, `âœ…`, and dropped leading `a`/`n` characters (`stro check` instead of `astro check`, `pm run` instead of `npm run`, `ria-label` instead of `aria-label`).
+
+---
+trigger: "running typecheck for UI stories (Astro / Svelte / React / Next)"
+scope: skill
+confidence: 1
+last-used: 2026-07-28
+status: quarantine
+
+---
+
+For UI stories, run BOTH the typecheck (`astro check` / `tsc --noEmit` / equivalent) AND the production build (`astro build` / `next build` / equivalent). Typecheck alone is not sufficient — `Astro.url` access in SSR, asset bundling, frontmatter execution, and adapter-specific output are caught by build only, not by `astro check`. A green typecheck can still produce a build that throws at runtime on the first request. Reason: session 1.4 verified both — `astro check` and `astro build` — for the AppLayout + Navigation components; both passed cleanly.

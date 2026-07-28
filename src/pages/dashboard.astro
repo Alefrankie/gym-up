@@ -4,7 +4,7 @@
 // Dashboard page.
 // Shows user dashboard after login.
 
-import Layout from '../layouts/layout.astro';
+import AppLayout from '../layouts/app-layout.astro';
 import { getAuthService } from '../lib/contexts/auth/auth.composition';
 import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
 
@@ -23,7 +23,7 @@ if (!user) {
 }
 ---
 
-<Layout title="Dashboard — Gym Up">
+<AppLayout title="Dashboard — Gym Up">
   <div class="dashboard-container">
     <div class="dashboard-header">
       <h1>Bienvenido, {user.displayName}!</h1>
@@ -49,11 +49,10 @@ if (!user) {
       </div>
     </div>
   </div>
-</Layout>
+</AppLayout>
 
 <style>
   .dashboard-container {
-    padding: 2rem;
     max-width: 1200px;
     margin: 0 auto;
   }

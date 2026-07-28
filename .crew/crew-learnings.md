@@ -43,3 +43,25 @@ The project uses a per-context architecture with composition roots. Auth context
 - `auth.composition.ts` (composition root)
 
 Reason: Project 1.3 established this pattern for auth context.
+
+---
+trigger: "when a story says 'apply X to authenticated pages' but X is already used by public pages"
+scope: project
+confidence: 1
+last-used: 2026-07-28
+status: quarantine
+
+---
+
+Flag this as a DISCREPANCY in Phase 1 (Angel gap analysis), not as MISSING. The decision — extend X with a flag vs create a new layout — is a user-level architectural choice, not an implementation detail. Surface the question to the user before Julian starts. Reason: story-1.4 said "Apply `src/layouts/layout.astro` to all authenticated pages" but `layout.astro` was already the marketing layout used by landing/login/register. User explicitly chose option B (new AppLayout) over option A (extend layout.astro with showAppNav prop).
+
+---
+trigger: "when creating Astro files in src/layouts/"
+scope: project
+confidence: 1
+last-used: 2026-07-28
+status: quarantine
+
+---
+
+`docs/architecture/components.md:14-22` kebab-case rule applies to **layout files in `src/layouts/`** too, not just `src/components/`. Treat layout files as components for naming purposes. Reason: Julian named the new shell `AppLayout.astro` (PascalCase) following Astro community convention; Fely QA caught the violation per the project's explicit kebab-case rule. Renamed to `app-layout.astro`.

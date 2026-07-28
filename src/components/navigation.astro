@@ -1,0 +1,167 @@
+---
+// src/components/navigation.astro
+//
+// App navigation. 6 links per docs/architecture/components.md.
+// Responsive: bottom nav on mobile (< 768px), sidebar on desktop (>= 768px).
+// Active link: exact match on Astro.url.pathname. Accessible (aria-label, aria-current).
+
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+interface NavLink {
+  href: string;
+  label: string;
+  icon: string;
+}
+
+const LINKS: readonly NavLink[] = [
+  { href: '/dashboard', label: 'Home', icon: '🏠' },
+  { href: '/history', label: 'History', icon: '📋' },
+  { href: '/progress', label: 'Progress', icon: '📊' },
+  { href: '/photos', label: 'Photos', icon: '📷' },
+  { href: '/family', label: 'Family', icon: '👥' },
+  { href: '/settings', label: 'Settings', icon: '⚙️' },
+] as const;
+
+const isActive = (href: string): boolean => currentPath === href;
+---
+
+<nav class="app-nav" aria-label="Navegación principal">
+  <ul class="app-nav-list" role="list">
+    {LINKS.map((link) => (
+      <li class="app-nav-item">
+        <a
+          href={link.href}
+          class:list={['app-nav-link', { active: isActive(link.href) }]}
+          aria-current={isActive(link.href) ? 'page' : undefined}
+        >
+          <span class="app-nav-icon" aria-hidden="true">{link.icon}</span>
+          <span class="app-nav-label">{link.label}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+  .app-nav {
+    background: rgba(10, 10, 15, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-color: rgba(255, 255, 255, 0.08);
+    z-index: 100;
+  }
+
+  /* Mobile: bottom nav, horizontal */
+  .app-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .app-nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .app-nav-item {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0.4rem 0.25rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .app-nav-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .app-nav-link:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .app-nav-link:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+    color: #fff;
+  }
+
+  .app-nav-link.active {
+    color: #ff4d4d;
+    background-color: rgba(255, 77, 77, 0.1);
+  }
+
+  /* Desktop: sidebar, vertical */
+  @media (min-width: 768px) {
+    .app-nav {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: auto;
+      width: 240px;
+      border-top: none;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 1.5rem 0.75rem;
+    }
+
+    .app-nav-list {
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: stretch;
+      gap: 0.25rem;
+      padding: 0;
+    }
+
+    .app-nav-item {
+      flex: 0 0 auto;
+    }
+
+    .app-nav-link {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 0.75rem;
+      padding: 0.7rem 0.85rem;
+      font-size: 0.9rem;
+      border-radius: 0.6rem;
+    }
+
+    .app-nav-icon {
+      font-size: 1.1rem;
+      width: 1.5rem;
+      text-align: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-nav-link {
+      transition: none;
+    }
+  }
+</style>
