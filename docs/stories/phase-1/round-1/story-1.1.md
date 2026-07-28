@@ -3,10 +3,10 @@ story_id: "1.1"
 round: "round-1"
 parent_spec: "../../architecture/contexts/workout-tracking/readme.md"
 size: "S"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-07-25"
+completed: "2026-07-25"
+owner: "crew-flow"
 implements:
   architecture_features: ["workout-tracking"]
   prd_requirements: ["FR-WT-001"]
@@ -56,15 +56,38 @@ Setup Astro project with **Drizzle ORM** over a local SQLite file and Vercel dep
 
 ## Tasks
 
-- [ ] `T1.1-01` - Create Astro project with vercel adapter
-- [ ] `T1.1-02` - Install `drizzle-orm`, `drizzle-kit`, `better-sqlite3`, `@types/better-sqlite3`
-- [ ] `T1.1-03` - Add `DATABASE_URL=file:./local.db` to `.env.example` and local `.env`
-- [ ] `T1.1-04` - Create `drizzle.config.ts` (dialect: `sqlite`)
-- [ ] `T1.1-05` - Create `db/schema.ts` with at least one `sqliteTable` (proof: `profiles`)
-- [ ] `T1.1-06` - Create `src/lib/db/client.ts` with a typed Drizzle `db` instance
-- [ ] `T1.1-07` - Define abstract `XxxRepository` base classes per context at `src/lib/contexts/<context>/domain/<entity>.repository.ts` (ADR-007). For this story: `src/lib/contexts/workout-tracking/domain/profile.repository.ts`.
-- [ ] `T1.1-08` - Create first `SqliteXxxRepository` concrete impl at `src/lib/contexts/<context>/infrastructure/sqlite/<entity>.repository.ts` (e.g. `SqliteProfileRepository`) and create empty `infrastructure/supabase/` folder.
-- [ ] `T1.1-09` - Wire per-context composition root at `src/lib/contexts/<context>/<context>.composition.ts` (ADR-010) selecting on `STORAGE_BACKEND`. For this story: `src/lib/contexts/workout-tracking/workout-tracking.composition.ts`.
-- [ ] `T1.1-10` - Add npm scripts: `db:generate`, `db:migrate`, `db:studio`
-- [ ] `T1.1-11` - Create `src/layouts/layout.astro` and `src/pages/index.astro`
-- [ ] `T1.1-12` - Verify `npm run dev` boots and `db:migrate` creates `local.db`
+- [x] `T1.1-01` - Create Astro project with vercel adapter
+- [x] `T1.1-02` - Install `drizzle-orm`, `drizzle-kit`, `better-sqlite3`, `@types/better-sqlite3`
+- [x] `T1.1-03` - Add `DATABASE_URL=file:./local.db` to `.env.example` and local `.env`
+- [x] `T1.1-04` - Create `drizzle.config.ts` (dialect: `sqlite`)
+- [x] `T1.1-05` - Create `db/schema.ts` with at least one `sqliteTable` (proof: `profiles`)
+- [x] `T1.1-06` - Create `src/lib/db/client.ts` with a typed Drizzle `db` instance
+- [x] `T1.1-07` - Define abstract `XxxRepository` base classes per context at `src/lib/contexts/<context>/domain/<entity>.repository.ts` (ADR-007). For this story: `src/lib/contexts/workout-tracking/domain/profile.repository.ts`.
+- [x] `T1.1-08` - Create first `SqliteXxxRepository` concrete impl at `src/lib/contexts/<context>/infrastructure/sqlite/<entity>.repository.ts` (e.g. `SqliteProfileRepository`) and create empty `infrastructure/supabase/` folder.
+- [x] `T1.1-09` - Wire per-context composition root at `src/lib/contexts/<context>/<context>.composition.ts` (ADR-010) selecting on `STORAGE_BACKEND`. For this story: `src/lib/contexts/workout-tracking/workout-tracking.composition.ts`.
+- [x] `T1.1-10` - Add npm scripts: `db:generate`, `db:migrate`, `db:studio`
+- [x] `T1.1-11` - Create `src/layouts/layout.astro` and `src/pages/index.astro`
+- [x] `T1.1-12` - Verify `npm run dev` boots and `db:migrate` creates `local.db`
+
+## Implementation Evidence
+
+**Files created:**
+- `astro.config.mjs` (Astro 7.1.3 + `@astrojs/vercel` adapter, `output: 'server'`)
+- `package.json` (dependencies: drizzle-orm, drizzle-kit, better-sqlite3, argon2)
+- `drizzle.config.ts` (dialect: sqlite, schema: `./db/schema.ts`)
+- `db/schema.ts` (9 `sqliteTable` definitions, portable to `pgTable` per ADR-012)
+- `src/lib/db/client.ts` (typed Drizzle `db` instance, env loader for test/serverless)
+- `src/layouts/layout.astro` (marketing layout, `output: 'server'`)
+- `src/pages/index.astro` (landing page)
+- `src/lib/contexts/workout-tracking/domain/{profile,routine,workout,photo}.repository.ts` (abstract repos)
+- `src/lib/contexts/workout-tracking/infrastructure/sqlite/{sqlite-profile,sqlite-routine,sqlite-workout,sqlite-photo}.repository.ts` (concrete SQLite repos)
+- `src/lib/contexts/workout-tracking/infrastructure/supabase/.gitkeep` (empty folder for Round 6)
+- `src/lib/contexts/workout-tracking/workout-tracking.composition.ts` (composition root, `STORAGE_BACKEND` switch)
+- `tests/workout-tracking/composition.test.ts` (validates AC-1.1-05 + AC-1.1-06)
+- `.env.example` / `.env` (`DATABASE_URL=file:./local.db`)
+
+**Verification:**
+- `npm run dev` boots Astro ✅
+- `npm run db:generate` produces migration under `db/migrations/` ✅
+- `npm run db:migrate` applies to `local.db` ✅
+- Composition test passes ✅

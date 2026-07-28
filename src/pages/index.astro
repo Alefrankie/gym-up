@@ -1,6 +1,20 @@
 ---
 // src/pages/index.astro
+//
+// Marketing landing page. Redirects to /dashboard if user has a valid session.
+
 import Layout from '@/layouts/layout.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (sessionId) {
+  const authService = getAuthService();
+  const user = await authService.getCurrentUser(sessionId);
+  if (user) {
+    return Astro.redirect('/dashboard');
+  }
+}
 ---
 <Layout title="Gym Up — Transforma tu cuerpo">
   <!-- Hero Section -->
@@ -27,7 +41,7 @@ import Layout from '@/layouts/layout.astro';
         Rutinas personalizadas, progreso visual y resultados reales.
       </p>
       <div class="hero-cta">
-        <a href="#cta" class="btn btn-primary">
+        <a href="/register" class="btn btn-primary">
           <span>Empezar Ahora</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -179,7 +193,7 @@ import Layout from '@/layouts/layout.astro';
       <div class="cta-content">
         <h2>¿Listo para transformarte?</h2>
         <p>Únete a miles de personas que ya están alcanzando sus objetivos con Gym Up.</p>
-        <a href="#" class="btn btn-primary btn-large">
+        <a href="/register" class="btn btn-primary btn-large">
           <span>Empezar Gratis</span>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
