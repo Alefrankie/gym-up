@@ -7,6 +7,7 @@
 // this scaffold (without re-doing the data fetch).
 
 import AppLayout from '../../layouts/app-layout.astro';
+import ExerciseCard from '../../components/exercise-card.astro';
 import { getAuthService } from '../../lib/contexts/auth/auth.composition';
 import { getSessionIdFromRequest } from '../../lib/auth/cookie-helpers';
 import {
@@ -74,18 +75,17 @@ const isCompleted = workout.status === 'completed';
       {dayWithExercises.exercises.length === 0 ? (
         <p class="empty-state">Esta rutina no tiene ejercicios asignados todavía.</p>
       ) : (
-        <ol class="exercise-list">
-          {dayWithExercises.exercises.map((slot) => (
-            <li class="exercise-item">
-              <span class="exercise-name">{slot.exercise.name}</span>
-              <span class="exercise-target">×{slot.targetSets} × {slot.targetReps} reps</span>
-            </li>
-          ))}
-        </ol>
+        dayWithExercises.exercises.map((slot) => (
+          <ExerciseCard
+            exerciseName={slot.exercise.name}
+            targetSets={slot.targetSets}
+            targetReps={slot.targetReps}
+            exerciseId={slot.exerciseId}
+            workoutId={workout.id}
+            weightUnit={user.weightUnit}
+          />
+        ))
       )}
-      <p class="coming-soon">
-        🛠 Pronto: registrar sets por ejercicio (story 2.3).
-      </p>
     </section>
   </div>
 </AppLayout>
@@ -201,14 +201,5 @@ const isCompleted = workout.status === 'completed';
   .empty-state {
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
-  }
-
-  .coming-soon {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.9rem;
-    font-style: italic;
-    margin: 0.75rem 0 0 0;
-    padding-top: 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 </style>
