@@ -90,11 +90,14 @@ export abstract class WorkoutRepository {
   /**
    * Append a workout_entry (set log) to a workout. Throws
    * `WorkoutOwnershipError` if the workout belongs to a different user.
-   * Used by the log-set flow (auto-save on checkmark).
+   * Used by the log-set flow (auto-save on checkmark). The `workoutId`
+   * parameter is set explicitly from the function argument; the `input`
+   * type omits `workoutId` so callers can't accidentally pass a
+   * different value.
    */
   abstract addEntry(
     workoutId: string,
-    input: NewWorkoutEntry,
+    input: Omit<NewWorkoutEntry, 'workoutId'>,
     currentUserId: string,
   ): Promise<WorkoutEntry>;
 
@@ -103,4 +106,26 @@ export abstract class WorkoutRepository {
    * Read-all (no ownership check).
    */
   abstract findEntries(workoutId: string): Promise<WorkoutEntry[]>;
+
+  /**
+   * Update a workout entry's mutable fields. Throws `WorkoutOwnershipError`
+   * if the entry belongs to a different user. Throws a generic Error if the
+   * entry does not exist. Used by `LogSetUseCase` for the upsert path
+   * (story 2.4).
+   */
+  abstract updateEntry(
+    id: string,
+    patch: WorkoutEntryPatch,
+    currentUserId: string,
+  ): Promise<WorkoutEntry>;
 }
+
+/**
+ * Patch type for `updateEntry()`. Only mutable fields are exposed
+ * (the id, workoutId, exerciseId, and setNumber are immutable — they
+ * define the entry's identity).
+ */
+export type WorkoutEntryPatch = Partial<
+  Pick<WorkoutEntry, 'reps' | 'weight' | 'completed' | 'notes'>
+>;
+

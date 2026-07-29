@@ -5,13 +5,15 @@
 // during a workout. Pure presentational — no DB access, no form submission.
 // Per docs/architecture/components.md ExerciseCard prop table.
 //
-// 2.4 (Log Set auto-save) will wrap multiple <ExerciseCard /> instances in
-// a <form method="POST" action="/api/workout-entries"> and wire the
-// auto-save behavior. 2.5 (Rest Timer) will hook into the checkmark tap
-// inside this card. For 2.3, the only client-side logic is the
-// "+ Add set" button (inline <script> below) — pure UI, no submission.
+// 2.4 (Log Set auto-save) wraps the page in a workout page; the auto-save
+// module reads the row's data and POSTs to /api/workout-entries. The card
+// receives `initialEntries` to pre-fill saved values for the resume path
+// (FR-WT-013). 2.5 (Rest Timer) will hook into the checkmark tap inside
+// this card. For 2.3, the only client-side logic is the "+ Add set" button
+// (inline <script> below) — pure UI, no submission.
 
 import { WorkoutEntryRules } from '../lib/contexts/workout-tracking/domain/workout-tracking.constants';
+import type { WorkoutEntry } from '@db/schema';
 
 interface Props {
   exerciseName: string;
@@ -21,6 +23,12 @@ interface Props {
   /** Reserved for 2.4 (auto-save) and 2.5 (rest-timer). Not emitted as a hidden input in 2.3. */
   workoutId: string;
   weightUnit: 'kg' | 'lbs';
+  /**
+   * Existing entries to pre-fill the form (for resume / partial save).
+   * Story 2.4: page passes entries grouped by exerciseId.
+   * Defaults to empty (no pre-fill).
+   */
+  initialEntries?: WorkoutEntry[];
 }
 
 const {
@@ -30,8 +38,17 @@ const {
   exerciseId,
   workoutId: _workoutId,
   weightUnit,
+  initialEntries = [],
 } = Astro.props;
 const maxSets = WorkoutEntryRules.MaxSetsPerExercise; // 10
+
+// Convert stored kg weight back to the user's unit for display (roundtrip
+// — use case converts lbs→kg on save, card converts kg→lbs on load).
+const displayWeight = (entry: WorkoutEntry | undefined): number | undefined => {
+  if (!entry) return undefined;
+  return weightUnit === 'lbs' ? entry.weight * 2.20462 : entry.weight;
+};
+
 ---
 
 <article class="exercise-card" aria-labelledby={`exercise-${exerciseId}-name`}>
@@ -41,55 +58,62 @@ const maxSets = WorkoutEntryRules.MaxSetsPerExercise; // 10
   </header>
 
   <ol class="set-list" data-target-sets={targetSets} data-max-sets={maxSets}>
-    {Array.from({ length: targetSets }, (_, i) => i + 1).map((setNumber) => (
-      <li class="set-row" data-set-number={setNumber}>
-        <span class="set-number" aria-hidden="true">{setNumber}</span>
-        <label class="set-field">
-          <span class="set-label">Reps</span>
-          <input
-            type="number"
-            name={`entries[${setNumber}][reps]`}
-            min={WorkoutEntryRules.MinReps}
-            max={WorkoutEntryRules.MaxReps}
-            placeholder={String(targetReps)}
-            inputmode="numeric"
-            class="set-input"
-          />
-        </label>
-        <label class="set-field">
-          <span class="set-label">Peso ({weightUnit})</span>
-          <input
-            type="number"
-            name={`entries[${setNumber}][weight]`}
-            min={WorkoutEntryRules.MinWeight}
-            max={WorkoutEntryRules.MaxWeight}
-            step="0.5"
-            inputmode="decimal"
-            class="set-input"
-          />
-        </label>
-        <label class="set-field set-field-checkbox">
-          <span class="set-label">Hecho</span>
-          <input
-            type="checkbox"
-            name={`entries[${setNumber}][completed]`}
-            value="true"
-            class="set-checkbox"
-          />
-        </label>
-        <label class="set-field set-field-notes">
-          <span class="set-label">Notas <span class="set-label-optional">(opcional)</span></span>
-          <input
-            type="text"
-            name={`entries[${setNumber}][notes]`}
-            maxlength={WorkoutEntryRules.MaxNotesLength}
-            placeholder="Ej: sentí bien el último"
-            class="set-input"
-          />
-        </label>
-        <input type="hidden" name={`entries[${setNumber}][exercise_id]`} value={exerciseId} />
-      </li>
-    ))}
+    {Array.from({ length: targetSets }, (_, i) => i + 1).map((setNumber) => {
+      const entry = initialEntries.find((e) => e.setNumber === setNumber);
+      return (
+        <li class="set-row" data-set-number={setNumber}>
+          <span class="set-number" aria-hidden="true">{setNumber}</span>
+          <label class="set-field">
+            <span class="set-label">Reps</span>
+            <input
+              type="number"
+              name={`entries[${setNumber}][reps]`}
+              min={WorkoutEntryRules.MinReps}
+              max={WorkoutEntryRules.MaxReps}
+              placeholder={String(targetReps)}
+              inputmode="numeric"
+              class="set-input"
+              value={entry?.reps}
+            />
+          </label>
+          <label class="set-field">
+            <span class="set-label">Peso ({weightUnit})</span>
+            <input
+              type="number"
+              name={`entries[${setNumber}][weight]`}
+              min={WorkoutEntryRules.MinWeight}
+              max={WorkoutEntryRules.MaxWeight}
+              step="0.5"
+              inputmode="decimal"
+              class="set-input"
+              value={displayWeight(entry)}
+            />
+          </label>
+          <label class="set-field set-field-checkbox">
+            <span class="set-label">Hecho</span>
+            <input
+              type="checkbox"
+              name={`entries[${setNumber}][completed]`}
+              value="true"
+              class="set-checkbox"
+              checked={entry?.completed ?? false}
+            />
+          </label>
+          <label class="set-field set-field-notes">
+            <span class="set-label">Notas <span class="set-label-optional">(opcional)</span></span>
+            <input
+              type="text"
+              name={`entries[${setNumber}][notes]`}
+              maxlength={WorkoutEntryRules.MaxNotesLength}
+              placeholder="Ej: sentí bien el último"
+              class="set-input"
+              value={entry?.notes ?? ''}
+            />
+          </label>
+          <input type="hidden" name={`entries[${setNumber}][exercise_id]`} value={exerciseId} />
+        </li>
+      );
+    })}
   </ol>
 
   <button type="button" class="add-set-button" data-action="add-set" hidden={targetSets >= maxSets}>

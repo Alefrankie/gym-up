@@ -1,10 +1,10 @@
 ---
 // src/pages/workout/[id].astro
 //
-// Workout page scaffold. Story 2.2: fetches the workout + routine day +
-// exercises, renders the routine header + exercise list + a "Coming soon"
-// note. Story 2.3 will add the `exercise-card.astro` component on top of
-// this scaffold (without re-doing the data fetch).
+// Workout page. Story 2.2: scaffold (workout + day + exercises).
+// Story 2.3: exercise-card.astro per exercise.
+// Story 2.4: auto-save (load existing entries for pre-fill, POST on
+// input change with 500ms debounce, red border on failure).
 
 import AppLayout from '../../layouts/app-layout.astro';
 import ExerciseCard from '../../components/exercise-card.astro';
@@ -14,6 +14,8 @@ import {
   routineRepository,
   workoutRepository,
 } from '../../lib/contexts/workout-tracking/workout-tracking.composition';
+import { createAutoSave } from '../../lib/client/auto-save';
+import type { WorkoutEntry } from '@db/schema';
 
 // Auth: resolve session + current user.
 const sessionId = getSessionIdFromRequest(Astro.request);
@@ -52,6 +54,15 @@ if (!dayWithExercises) {
 }
 
 const isCompleted = workout.status === 'completed';
+
+// Load existing entries (story 2.4: pre-fill for resume / partial save).
+const existingEntries: WorkoutEntry[] = await workoutRepository.findEntries(workout.id);
+const entriesByExerciseId = new Map<string, WorkoutEntry[]>();
+for (const entry of existingEntries) {
+  const list = entriesByExerciseId.get(entry.exerciseId) ?? [];
+  list.push(entry);
+  entriesByExerciseId.set(entry.exerciseId, list);
+}
 ---
 
 <AppLayout title="Workout — Gym Up">
@@ -83,11 +94,28 @@ const isCompleted = workout.status === 'completed';
             exerciseId={slot.exerciseId}
             workoutId={workout.id}
             weightUnit={user.weightUnit}
+            initialEntries={entriesByExerciseId.get(slot.exerciseId) ?? []}
           />
         ))
       )}
     </section>
   </div>
+
+  <input type="hidden" id="workout-id" value={workout.id} data-weight-unit={user.weightUnit} />
+  <script>
+    import { createAutoSave } from '../../lib/client/auto-save';
+    // Story 2.4: auto-save. Event delegation on `document.body` catches
+    // input/change events from any `.set-row` (including rows added by the
+    // card's "+ Add set" button). Per-row debounce coalesces rapid changes
+    // in the same row (key = `${exerciseId}:${setNumber}`).
+    const workoutIdInput = document.getElementById('workout-id') as HTMLInputElement | null;
+    const workoutId = workoutIdInput?.value;
+    const weightUnit = (workoutIdInput?.dataset.weightUnit as 'kg' | 'lbs') ?? 'kg';
+    if (workoutId) {
+      const autoSave = createAutoSave({ workoutId, weightUnit });
+      autoSave.attach(document.body);
+    }
+  </script>
 </AppLayout>
 
 <style>
@@ -201,5 +229,25 @@ const isCompleted = workout.status === 'completed';
   .empty-state {
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
+  }
+
+  /* Story 2.4: auto-save error feedback. The .set-row-error class is added
+     to a set row by the auto-save module when the POST /api/workout-entries
+     fails (network error, server error, validation error). */
+  .set-row-error {
+    background: rgba(255, 77, 77, 0.12);
+    border-left: 3px solid #ff4d4d;
+    padding-left: 0.6rem;
+    margin-left: -0.6rem;
+    border-radius: 0.4rem;
+  }
+
+  .set-row-error .set-input,
+  .set-row-error .set-checkbox {
+    border-color: rgba(255, 77, 77, 0.6);
+  }
+
+  .set-row-error .set-number {
+    color: #ff8a8a;
   }
 </style>

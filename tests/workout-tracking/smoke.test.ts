@@ -113,7 +113,6 @@ beforeAll(async () => {
   const entry = await workoutRepo.addEntry(
     workoutId,
     {
-      workoutId,
       exerciseId,
       setNumber: 1,
       reps: 10,

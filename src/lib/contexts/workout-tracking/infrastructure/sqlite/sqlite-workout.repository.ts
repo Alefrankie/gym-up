@@ -23,6 +23,7 @@ import {
 import {
   WorkoutOwnershipError,
   WorkoutRepository,
+  type WorkoutEntryPatch,
   type WorkoutUpdate,
 } from '@/lib/contexts/workout-tracking/domain/workout.repository';
 
@@ -125,7 +126,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
 
   async addEntry(
     workoutId: string,
-    input: NewWorkoutEntry,
+    input: Omit<NewWorkoutEntry, 'workoutId'>,
     currentUserId: string,
   ): Promise<WorkoutEntry> {
     const workout = await this.findById(workoutId);
@@ -157,5 +158,43 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         asc(workoutEntries.exerciseId),
         asc(workoutEntries.setNumber),
       );
+  }
+
+  async updateEntry(
+    id: string,
+    patch: WorkoutEntryPatch,
+    currentUserId: string,
+  ): Promise<WorkoutEntry> {
+    // 1. Find the entry to get the workoutId for the ownership check.
+    const entryRows = await this.db
+      .select()
+      .from(workoutEntries)
+      .where(eq(workoutEntries.id, id))
+      .limit(1);
+    const existing = entryRows[0];
+    if (!existing) {
+      throw new Error(`Workout entry not found: ${id}`);
+    }
+
+    // 2. Verify ownership of the parent workout.
+    const workout = await this.findById(existing.workoutId);
+    if (!workout) {
+      throw new Error(`Workout not found: ${existing.workoutId}`);
+    }
+    if (workout.userId !== currentUserId) {
+      throw new WorkoutOwnershipError(existing.workoutId, currentUserId);
+    }
+
+    // 3. Apply the patch.
+    const updatedRows = await this.db
+      .update(workoutEntries)
+      .set(patch)
+      .where(eq(workoutEntries.id, id))
+      .returning();
+    const updated = updatedRows[0];
+    if (!updated) {
+      throw new Error(`Workout entry ${id} disappeared during update.`);
+    }
+    return updated;
   }
 }

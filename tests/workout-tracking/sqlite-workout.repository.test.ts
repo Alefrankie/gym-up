@@ -122,7 +122,6 @@ describe('SqliteWorkoutRepository — happy path', () => {
     const entry = await repo.addEntry(
       workoutId,
       {
-        workoutId,
         exerciseId,
         setNumber: 1,
         reps: 10,
@@ -179,7 +178,6 @@ describe('SqliteWorkoutRepository — visibility / ownership (ADR-004)', () => {
       repo.addEntry(
         workoutId,
         {
-          workoutId,
           exerciseId,
           setNumber: 99,
           reps: 1,
