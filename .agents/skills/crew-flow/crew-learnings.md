@@ -3,6 +3,17 @@
 Skill-scope rules not yet stable enough to integrate inline. Graduate / decay / re-scope policy: `phase-5-fely-learning.md` Stage 4. Project-specific rules belong in the project's `.crew/crew-learnings.md`, not here.
 
 ---
+trigger: "when a use case depends on today's date (weekday, calendar day, date range)"
+scope: skill
+confidence: 1
+last-used: 2026-07-29
+status: quarantine
+
+---
+
+When a use case depends on "today" (weekday math, calendar-day scoping, date-range queries), expose a `now?: Date` field on the input DTO. Tests inject a deterministic date (e.g. `new Date('2026-07-27T12:00:00Z')` for Monday); production callers leave it unset. Reason: deterministic unit tests for date-dependent logic without `vi.useFakeTimers` (which leaks time state across tests and makes test isolation fragile). Used in session 2.1 by `GetTodayWorkoutUseCase` — 17 unit tests across 5 weekdays, all green, no flakiness.
+
+---
 
 trigger: "branch/case sets 2+ related fields (a label + a derived lookup value) from hardcoded literals"
 scope: skill

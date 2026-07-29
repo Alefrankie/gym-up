@@ -1,53 +1,134 @@
 ---
 // src/pages/dashboard.astro
 //
-// Dashboard page.
-// Shows user dashboard after login.
+// Dashboard page. Story 2.1: shows today's routine based on the user's
+// routine_type and the current weekday. Handles weekend (rest day +
+// manual picker) and "no routine assigned" (defensive guard).
+//
+// Consumes the GetTodayWorkoutUseCase via the per-context composition
+// root (ADR-010) — never imports repositories or the DB directly.
 
 import AppLayout from '../layouts/app-layout.astro';
 import { getAuthService } from '../lib/contexts/auth/auth.composition';
 import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+import { getTodayWorkoutUseCase } from '../lib/contexts/workout-tracking/workout-tracking.composition';
+import { CardioRules } from '../lib/contexts/workout-tracking/domain/workout-tracking.constants';
 
-// Get session from cookie
+// Auth: resolve session + current user.
 const sessionId = getSessionIdFromRequest(Astro.request);
 if (!sessionId) {
   return Astro.redirect('/login');
 }
-
-// Get current user
 const authService = getAuthService();
 const user = await authService.getCurrentUser(sessionId);
-
 if (!user) {
   return Astro.redirect('/login');
 }
+
+// Parse the optional `?day` query param (weekend manual picker).
+const dayParam = Astro.url.searchParams.get('day');
+let dayOverride: number | undefined;
+if (dayParam !== null && dayParam !== '') {
+  const parsed = Number(dayParam);
+  if (Number.isFinite(parsed)) {
+    dayOverride = parsed;
+  }
+}
+
+// Run the use case.
+const todayResult = await getTodayWorkoutUseCase.execute({
+  userId: user.id,
+  routineType: user.routineType,
+  weightUnit: user.weightUnit,
+  dayOverride,
+});
+
+// Cardio banner copy (single source of truth: CardioRules).
+const cardioCopy = `Cardio: Warmup ${CardioRules.MinWarmupMinutes}-${CardioRules.MaxWarmupMinutes} min walk antes · Cooldown ${CardioRules.MinCooldownMinutes}-${CardioRules.MaxCooldownMinutes} min walk después`;
 ---
 
 <AppLayout title="Dashboard — Gym Up">
   <div class="dashboard-container">
-    <div class="dashboard-header">
-      <h1>Bienvenido, {user.displayName}!</h1>
-      <p>Tu dashboard de entrenamiento</p>
-    </div>
-    
-    <div class="dashboard-content">
-      <div class="dashboard-card">
-        <h2>Perfil</h2>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Rutina:</strong> {user.routineType}</p>
-        <p><strong>Unidad de peso:</strong> {user.weightUnit}</p>
+    <header class="dashboard-header">
+      <div class="dashboard-header-text">
+        <h1>Bienvenido, {user.displayName}!</h1>
+        <p>Tu dashboard de entrenamiento</p>
       </div>
-      
-      <div class="dashboard-card">
-        <h2>Acciones Rápidas</h2>
-        <div class="quick-actions">
-          <a href="/workout" class="btn btn-primary">Iniciar Entrenamiento</a>
-          <a href="/progress" class="btn btn-secondary">Ver Progreso</a>
-          <a href="/nutrition" class="btn btn-secondary">Nutrición</a>
-          <a href="/logout" class="btn btn-secondary">Cerrar Sesión</a>
+      <a href="/logout" class="btn-link">Cerrar sesión</a>
+    </header>
+
+    <aside class="cardio-banner" role="note" aria-label="Recordatorio de cardio">
+      <span class="cardio-icon" aria-hidden="true">🏃</span>
+      <span class="cardio-text">{cardioCopy}</span>
+    </aside>
+
+    {todayResult.kind === 'no_routine' && (
+      <section class="dashboard-card no-routine-notice">
+        <h2>Selecciona tu rutina</h2>
+        <p>Aún no tienes una rutina asignada. Configúrala en Settings para empezar.</p>
+        <a href="/settings" class="btn btn-secondary">Ir a Settings</a>
+      </section>
+    )}
+
+    {todayResult.kind === 'rest_day' && (
+      <section class="dashboard-card rest-day-card">
+        <h2>Día de descanso 🌴</h2>
+        <p>Hoy no hay rutina. Si quieres entrenar de todos modos, elige un día:</p>
+        <form method="get" class="day-picker">
+          <label for="day-select" class="day-picker-label">Rutina del día:</label>
+          <select id="day-select" name="day" class="day-picker-select">
+            {todayResult.dayOptions.map((opt) => (
+              <option value={opt.dayNumber}>{opt.dayName} — {opt.focus}</option>
+            ))}
+          </select>
+          <button type="submit" class="btn btn-primary">Ver rutina</button>
+        </form>
+      </section>
+    )}
+
+    {todayResult.kind === 'workout_day' && (
+      <section class="dashboard-card routine-card">
+        <header class="routine-header">
+          <h2>{todayResult.routineDay.dayName} — {todayResult.routineDay.focus}</h2>
+        </header>
+
+        {todayResult.exercises.length === 0 ? (
+          <p class="empty-state">Esta rutina no tiene ejercicios asignados todavía.</p>
+        ) : (
+          <ol class="exercise-list">
+            {todayResult.exercises.map((slot) => (
+              <li class="exercise-item">
+                <span class="exercise-name">{slot.exercise.name}</span>
+                <span class="exercise-target">×{slot.targetSets} × {slot.targetReps} reps</span>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        <div class="cta-row">
+          {todayResult.workoutStatus === 'not_started' && (
+            <form method="post" action="/api/workouts" class="cta-form">
+              <input type="hidden" name="routine_day_id" value={todayResult.routineDay.id} />
+              <button type="submit" class="btn btn-primary">Empezar entrenamiento</button>
+            </form>
+          )}
+
+          {todayResult.workoutStatus === 'in_progress' && (
+            <form method="post" action="/api/workouts" class="cta-form">
+              <input type="hidden" name="routine_day_id" value={todayResult.routineDay.id} />
+              <input type="hidden" name="workout_id" value={todayResult.existingWorkoutId} />
+              <button type="submit" class="btn btn-primary">Continuar entrenamiento</button>
+            </form>
+          )}
+
+          {todayResult.workoutStatus === 'completed' && (
+            <a href={`/workout/${todayResult.existingWorkoutId}`} class="btn btn-primary">
+              Ver resumen →
+            </a>
+          )}
         </div>
-      </div>
-    </div>
+      </section>
+    )}
   </div>
 </AppLayout>
 
@@ -56,38 +137,80 @@ if (!user) {
     max-width: 1200px;
     margin: 0 auto;
   }
-  
+
   .dashboard-header {
-    margin-bottom: 2rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
   }
-  
-  .dashboard-header h1 {
+
+  .dashboard-header-text h1 {
     font-family: 'Oswald', sans-serif;
-    font-size: 2.5rem;
+    font-size: 2.25rem;
     font-weight: 700;
     color: #fff;
-    margin: 0 0 0.5rem 0;
+    margin: 0 0 0.25rem 0;
   }
-  
-  .dashboard-header p {
+
+  .dashboard-header-text p {
     color: rgba(255, 255, 255, 0.6);
     margin: 0;
   }
-  
-  .dashboard-content {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
+
+  .btn-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+    transition: background-color 150ms ease, color 150ms ease;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
-  
+
+  .btn-link:hover,
+  .btn-link:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-link:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .cardio-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    background: rgba(255, 77, 77, 0.08);
+    border: 1px solid rgba(255, 77, 77, 0.25);
+    border-left: 3px solid #ff4d4d;
+    border-radius: 0.65rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+  }
+
+  .cardio-icon {
+    font-size: 1.1rem;
+  }
+
   .dashboard-card {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 1rem;
     padding: 1.5rem;
+    margin-bottom: 1.25rem;
   }
-  
+
   .dashboard-card h2 {
     font-family: 'Oswald', sans-serif;
     font-size: 1.5rem;
@@ -95,18 +218,84 @@ if (!user) {
     color: #fff;
     margin: 0 0 1rem 0;
   }
-  
+
   .dashboard-card p {
     color: rgba(255, 255, 255, 0.8);
-    margin: 0 0 0.5rem 0;
+    margin: 0 0 0.75rem 0;
   }
-  
-  .quick-actions {
+
+  .no-routine-notice h2 {
+    color: #ffb84d;
+  }
+
+  .day-picker {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 0.75rem;
   }
-  
+
+  .day-picker-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+  }
+
+  .day-picker-select {
+    flex: 1 1 200px;
+    min-width: 0;
+    padding: 0.55rem 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+  }
+
+  .day-picker-select:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .exercise-list {
+    list-style: decimal;
+    padding-left: 1.25rem;
+    margin: 0 0 1.25rem 0;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .exercise-item {
+    padding: 0.45rem 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .exercise-name {
+    font-weight: 500;
+  }
+
+  .exercise-target {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    margin: 0 0 1.25rem 0;
+  }
+
+  .cta-row {
+    margin-top: 0.5rem;
+  }
+
+  .cta-form {
+    display: inline-block;
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -120,23 +309,23 @@ if (!user) {
     cursor: pointer;
     border: none;
   }
-  
+
   .btn-primary {
     background: linear-gradient(135deg, #ff4d4d 0%, #ff6b6b 100%);
     color: #fff;
   }
-  
+
   .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px -10px rgba(255, 77, 77, 0.5);
   }
-  
+
   .btn-secondary {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
-  
+
   .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.15);
   }
