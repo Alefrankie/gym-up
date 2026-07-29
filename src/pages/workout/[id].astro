@@ -8,6 +8,8 @@
 
 import AppLayout from '../../layouts/app-layout.astro';
 import ExerciseCard from '../../components/exercise-card.astro';
+import RestTimer from '../../components/rest-timer';
+import { WorkoutEntryRules } from '../../lib/contexts/workout-tracking/domain/workout-tracking.constants';
 import { getAuthService } from '../../lib/contexts/auth/auth.composition';
 import { getSessionIdFromRequest } from '../../lib/auth/cookie-helpers';
 import {
@@ -102,6 +104,9 @@ for (const entry of existingEntries) {
   </div>
 
   <input type="hidden" id="workout-id" value={workout.id} data-weight-unit={user.weightUnit} />
+
+  <RestTimer client:load defaultSeconds={WorkoutEntryRules.DefaultRestSeconds} />
+
   <script>
     import { createAutoSave } from '../../lib/client/auto-save';
     // Story 2.4: auto-save. Event delegation on `document.body` catches
@@ -115,6 +120,18 @@ for (const entry of existingEntries) {
       const autoSave = createAutoSave({ workoutId, weightUnit });
       autoSave.attach(document.body);
     }
+
+    // Story 2.5: rest timer trigger. When the user toggles a set's
+    // "completed" checkbox to checked, dispatch the `rest-timer:start`
+    // event. The React island (`<RestTimer client:load />`) listens
+    // and starts the countdown. Each tap restarts the timer.
+    document.querySelectorAll<HTMLInputElement>('input[name$="[completed]"]').forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          window.dispatchEvent(new CustomEvent('rest-timer:start'));
+        }
+      });
+    });
   </script>
 </AppLayout>
 

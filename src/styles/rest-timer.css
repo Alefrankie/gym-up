@@ -1,0 +1,82 @@
+/* src/styles/rest-timer.css
+ *
+ * Story 2.5 — Rest Timer styles. Fixed bottom-center, glassmorphism,
+ * mobile-friendly. Doesn't cover the main content (the timer is small,
+ * ~200px wide). High z-index so it stays on top of cards/buttons.
+ */
+
+.rest-timer {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: rest-timer-fade-in 180ms ease-out;
+}
+
+@keyframes rest-timer-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.rest-timer-display {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.rest-timer-plus,
+.rest-timer-skip {
+  background: rgba(255, 77, 77, 0.15);
+  color: #ff8a8a;
+  border: 1px solid rgba(255, 77, 77, 0.3);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.rest-timer-skip {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.rest-timer-plus:hover,
+.rest-timer-plus:focus-visible {
+  background: rgba(255, 77, 77, 0.25);
+  color: #fff;
+  border-color: rgba(255, 77, 77, 0.5);
+}
+
+.rest-timer-skip:hover,
+.rest-timer-skip:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.rest-timer-plus:focus-visible,
+.rest-timer-skip:focus-visible {
+  outline: 2px solid #ff4d4d;
+  outline-offset: 2px;
+}

@@ -65,3 +65,25 @@ status: quarantine
 ---
 
 `docs/architecture/components.md:14-22` kebab-case rule applies to **layout files in `src/layouts/`** too, not just `src/components/`. Treat layout files as components for naming purposes. Reason: Julian named the new shell `AppLayout.astro` (PascalCase) following Astro community convention; Fely QA caught the violation per the project's explicit kebab-case rule. Renamed to `app-layout.astro`.
+
+---
+trigger: "writing form inputs in Astro components"
+scope: project
+confidence: 1
+last-used: 2026-07-29
+status: quarantine
+
+---
+
+When writing form inputs in Astro components, use `value` (not `defaultValue`) for the initial value of `<input>`. `defaultValue` is a React-only prop and is NOT in Astro's `InputHTMLAttributes`. The `value` attribute renders as the HTML `value` attribute, which sets the initial value when the page loads. `tsc --noEmit` (skill rule confidence 5) catches the mismatch with "Type 'X' is not assignable to type 'InputHTMLAttributes'". Reason: story 2.4 pre-fill of saved entries in `exercise-card.astro` initially used `defaultValue={entry?.reps}`; fixed to `value={entry?.reps}`.
+
+---
+trigger: "writing inline script in Astro component"
+scope: project
+confidence: 1
+last-used: 2026-07-29
+status: quarantine
+
+---
+
+When writing an inline `<script>` block in an Astro component (`.astro`), the script has its own ES module scope. Frontmatter imports (e.g., `import { createAutoSave } from '...'`) are NOT visible inside the script. Add the import at the top of the `<script>` block. The Astro typecheck catches this with "Cannot find name 'X'" inside the script. Reason: story 2.4 workout page script called `createAutoSave(...)` without importing it inside the script; fixed by adding `import { createAutoSave } from '../../lib/client/auto-save';` at the top of the `<script>` block.
