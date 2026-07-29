@@ -1,0 +1,214 @@
+---
+// src/pages/workout/[id].astro
+//
+// Workout page scaffold. Story 2.2: fetches the workout + routine day +
+// exercises, renders the routine header + exercise list + a "Coming soon"
+// note. Story 2.3 will add the `exercise-card.astro` component on top of
+// this scaffold (without re-doing the data fetch).
+
+import AppLayout from '../../layouts/app-layout.astro';
+import { getAuthService } from '../../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../../lib/auth/cookie-helpers';
+import {
+  routineRepository,
+  workoutRepository,
+} from '../../lib/contexts/workout-tracking/workout-tracking.composition';
+
+// Auth: resolve session + current user.
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+const authService = getAuthService();
+const user = await authService.getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const workoutId = Astro.params.id;
+if (!workoutId) {
+  return new Response('Bad request: missing workout id', { status: 400 });
+}
+
+// Fetch the workout.
+const workout = await workoutRepository.findById(workoutId);
+if (!workout) {
+  return new Response('Workout not found', { status: 404 });
+}
+
+// Ownership check (write-own per ADR-004; reads are read-all but the
+// workout page is a personal view, so we restrict it to the owner).
+if (workout.userId !== user.id) {
+  return new Response('Forbidden: not your workout', { status: 403 });
+}
+
+// Fetch the routine day + exercises.
+const dayWithExercises = await routineRepository.findDayWithExercises(
+  workout.routineDayId,
+);
+if (!dayWithExercises) {
+  return new Response('Routine day not found', { status: 500 });
+}
+
+const isCompleted = workout.status === 'completed';
+---
+
+<AppLayout title="Workout — Gym Up">
+  <div class="workout-container">
+    <header class="workout-header">
+      <a href="/dashboard" class="btn-link">← Volver al dashboard</a>
+      <div class="workout-header-text">
+        <h1>{dayWithExercises.day.dayName} — {dayWithExercises.day.focus}</h1>
+        <p class="workout-status">
+          {isCompleted ? (
+            <span class="status-badge status-completed">✓ Completado</span>
+          ) : (
+            <span class="status-badge status-in-progress">En progreso</span>
+          )}
+        </p>
+      </div>
+    </header>
+
+    <section class="dashboard-card">
+      <h2>Ejercicios</h2>
+      {dayWithExercises.exercises.length === 0 ? (
+        <p class="empty-state">Esta rutina no tiene ejercicios asignados todavía.</p>
+      ) : (
+        <ol class="exercise-list">
+          {dayWithExercises.exercises.map((slot) => (
+            <li class="exercise-item">
+              <span class="exercise-name">{slot.exercise.name}</span>
+              <span class="exercise-target">×{slot.targetSets} × {slot.targetReps} reps</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p class="coming-soon">
+        🛠 Pronto: registrar sets por ejercicio (story 2.3).
+      </p>
+    </section>
+  </div>
+</AppLayout>
+
+<style>
+  .workout-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .workout-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .workout-header-text h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .workout-header-text p {
+    margin: 0;
+  }
+
+  .btn-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+    align-self: flex-start;
+  }
+
+  .btn-link:hover,
+  .btn-link:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-link:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .status-in-progress {
+    background: rgba(77, 159, 255, 0.15);
+    color: #4d9fff;
+    border: 1px solid rgba(77, 159, 255, 0.3);
+  }
+
+  .status-completed {
+    background: rgba(76, 217, 100, 0.15);
+    color: #4cd964;
+    border: 1px solid rgba(76, 217, 100, 0.3);
+  }
+
+  .dashboard-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+
+  .dashboard-card h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 1rem 0;
+  }
+
+  .exercise-list {
+    list-style: decimal;
+    padding-left: 1.25rem;
+    margin: 0 0 1rem 0;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .exercise-item {
+    padding: 0.45rem 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .exercise-name {
+    font-weight: 500;
+  }
+
+  .exercise-target {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .empty-state {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+  }
+
+  .coming-soon {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    font-style: italic;
+    margin: 0.75rem 0 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+</style>

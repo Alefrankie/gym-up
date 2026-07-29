@@ -14,6 +14,7 @@ import { SqliteRoutineRepository } from './infrastructure/sqlite/sqlite-routine.
 import { SqliteWorkoutRepository } from './infrastructure/sqlite/sqlite-workout.repository';
 import { SqlitePhotoRepository } from './infrastructure/sqlite/sqlite-photo.repository';
 import { GetTodayWorkoutUseCase } from './application/get-today-workout.use-case';
+import { StartWorkoutUseCase } from './application/start-workout.use-case';
 
 type StorageBackend = 'sqlite' | 'supabase';
 
@@ -82,9 +83,12 @@ export const routineRepository: RoutineRepository = buildRoutineRepository(backe
 export const workoutRepository: WorkoutRepository = buildWorkoutRepository(backend);
 export const photoRepository: PhotoRepository = buildPhotoRepository(backend);
 
-// Use case singletons (story 2.1). Follow the same composition-root
+// Use case singletons (stories 2.1 + 2.2). Follow the same composition-root
 // pattern as the repositories above.
 export const getTodayWorkoutUseCase: GetTodayWorkoutUseCase =
   new GetTodayWorkoutUseCase(routineRepository, workoutRepository);
+
+export const startWorkoutUseCase: StartWorkoutUseCase =
+  new StartWorkoutUseCase(routineRepository, workoutRepository);
 
 export const workoutTrackingBackend = backend;
