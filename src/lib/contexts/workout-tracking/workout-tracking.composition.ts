@@ -16,6 +16,7 @@ import { SqlitePhotoRepository } from './infrastructure/sqlite/sqlite-photo.repo
 import { GetTodayWorkoutUseCase } from './application/get-today-workout.use-case';
 import { StartWorkoutUseCase } from './application/start-workout.use-case';
 import { LogSetUseCase } from './application/log-set.use-case';
+import { CompleteWorkoutUseCase } from './application/complete-workout.use-case';
 
 type StorageBackend = 'sqlite' | 'supabase';
 
@@ -94,5 +95,8 @@ export const startWorkoutUseCase: StartWorkoutUseCase =
 
 export const logSetUseCase: LogSetUseCase =
   new LogSetUseCase(workoutRepository);
+
+export const completeWorkoutUseCase: CompleteWorkoutUseCase =
+  new CompleteWorkoutUseCase(workoutRepository);
 
 export const workoutTrackingBackend = backend;

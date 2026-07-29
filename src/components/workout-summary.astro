@@ -1,0 +1,119 @@
+---
+// src/components/workout-summary.astro
+//
+// Story 2.6 — WorkoutSummary. Per docs/architecture/components.md
+// WorkoutSummary table. Render-only UI for the "completed" state of a
+// workout. Shows 4 stats: exercises, totalSets, totalVolume (sum of
+// sets × reps × weight, in kg per ADR-006), and duration (formatted
+// by the caller per AC-2.6-04).
+//
+// One component per file. Props interface inline (no .types.ts for
+// simple cases). Per docs/architecture/components.md: kebab-case filename.
+
+interface Props {
+  exercises: number;
+  totalSets: number;
+  totalVolume: number;
+  duration: string;
+}
+
+const { exercises, totalSets, totalVolume, duration } = Astro.props;
+---
+
+<section class="workout-summary" aria-labelledby="summary-heading">
+  <header class="workout-summary-header">
+    <h2 id="summary-heading" class="workout-summary-title">✓ Workout completado</h2>
+    <p class="workout-summary-subtitle">Resumen de la sesión</p>
+  </header>
+
+  <ol class="workout-summary-stats">
+    <li class="workout-summary-stat">
+      <span class="workout-summary-stat-value">{exercises}</span>
+      <span class="workout-summary-stat-label">Ejercicios</span>
+    </li>
+    <li class="workout-summary-stat">
+      <span class="workout-summary-stat-value">{totalSets}</span>
+      <span class="workout-summary-stat-label">Sets</span>
+    </li>
+    <li class="workout-summary-stat">
+      <span class="workout-summary-stat-value">{totalVolume.toLocaleString('es-ES')}</span>
+      <span class="workout-summary-stat-label">Volumen (kg)</span>
+    </li>
+    <li class="workout-summary-stat">
+      <span class="workout-summary-stat-value">{duration}</span>
+      <span class="workout-summary-stat-label">Duración</span>
+    </li>
+  </ol>
+</section>
+
+<style>
+  .workout-summary {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.75rem 1.5rem;
+  }
+
+  .workout-summary-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .workout-summary-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #4cd964;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .workout-summary-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.95rem;
+    margin: 0;
+  }
+
+  .workout-summary-stats {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+  }
+
+  .workout-summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.65rem;
+  }
+
+  .workout-summary-stat-value {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .workout-summary-stat-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  @media (max-width: 500px) {
+    .workout-summary-stats {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>

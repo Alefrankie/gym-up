@@ -9,6 +9,7 @@
 import AppLayout from '../../layouts/app-layout.astro';
 import ExerciseCard from '../../components/exercise-card.astro';
 import RestTimer from '../../components/rest-timer';
+import WorkoutSummary from '../../components/workout-summary.astro';
 import { WorkoutEntryRules } from '../../lib/contexts/workout-tracking/domain/workout-tracking.constants';
 import { getAuthService } from '../../lib/contexts/auth/auth.composition';
 import { getSessionIdFromRequest } from '../../lib/auth/cookie-helpers';
@@ -65,6 +66,44 @@ for (const entry of existingEntries) {
   list.push(entry);
   entriesByExerciseId.set(entry.exerciseId, list);
 }
+
+// Story 2.6: summary stats. Computed only when the workout is completed.
+// Per components.md: exercises (count of distinct exerciseId), totalSets
+// (count of entries), totalVolume (sum of reps*weight in kg per ADR-006),
+// duration (formatted per AC-2.6-04: "Xh YYm" / "Xm Ys" / "Xs").
+let summaryStats: {
+  exercises: number;
+  totalSets: number;
+  totalVolume: number;
+  duration: string;
+} | null = null;
+
+if (isCompleted && workout.completedAt) {
+  const distinctExercises = new Set(existingEntries.map((e) => e.exerciseId));
+  const totalVolume = existingEntries.reduce(
+    (sum, e) => sum + e.reps * e.weight,
+    0,
+  );
+  const durationMs = workout.completedAt.getTime() - workout.startedAt.getTime();
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  let duration: string;
+  if (hours > 0) {
+    duration = `${hours}h ${minutes}m`;
+  } else if (minutes > 0) {
+    duration = `${minutes}m ${seconds}s`;
+  } else {
+    duration = `${seconds}s`;
+  }
+  summaryStats = {
+    exercises: distinctExercises.size,
+    totalSets: existingEntries.length,
+    totalVolume,
+    duration,
+  };
+}
 ---
 
 <AppLayout title="Workout — Gym Up">
@@ -101,6 +140,27 @@ for (const entry of existingEntries) {
         ))
       )}
     </section>
+
+    {!isCompleted && (
+      <form method="POST" action={`/api/workouts/${workout.id}/complete`} class="finish-form">
+        <button
+          type="submit"
+          class="btn btn-primary finish-button"
+          aria-label="Finalizar workout"
+        >
+          Finalizar workout
+        </button>
+      </form>
+    )}
+
+    {isCompleted && summaryStats && (
+      <WorkoutSummary
+        exercises={summaryStats.exercises}
+        totalSets={summaryStats.totalSets}
+        totalVolume={summaryStats.totalVolume}
+        duration={summaryStats.duration}
+      />
+    )}
   </div>
 
   <input type="hidden" id="workout-id" value={workout.id} data-weight-unit={user.weightUnit} />
@@ -246,6 +306,25 @@ for (const entry of existingEntries) {
   .empty-state {
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
+  }
+
+  /* Story 2.6: finish button + summary spacing */
+  .finish-form {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .finish-button {
+    min-width: 200px;
+    padding: 0.85rem 1.5rem;
+    font-size: 1.1rem;
+  }
+
+  /* Story 2.6: gap between the finish form and the summary. The
+     summary is rendered by <WorkoutSummary /> in its own card. */
+  :global(.workout-summary) {
+    margin-top: 1.5rem;
   }
 
   /* Story 2.4: auto-save error feedback. The .set-row-error class is added
