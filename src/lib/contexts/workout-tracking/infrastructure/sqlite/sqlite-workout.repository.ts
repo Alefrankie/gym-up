@@ -10,9 +10,11 @@
 // Per ADR-007 + ADR-012: consumes the Drizzle `db` instance.
 // Per ADR-011: `implements`, not `extends`.
 
-import { and, asc, eq, gte, lt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
 import {
+  exercises,
+  routineDays,
   workoutEntries,
   workouts,
   type NewWorkout,
@@ -23,7 +25,9 @@ import {
 import {
   WorkoutOwnershipError,
   WorkoutRepository,
+  type WorkoutDetailEntry,
   type WorkoutEntryPatch,
+  type WorkoutHistoryItem,
   type WorkoutUpdate,
 } from '@/lib/contexts/workout-tracking/domain/workout.repository';
 
@@ -196,5 +200,94 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       throw new Error(`Workout entry ${id} disappeared during update.`);
     }
     return updated;
+  }
+
+  async getHistoryByUser(
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<WorkoutHistoryItem[]> {
+    // One query: JOIN routine_days for the day name, aggregate over
+    // workout_entries for exercise count + total volume. Filters by
+    // userId (read-own) and orders by workout_date DESC.
+    //
+    // Volume = Σ(reps × weight) for completed entries only — matches
+    // workout-summary.astro per Q4 user decision.
+    const rows = await this.db
+      .select({
+        id: workouts.id,
+        workoutDate: workouts.workoutDate,
+        status: workouts.status,
+        routineDayName: routineDays.dayName,
+        exerciseCount: sql<number>`COUNT(DISTINCT ${workoutEntries.exerciseId})`,
+        totalVolume: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 THEN ${workoutEntries.reps} * ${workoutEntries.weight} ELSE 0 END), 0)`,
+      })
+      .from(workouts)
+      .innerJoin(routineDays, eq(routineDays.id, workouts.routineDayId))
+      .leftJoin(
+        workoutEntries,
+        eq(workoutEntries.workoutId, workouts.id),
+      )
+      .where(eq(workouts.userId, userId))
+      .groupBy(workouts.id, routineDays.dayName)
+      .orderBy(desc(workouts.workoutDate))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map((row) => ({
+      id: row.id,
+      workoutDate: row.workoutDate,
+      routineDayName: row.routineDayName,
+      exerciseCount: Number(row.exerciseCount),
+      totalVolume: Number(row.totalVolume),
+      status: row.status,
+    }));
+  }
+
+  async getHistoryCountByUser(userId: string): Promise<number> {
+    const rows = await this.db
+      .select({ count: count() })
+      .from(workouts)
+      .where(eq(workouts.userId, userId));
+    return rows[0]?.count ?? 0;
+  }
+
+  async getEntriesWithExercises(
+    workoutId: string,
+  ): Promise<WorkoutDetailEntry[]> {
+    // JOIN workout_entries with exercises to return denormalized rows
+    // with exerciseName + muscleGroup. Ordered by (exercise_id, set_number)
+    // — same as findEntries.
+    const rows = await this.db
+      .select({
+        id: workoutEntries.id,
+        exerciseId: workoutEntries.exerciseId,
+        exerciseName: exercises.name,
+        muscleGroup: exercises.muscleGroup,
+        setNumber: workoutEntries.setNumber,
+        reps: workoutEntries.reps,
+        weight: workoutEntries.weight,
+        completed: workoutEntries.completed,
+        notes: workoutEntries.notes,
+      })
+      .from(workoutEntries)
+      .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
+      .where(eq(workoutEntries.workoutId, workoutId))
+      .orderBy(
+        asc(workoutEntries.exerciseId),
+        asc(workoutEntries.setNumber),
+      );
+
+    return rows.map((row) => ({
+      id: row.id,
+      exerciseId: row.exerciseId,
+      exerciseName: row.exerciseName,
+      muscleGroup: row.muscleGroup,
+      setNumber: row.setNumber,
+      reps: row.reps,
+      weight: row.weight,
+      completed: row.completed,
+      notes: row.notes,
+    }));
   }
 }

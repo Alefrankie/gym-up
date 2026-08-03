@@ -17,6 +17,8 @@ import { GetTodayWorkoutUseCase } from './application/get-today-workout.use-case
 import { StartWorkoutUseCase } from './application/start-workout.use-case';
 import { LogSetUseCase } from './application/log-set.use-case';
 import { CompleteWorkoutUseCase } from './application/complete-workout.use-case';
+import { GetWorkoutHistoryUseCase } from './application/get-workout-history.use-case';
+import { GetWorkoutDetailUseCase } from './application/get-workout-detail.use-case';
 
 type StorageBackend = 'sqlite' | 'supabase';
 
@@ -98,5 +100,12 @@ export const logSetUseCase: LogSetUseCase =
 
 export const completeWorkoutUseCase: CompleteWorkoutUseCase =
   new CompleteWorkoutUseCase(workoutRepository);
+
+// Story 3.1: history list + detail use cases.
+export const getWorkoutHistoryUseCase: GetWorkoutHistoryUseCase =
+  new GetWorkoutHistoryUseCase(workoutRepository);
+
+export const getWorkoutDetailUseCase: GetWorkoutDetailUseCase =
+  new GetWorkoutDetailUseCase(workoutRepository);
 
 export const workoutTrackingBackend = backend;

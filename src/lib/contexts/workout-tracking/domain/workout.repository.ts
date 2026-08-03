@@ -14,6 +14,39 @@ import type {
   WorkoutEntry,
   NewWorkoutEntry,
 } from '@db/schema';
+import type { WorkoutStatus } from './workout-tracking.constants';
+
+/**
+ * History list item (story 3.1). Derived from a workout + routine_day
+ * + a sum/count over its entries. Returned by `getHistoryByUser` so
+ * the page can render the list without an N+1 query per row.
+ */
+export interface WorkoutHistoryItem {
+  id: string;
+  workoutDate: Date;
+  routineDayName: string;
+  exerciseCount: number;
+  totalVolume: number; // kg — Σ(reps × weight) over completed entries (matches WorkoutSummary per Q4)
+  status: WorkoutStatus;
+}
+
+/**
+ * Detail entry enriched with exercise metadata (story 3.1). Returned
+ * by `getEntriesWithExercises` so the expanded detail panel can show
+ * the exercise name + muscle group alongside the set data. Ordered
+ * by (exercise_id, set_number) — same as `findEntries`.
+ */
+export interface WorkoutDetailEntry {
+  id: string;
+  exerciseId: string;
+  exerciseName: string;
+  muscleGroup: string;
+  setNumber: number;
+  reps: number;
+  weight: number; // kg
+  completed: boolean;
+  notes: string | null;
+}
 
 /**
  * Patch type for `update()`. Only mutable fields are exposed
@@ -118,6 +151,40 @@ export abstract class WorkoutRepository {
     patch: WorkoutEntryPatch,
     currentUserId: string,
   ): Promise<WorkoutEntry>;
+
+  /**
+   * Get a paginated slice of the user's workout history, ordered by
+   * `workout_date` DESC (newest first). Returns denormalized items
+   * (with `routineDayName`, `exerciseCount`, `totalVolume`) so the
+   * history page can render a list without an N+1 query per row.
+   * Includes both `in_progress` and `completed` workouts (Q2).
+   *
+   * Per ADR-004: this is user-scoped (read-own) — the history list
+   * only shows the requesting user's workouts. The `findById` family
+   * view (read-all) is preserved for the detail panel's ownership
+   * guard at the use-case layer.
+   */
+  abstract getHistoryByUser(
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<WorkoutHistoryItem[]>;
+
+  /**
+   * Total count of workouts for a user (for pagination metadata).
+   * Same scope as `getHistoryByUser` (user-scoped).
+   */
+  abstract getHistoryCountByUser(userId: string): Promise<number>;
+
+  /**
+   * List all entries for a workout with exercise metadata joined in
+   * (name + muscleGroup). Ordered by (exercise_id, set_number) — same
+   * as `findEntries`. Used by the history detail panel.
+   * Read-all (no ownership check; the use case guards `userId`).
+   */
+  abstract getEntriesWithExercises(
+    workoutId: string,
+  ): Promise<WorkoutDetailEntry[]>;
 }
 
 /**
