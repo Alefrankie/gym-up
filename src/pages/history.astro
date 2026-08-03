@@ -1,0 +1,577 @@
+// src/pages/history.astro
+//
+// Story 3.1 — Workout History Page. SSR page at /history that shows
+// a paginated list of the current user's workouts (newest first) with
+// expandable set-by-set detail.
+//
+// Per AC-3.1-01: chronological list per FR-PR-001.
+// Per AC-3.1-02: paginated at 20 per page.
+// Per Q2 user decision: shows both in_progress and completed with a badge.
+// Per Q4 user decision: volume = Σ(reps × weight) — matches workout-summary.
+//
+// Auth gate: mirrors dashboard.astro — redirects to /login if no session.
+// Reads `?page` and `?expand` from the query string.
+
+---
+import AppLayout from '../layouts/app-layout.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+import {
+  getWorkoutHistoryUseCase,
+  getWorkoutDetailUseCase,
+} from '../lib/contexts/workout-tracking/workout-tracking.composition';
+import type { WorkoutDetailEntry } from '../lib/contexts/workout-tracking/domain/workout.repository';
+
+// ---------- Auth gate ----------
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+const authService = getAuthService();
+const user = await authService.getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// ---------- Query params ----------
+const pageParam = Astro.url.searchParams.get('page');
+const requestedPage = pageParam !== null ? Number(pageParam) : 1;
+const expandId = Astro.url.searchParams.get('expand');
+
+// ---------- History list ----------
+const historyResult = await getWorkoutHistoryUseCase.execute({
+  userId: user.id,
+  page: Number.isFinite(requestedPage) ? requestedPage : 1,
+});
+
+// ---------- Expand detail (optional) ----------
+let detail: { entries: WorkoutDetailEntry[]; workoutDate: Date | null } | null = null;
+let detailError: 'not_found' | 'forbidden' | null = null;
+if (expandId) {
+  try {
+    const detailResult = await getWorkoutDetailUseCase.execute({
+      userId: user.id,
+      workoutId: expandId,
+    });
+    detail = {
+      entries: detailResult.entries,
+      workoutDate: detailResult.workout.workoutDate,
+    };
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.name === 'WorkoutNotFoundError') {
+        detailError = 'not_found';
+      } else if (err.name === 'WorkoutAccessDeniedError') {
+        detailError = 'forbidden';
+      }
+    }
+  }
+}
+
+// ---------- Date formatting (es-ES) ----------
+const formatDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+};
+---
+
+<AppLayout title="Historial — Gym Up">
+  <div class="history-container">
+    <header class="history-header">
+      <div class="history-header-text">
+        <h1>Historial de workouts</h1>
+        <p>Todos tus workouts, del más reciente al más antiguo.</p>
+      </div>
+      <a href="/dashboard" class="btn-link">← Volver al dashboard</a>
+    </header>
+
+    {historyResult.items.length === 0 ? (
+      <section class="history-card empty-state">
+        <h2>Aún no tienes workouts</h2>
+        <p>Empieza tu primer workout desde el dashboard.</p>
+        <a href="/dashboard" class="btn btn-primary">Ir al dashboard</a>
+      </section>
+    ) : (
+      <section class="history-list" aria-label="Lista de workouts">
+        <ol class="history-items" role="list">
+          {historyResult.items.map((item) => {
+            const isExpanded = expandId === item.id;
+            const toggleUrl = isExpanded
+              ? `?page=${historyResult.currentPage}`
+              : `?page=${historyResult.currentPage}&expand=${item.id}`;
+            return (
+              <li class="history-item" data-status={item.status}>
+                <a
+                  href={toggleUrl}
+                  class="history-item-header"
+                  aria-expanded={isExpanded ? 'true' : 'false'}
+                >
+                  <div class="history-item-main">
+                    <span class="history-item-date">{formatDate(item.workoutDate)}</span>
+                    <span class="history-item-day">{item.routineDayName}</span>
+                  </div>
+                  <div class="history-item-stats">
+                    <span class="history-item-stat">
+                      <span class="history-item-stat-value">{item.exerciseCount}</span>
+                      <span class="history-item-stat-label">ejercicios</span>
+                    </span>
+                    <span class="history-item-stat">
+                      <span class="history-item-stat-value">
+                        {item.totalVolume.toLocaleString('es-ES')}
+                      </span>
+                      <span class="history-item-stat-label">volumen (kg)</span>
+                    </span>
+                    <span
+                      class:list={['history-item-badge', `badge-${item.status}`]}
+                      aria-label={item.status === 'completed' ? 'Completado' : 'En progreso'}
+                    >
+                      {item.status === 'completed' ? '✓ Completado' : '▶ En progreso'}
+                    </span>
+                    <span class="history-item-toggle" aria-hidden="true">
+                      {isExpanded ? '▲' : '▼'}
+                    </span>
+                  </div>
+                </a>
+
+                {isExpanded && (
+                  <div class="history-item-detail">
+                    {detailError === 'not_found' && (
+                      <p class="history-item-error">Workout no encontrado.</p>
+                    )}
+                    {detailError === 'forbidden' && (
+                      <p class="history-item-error">No tienes acceso a este workout.</p>
+                    )}
+                    {detail && detail.entries.length === 0 && (
+                      <p class="history-item-empty">Aún no hay sets registrados.</p>
+                    )}
+                    {detail && detail.entries.length > 0 && (
+                      <ol class="detail-entries" role="list">
+                        {groupByExercise(detail.entries).map((group) => (
+                          <li class="detail-exercise">
+                            <h3 class="detail-exercise-name">
+                              {group.exerciseName}
+                              <span class="detail-exercise-muscle">({group.muscleGroup})</span>
+                            </h3>
+                            <ol class="detail-sets" role="list">
+                              {group.sets.map((entry) => (
+                                <li class="detail-set">
+                                  <span class="detail-set-number">Set {entry.setNumber}</span>
+                                  <span class="detail-set-reps">{entry.reps} reps</span>
+                                  <span class="detail-set-weight">
+                                    {displayWeight(entry.weight, user.weightUnit)} {user.weightUnit}
+                                  </span>
+                                  <span
+                                    class:list={['detail-set-completed', { done: entry.completed }]}
+                                    aria-label={entry.completed ? 'Completado' : 'Pendiente'}
+                                  >
+                                    {entry.completed ? '✓' : '○'}
+                                  </span>
+                                  {entry.notes && (
+                                    <span class="detail-set-notes">{entry.notes}</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+
+        {historyResult.totalPages > 1 && (
+          <nav class="history-pagination" aria-label="Paginación">
+            {historyResult.currentPage > 1 && (
+              <a
+                href={`?page=${historyResult.currentPage - 1}${expandId ? `&expand=${expandId}` : ''}`}
+                class="btn btn-secondary"
+                rel="prev"
+              >
+                ← Anterior
+              </a>
+            )}
+            <span class="history-pagination-info">
+              Página {historyResult.currentPage} de {historyResult.totalPages}
+            </span>
+            {historyResult.currentPage < historyResult.totalPages && (
+              <a
+                href={`?page=${historyResult.currentPage + 1}${expandId ? `&expand=${expandId}` : ''}`}
+                class="btn btn-secondary"
+                rel="next"
+              >
+                Siguiente →
+              </a>
+            )}
+          </nav>
+        )}
+      </section>
+    )}
+  </div>
+</AppLayout>
+
+<script>
+  // Group entries by exercise for the detail panel. Client-side helper
+  // because the entries come from SSR JSON and we want to group without
+  // a second pass.
+  // (Astro inline <script> has its own ES module scope — we re-declare
+  // the types loosely here to keep this self-contained.)
+  function groupByExercise(entries) {
+    const groups = new Map();
+    for (const entry of entries) {
+      const key = entry.exerciseId;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          exerciseId: entry.exerciseId,
+          exerciseName: entry.exerciseName,
+          muscleGroup: entry.muscleGroup,
+          sets: [],
+        });
+      }
+      groups.get(key).sets.push(entry);
+    }
+    return Array.from(groups.values());
+  }
+  // Expose for debugging (Astro makes the function available in the
+  // page scope). No additional wiring needed.
+  window.__historyGroupByExercise = groupByExercise;
+</script>
+
+<script>
+  // Display-unit conversion (kg → lbs) at the render layer only.
+  // Mirrors exercise-card.astro:displayWeight (ADR-006).
+  function displayWeight(kg, unit) {
+    if (unit === 'lbs') return Math.round(kg * 2.20462 * 10) / 10;
+    return kg;
+  }
+  window.__displayWeight = displayWeight;
+</script>
+
+<style>
+  .history-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+
+  .history-header-text h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .history-header-text p {
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+  }
+
+  .btn-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .btn-link:hover {
+    color: #ff4d4d;
+  }
+
+  .history-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 2rem;
+  }
+
+  .empty-state {
+    text-align: center;
+  }
+
+  .empty-state h2 {
+    font-family: 'Oswald', sans-serif;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .empty-state p {
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 1.5rem 0;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.65rem 1.25rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 150ms ease;
+  }
+
+  .btn-primary {
+    background: #ff4d4d;
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #e63e3e;
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .history-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .history-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+
+  .history-item[data-status='in_progress'] {
+    border-left: 3px solid #ffa500;
+  }
+
+  .history-item[data-status='completed'] {
+    border-left: 3px solid #4cd964;
+  }
+
+  .history-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    transition: background 150ms ease;
+  }
+
+  .history-item-header:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .history-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .history-item-date {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .history-item-day {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+  }
+
+  .history-item-stats {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .history-item-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .history-item-stat-value {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .history-item-stat-label {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .history-item-badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-completed {
+    background: rgba(76, 217, 100, 0.15);
+    color: #4cd964;
+  }
+
+  .badge-in_progress {
+    background: rgba(255, 165, 0, 0.15);
+    color: #ffa500;
+  }
+
+  .history-item-toggle {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    margin-left: 0.25rem;
+  }
+
+  .history-item-detail {
+    padding: 0 1.25rem 1.25rem 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .history-item-error,
+  .history-item-empty {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    padding: 1rem 0;
+    margin: 0;
+  }
+
+  .detail-entries {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .detail-exercise {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .detail-exercise-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: #fff;
+  }
+
+  .detail-exercise-muscle {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+    font-size: 0.85rem;
+    margin-left: 0.4rem;
+  }
+
+  .detail-sets {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .detail-set {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    font-size: 0.9rem;
+  }
+
+  .detail-set-number {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    min-width: 3.5rem;
+  }
+
+  .detail-set-reps,
+  .detail-set-weight {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .detail-set-completed {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .detail-set-completed.done {
+    color: #4cd964;
+  }
+
+  .detail-set-notes {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .history-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding: 0 0.25rem;
+  }
+
+  .history-pagination-info {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 600px) {
+    .history-item-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .history-item-stats {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .detail-set {
+      grid-template-columns: auto 1fr auto;
+      gap: 0.5rem;
+    }
+
+    .detail-set-notes {
+      grid-column: 1 / -1;
+    }
+  }
+</style>
