@@ -11,6 +11,8 @@ import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
 import {
   getExerciseListUseCase,
   getExerciseHistoryUseCase,
+  calculateStreakUseCase,
+  getCalendarDataUseCase,
 } from '../lib/contexts/progress/progress.composition';
 import {
   DateRanges,
@@ -18,6 +20,8 @@ import {
 } from '../lib/contexts/progress/domain/progress.constants';
 import type { ChartDataPoint } from '../components/progress-chart';
 import ProgressChart from '../components/progress-chart.tsx';
+import CalendarGrid from '../components/calendar-grid.astro';
+import StreakCounter from '../components/streak-counter.astro';
 
 // ---------- Auth gate ----------
 const sessionId = getSessionIdFromRequest(Astro.request);
@@ -66,6 +70,12 @@ const rangeLabel = (r: DateRange): string =>
     : r === DateRanges.Last30Days
       ? '30 días'
       : 'Todo';
+
+// ---------- Calendar + Streak (story 3.3) ----------
+const [calendarDays, streak] = await Promise.all([
+  getCalendarDataUseCase.execute({ userId: user.id }),
+  calculateStreakUseCase.execute({ userId: user.id }),
+]);
 ---
 
 <AppLayout title="Progreso — Gym Up">
@@ -164,6 +174,12 @@ const rangeLabel = (r: DateRange): string =>
         )}
       </>
     )}
+
+    <!-- Story 3.3: Calendar + Streak (always shown, user-wide stats) -->
+    <div class="progress-summary">
+      <CalendarGrid days={calendarDays} />
+      <StreakCounter streak={streak} />
+    </div>
   </div>
 </AppLayout>
 
@@ -341,6 +357,19 @@ const rangeLabel = (r: DateRange): string =>
   .progress-chart-card :global(.progress-chart) {
     position: relative;
     height: 320px;
+  }
+
+  .progress-summary {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .progress-summary {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 
   .btn {

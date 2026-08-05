@@ -76,6 +76,35 @@ const formatDate = (date: Date): string => {
     year: 'numeric',
   }).format(date);
 };
+
+// ---------- Group entries by exercise ----------
+const groupByExercise = (entries: WorkoutDetailEntry[]) => {
+  const groups = new Map<string, {
+    exerciseId: string;
+    exerciseName: string;
+    muscleGroup: string;
+    sets: WorkoutDetailEntry[];
+  }>();
+  for (const entry of entries) {
+    const key = entry.exerciseId;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        exerciseId: entry.exerciseId,
+        exerciseName: entry.exerciseName,
+        muscleGroup: entry.muscleGroup,
+        sets: [],
+      });
+    }
+    groups.get(key)!.sets.push(entry);
+  }
+  return Array.from(groups.values());
+};
+
+// ---------- Display-unit conversion (kg → lbs) ----------
+const displayWeight = (kg: number, unit: 'kg' | 'lbs'): number => {
+  if (unit === 'lbs') return Math.round(kg * 2.20462 * 10) / 10;
+  return kg;
+};
 ---
 
 <AppLayout title="Historial — Gym Up">
@@ -216,42 +245,7 @@ const formatDate = (date: Date): string => {
   </div>
 </AppLayout>
 
-<script>
-  // Group entries by exercise for the detail panel. Client-side helper
-  // because the entries come from SSR JSON and we want to group without
-  // a second pass.
-  // (Astro inline <script> has its own ES module scope — we re-declare
-  // the types loosely here to keep this self-contained.)
-  function groupByExercise(entries) {
-    const groups = new Map();
-    for (const entry of entries) {
-      const key = entry.exerciseId;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          exerciseId: entry.exerciseId,
-          exerciseName: entry.exerciseName,
-          muscleGroup: entry.muscleGroup,
-          sets: [],
-        });
-      }
-      groups.get(key).sets.push(entry);
-    }
-    return Array.from(groups.values());
-  }
-  // Expose for debugging (Astro makes the function available in the
-  // page scope). No additional wiring needed.
-  window.__historyGroupByExercise = groupByExercise;
-</script>
 
-<script>
-  // Display-unit conversion (kg → lbs) at the render layer only.
-  // Mirrors exercise-card.astro:displayWeight (ADR-006).
-  function displayWeight(kg, unit) {
-    if (unit === 'lbs') return Math.round(kg * 2.20462 * 10) / 10;
-    return kg;
-  }
-  window.__displayWeight = displayWeight;
-</script>
 
 <style>
   .history-container {

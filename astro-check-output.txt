@@ -1,0 +1,622 @@
+﻿[33m[1m18:41:59[22m [WARN] [vite][39m [33mwarning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.[39m
+[33m[1m18:41:59[22m [WARN] [vite][39m [33mwarning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.[39m
+[33m[1m18:41:59[22m [WARN] [vite][39m [33mYou or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.[39m
+[2m18:41:59[22m [34m[types][39m Generated [2m142ms[22m
+[2m18:41:59[22m [34m[check][39m Getting diagnostics for Astro files in C:\Users\IK\Desktop\dev\gym-up...
+[96msrc/layouts/layout.astro[0m:[93m3[0m:[93m7[0m - [93mwarning[0m[90m ts(6133): [0m'title' is declared but its value is never read.
+
+[7m3[0m const { title = 'Gym Up' } = Astro.props;
+[7m [0m [93m      ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/contexts/auth/auth.types.ts[0m:[93m7[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'Profile' is declared but its value is never read.
+
+[7m7[0m import type { Profile } from '@db/schema';
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/contexts/workout-tracking/application/get-today-workout.use-case.ts[0m:[93m68[0m:[93m7[0m - [93mwarning[0m[90m ts(6133): [0m'JS_SATURDAY' is declared but its value is never read.
+
+[7m68[0m const JS_SATURDAY = 6;
+[7m  [0m [93m      ~~~~~~~~~~~[0m
+
+[96msrc/lib/contexts/workout-tracking/application/start-workout.use-case.ts[0m:[93m86[0m:[93m22[0m - [93mwarning[0m[90m ts(6138): [0mProperty 'routineRepository' is declared but its value is never read.
+
+[7m86[0m     private readonly routineRepository: RoutineRepository,
+[7m  [0m [93m                     ~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/history.astro[0m:[93m246[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'AppLayout'.
+
+[7m246[0m </AppLayout>
+[7m   [0m [91m  ~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m234[0m:[93m86[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'expandId'.
+
+[7m234[0m                 href={`?page=${historyResult.currentPage + 1}${expandId ? `&expand=${expandId}` : ''}`}
+[7m   [0m [91m                                                                                     ~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m234[0m:[93m64[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'expandId'.
+
+[7m234[0m                 href={`?page=${historyResult.currentPage + 1}${expandId ? `&expand=${expandId}` : ''}`}
+[7m   [0m [91m                                                               ~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m234[0m:[93m32[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m234[0m                 href={`?page=${historyResult.currentPage + 1}${expandId ? `&expand=${expandId}` : ''}`}
+[7m   [0m [91m                               ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m232[0m:[93m42[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m232[0m             {historyResult.currentPage < historyResult.totalPages && (
+[7m   [0m [91m                                         ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m232[0m:[93m14[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m232[0m             {historyResult.currentPage < historyResult.totalPages && (
+[7m   [0m [91m             ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m230[0m:[93m54[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m230[0m               P├ígina {historyResult.currentPage} de {historyResult.totalPages}
+[7m   [0m [91m                                                     ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m230[0m:[93m23[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m230[0m               P├ígina {historyResult.currentPage} de {historyResult.totalPages}
+[7m   [0m [91m                      ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m222[0m:[93m86[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'expandId'.
+
+[7m222[0m                 href={`?page=${historyResult.currentPage - 1}${expandId ? `&expand=${expandId}` : ''}`}
+[7m   [0m [91m                                                                                     ~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m222[0m:[93m64[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'expandId'.
+
+[7m222[0m                 href={`?page=${historyResult.currentPage - 1}${expandId ? `&expand=${expandId}` : ''}`}
+[7m   [0m [91m                                                               ~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m222[0m:[93m32[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m222[0m                 href={`?page=${historyResult.currentPage - 1}${expandId ? `&expand=${expandId}` : ''}`}
+[7m   [0m [91m                               ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m220[0m:[93m14[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m220[0m             {historyResult.currentPage > 1 && (
+[7m   [0m [91m             ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m218[0m:[93m10[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m218[0m         {historyResult.totalPages > 1 && (
+[7m   [0m [91m         ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m193[0m:[93m85[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'user'.
+
+[7m193[0m                                     {displayWeight(entry.weight, user.weightUnit)} {user.weightUnit}
+[7m   [0m [91m                                                                                    ~~~~[0m
+[96msrc/pages/history.astro[0m:[93m193[0m:[93m66[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'user'.
+
+[7m193[0m                                     {displayWeight(entry.weight, user.weightUnit)} {user.weightUnit}
+[7m   [0m [91m                                                                 ~~~~[0m
+[96msrc/pages/history.astro[0m:[93m193[0m:[93m38[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'displayWeight'.
+
+[7m193[0m                                     {displayWeight(entry.weight, user.weightUnit)} {user.weightUnit}
+[7m   [0m [91m                                     ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m188[0m:[93m48[0m - [91merror[0m[90m ts(7006): [0mParameter 'entry' implicitly has an 'any' type.
+
+[7m188[0m                               {group.sets.map((entry) => (
+[7m   [0m [91m                                               ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m181[0m:[93m63[0m - [91merror[0m[90m ts(7006): [0mParameter 'group' implicitly has an 'any' type.
+
+[7m181[0m                         {groupByExercise(detail.entries).map((group) => (
+[7m   [0m [91m                                                              ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m181[0m:[93m42[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detail'.
+
+[7m181[0m                         {groupByExercise(detail.entries).map((group) => (
+[7m   [0m [91m                                         ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m181[0m:[93m26[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'groupByExercise'.
+
+[7m181[0m                         {groupByExercise(detail.entries).map((group) => (
+[7m   [0m [91m                         ~~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m179[0m:[93m32[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detail'.
+
+[7m179[0m                     {detail && detail.entries.length > 0 && (
+[7m   [0m [91m                               ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m179[0m:[93m22[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detail'.
+
+[7m179[0m                     {detail && detail.entries.length > 0 && (
+[7m   [0m [91m                     ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m176[0m:[93m32[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detail'.
+
+[7m176[0m                     {detail && detail.entries.length === 0 && (
+[7m   [0m [91m                               ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m176[0m:[93m22[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detail'.
+
+[7m176[0m                     {detail && detail.entries.length === 0 && (
+[7m   [0m [91m                     ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m173[0m:[93m22[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detailError'.
+
+[7m173[0m                     {detailError === 'forbidden' && (
+[7m   [0m [91m                     ~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m170[0m:[93m22[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detailError'.
+
+[7m170[0m                     {detailError === 'not_found' && (
+[7m   [0m [91m                     ~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m142[0m:[93m54[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'formatDate'.
+
+[7m142[0m                     <span class="history-item-date">{formatDate(item.workoutDate)}</span>
+[7m   [0m [91m                                                     ~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m133[0m:[93m26[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m133[0m               : `?page=${historyResult.currentPage}&expand=${item.id}`;
+[7m   [0m [91m                         ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m132[0m:[93m26[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m132[0m               ? `?page=${historyResult.currentPage}`
+[7m   [0m [91m                         ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m130[0m:[93m32[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'expandId'.
+
+[7m130[0m             const isExpanded = expandId === item.id;
+[7m   [0m [91m                               ~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m129[0m:[93m37[0m - [91merror[0m[90m ts(7006): [0mParameter 'item' implicitly has an 'any' type.
+
+[7m129[0m           {historyResult.items.map((item) => {
+[7m   [0m [91m                                    ~~~~[0m
+[96msrc/pages/history.astro[0m:[93m129[0m:[93m12[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m129[0m           {historyResult.items.map((item) => {
+[7m   [0m [91m           ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m120[0m:[93m6[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'historyResult'.
+
+[7m120[0m     {historyResult.items.length === 0 ? (
+[7m   [0m [91m     ~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m110[0m:[93m2[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'AppLayout'.
+
+[7m110[0m <AppLayout title="Historial ÔÇö Gym Up">
+[7m   [0m [91m ~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m94[0m:[93m22[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'entry'.
+
+[7m94[0m         muscleGroup: entry.muscleGroup,
+[7m  [0m [91m                     ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m93[0m:[93m23[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'entry'.
+
+[7m93[0m         exerciseName: entry.exerciseName,
+[7m  [0m [91m                      ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m92[0m:[93m21[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'entry'.
+
+[7m92[0m         exerciseId: entry.exerciseId,
+[7m  [0m [91m                    ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m91[0m:[93m18[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'key'.
+
+[7m91[0m       groups.set(key, {
+[7m  [0m [91m                 ~~~[0m
+[96msrc/pages/history.astro[0m:[93m91[0m:[93m7[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'groups'.
+
+[7m91[0m       groups.set(key, {
+[7m  [0m [91m      ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m83[0m:[93m5[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'exerciseId'.
+
+[7m83[0m     exerciseId: string;
+[7m  [0m [91m    ~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m74[0m:[93m5[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'day'.
+
+[7m74[0m     day: '2-digit',
+[7m  [0m [91m    ~~~[0m
+[96msrc/pages/history.astro[0m:[93m65[0m:[93m9[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'detailError'.
+
+[7m65[0m         detailError = 'forbidden';
+[7m  [0m [91m        ~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m63[0m:[93m9[0m - [91merror[0m[90m ts(2552): [0mCannot find name 'detailError'. Did you mean 'EvalError'?
+
+[7m63[0m         detailError = 'not_found';
+[7m  [0m [91m        ~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m57[0m:[93m7[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'entries'.
+
+[7m57[0m       entries: detailResult.entries,
+[7m  [0m [91m      ~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m53[0m:[93m7[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'userId'.
+
+[7m53[0m       userId: user.id,
+[7m  [0m [91m      ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m48[0m:[93m15[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'entries'.
+
+[7m48[0m let detail: { entries: WorkoutDetailEntry[]; workoutDate: Date | null } | null = null;
+[7m  [0m [91m              ~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m43[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'userId'.
+
+[7m43[0m   userId: user.id,
+[7m  [0m [91m  ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m23[0m:[93m15[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'WorkoutDetailEntry'.
+
+[7m23[0m import type { WorkoutDetailEntry } from '../lib/contexts/workout-tracking/domain/workout.repository';
+[7m  [0m [91m              ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m21[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getWorkoutDetailUseCase'.
+
+[7m21[0m   getWorkoutDetailUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m20[0m:[93m3[0m - [91merror[0m[90m ts(2695): [0mLeft side of comma operator is unused and has no side effects.
+
+[7m20[0m   getWorkoutHistoryUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m21[0m   getWorkoutDetailUseCase,
+[7m  [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m20[0m:[93m3[0m - [91merror[0m[90m ts(2695): [0mLeft side of comma operator is unused and has no side effects.
+
+[7m20[0m   getWorkoutHistoryUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m20[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getWorkoutHistoryUseCase'.
+
+[7m20[0m   getWorkoutHistoryUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m18[0m:[93m10[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getSessionIdFromRequest'.
+
+[7m18[0m import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+[7m  [0m [91m         ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m17[0m:[93m10[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getAuthService'.
+
+[7m17[0m import { getAuthService } from '../lib/contexts/auth/auth.composition';
+[7m  [0m [91m         ~~~~~~~~~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m105[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m105[0m   if (unit === 'lbs') return Math.round(kg * 2.20462 * 10) / 10;
+[7m   [0m [91m  ~~[0m
+[96msrc/pages/history.astro[0m:[93m89[0m:[93m5[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m89[0m     const key = entry.exerciseId;
+[7m  [0m [91m    ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m83[0m:[93m15[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m83[0m     exerciseId: string;
+[7m  [0m [91m              ~[0m
+[96msrc/pages/history.astro[0m:[93m82[0m:[93m32[0m - [91merror[0m[90m ts(1003): [0mIdentifier expected.
+
+[7m82[0m   const groups = new Map<string, {
+[7m  [0m [91m                               ~[0m
+[96msrc/pages/history.astro[0m:[93m82[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m82[0m   const groups = new Map<string, {
+[7m  [0m [91m  ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m74[0m:[93m8[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m74[0m     day: '2-digit',
+[7m  [0m [91m       ~[0m
+[96msrc/pages/history.astro[0m:[93m73[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m73[0m   return new Intl.DateTimeFormat('es-ES', {
+[7m  [0m [91m  ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m65[0m:[93m34[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m65[0m         detailError = 'forbidden';
+[7m  [0m [91m                                 ~[0m
+[96msrc/pages/history.astro[0m:[93m63[0m:[93m34[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m63[0m         detailError = 'not_found';
+[7m  [0m [91m                                 ~[0m
+[96msrc/pages/history.astro[0m:[93m62[0m:[93m7[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m62[0m       if (err.name === 'WorkoutNotFoundError') {
+[7m  [0m [91m      ~~[0m
+[96msrc/pages/history.astro[0m:[93m61[0m:[93m5[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m61[0m     if (err instanceof Error) {
+[7m  [0m [91m    ~~[0m
+[96msrc/pages/history.astro[0m:[93m57[0m:[93m14[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m57[0m       entries: detailResult.entries,
+[7m  [0m [91m             ~[0m
+[96msrc/pages/history.astro[0m:[93m53[0m:[93m13[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m53[0m       userId: user.id,
+[7m  [0m [91m            ~[0m
+[96msrc/pages/history.astro[0m:[93m52[0m:[93m5[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m52[0m     const detailResult = await getWorkoutDetailUseCase.execute({
+[7m  [0m [91m    ~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m51[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m51[0m   try {
+[7m  [0m [91m  ~~~[0m
+[96msrc/pages/history.astro[0m:[93m48[0m:[93m22[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m48[0m let detail: { entries: WorkoutDetailEntry[]; workoutDate: Date | null } | null = null;
+[7m  [0m [91m                     ~[0m
+[96msrc/pages/history.astro[0m:[93m43[0m:[93m9[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m43[0m   userId: user.id,
+[7m  [0m [91m        ~[0m
+[96msrc/pages/history.astro[0m:[93m33[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m33[0m   return Astro.redirect('/login');
+[7m  [0m [91m  ~~~~~~[0m
+[96msrc/pages/history.astro[0m:[93m28[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m28[0m   return Astro.redirect('/login');
+[7m  [0m [91m  ~~~~~~[0m
+
+[96msrc/pages/login.astro[0m:[93m41[0m:[93m13[0m - [93mwarning[0m[90m ts(6133): [0m'cookie' is declared but its value is never read.
+
+[7m41[0m       const cookie = createSessionCookie(session.sessionId, session.expiresAt);
+[7m  [0m [93m            ~~~~~~[0m
+
+[96msrc/pages/logout.astro[0m:[93m20[0m:[93m7[0m - [93mwarning[0m[90m ts(6133): [0m'clearCookie' is declared but its value is never read.
+
+[7m20[0m const clearCookie = createClearSessionCookie();
+[7m  [0m [93m      ~~~~~~~~~~~[0m
+
+[96msrc/pages/progress.astro[0m:[93m184[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'AppLayout'.
+
+[7m184[0m </AppLayout>
+[7m   [0m [91m  ~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m181[0m:[93m30[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'streak'.
+
+[7m181[0m       <StreakCounter streak={streak} />
+[7m   [0m [91m                             ~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m181[0m:[93m8[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'StreakCounter'.
+
+[7m181[0m       <StreakCounter streak={streak} />
+[7m   [0m [91m       ~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m180[0m:[93m27[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'calendarDays'.
+
+[7m180[0m       <CalendarGrid days={calendarDays} />
+[7m   [0m [91m                          ~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m180[0m:[93m8[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'CalendarGrid'.
+
+[7m180[0m       <CalendarGrid days={calendarDays} />
+[7m   [0m [91m       ~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m170[0m:[93m29[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'user'.
+
+[7m170[0m                 weightUnit={user.weightUnit}
+[7m   [0m [91m                            ~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m168[0m:[93m23[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'displayHistory'.
+
+[7m168[0m                 data={displayHistory}
+[7m   [0m [91m                      ~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m167[0m:[93m31[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'selectedExercise'.
+
+[7m167[0m                 exerciseName={selectedExercise.name}
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m166[0m:[93m29[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'selectedExercise'.
+
+[7m166[0m                 exerciseId={selectedExercise.id}
+[7m   [0m [91m                            ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m164[0m:[93m16[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'ProgressChart'.
+
+[7m164[0m               <ProgressChart
+[7m   [0m [91m               ~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m160[0m:[93m29[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'user'.
+
+[7m160[0m                 weightUnit={user.weightUnit}
+[7m   [0m [91m                            ~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m158[0m:[93m23[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'displayHistory'.
+
+[7m158[0m                 data={displayHistory}
+[7m   [0m [91m                      ~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m157[0m:[93m31[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'selectedExercise'.
+
+[7m157[0m                 exerciseName={selectedExercise.name}
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m156[0m:[93m29[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'selectedExercise'.
+
+[7m156[0m                 exerciseId={selectedExercise.id}
+[7m   [0m [91m                            ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m154[0m:[93m16[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'ProgressChart'.
+
+[7m154[0m               <ProgressChart
+[7m   [0m [91m               ~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m147[0m:[93m54[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'range'.
+
+[7m147[0m               No hay sets registrados en {rangeLabel(range).toLowerCase()}.
+[7m   [0m [91m                                                     ~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m147[0m:[93m43[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'rangeLabel'.
+
+[7m147[0m               No hay sets registrados en {rangeLabel(range).toLowerCase()}.
+[7m   [0m [91m                                          ~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m137[0m:[93m18[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'rangeLabel'.
+
+[7m137[0m                 {rangeLabel(r)}
+[7m   [0m [91m                 ~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m135[0m:[93m31[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'range'.
+
+[7m135[0m                 aria-current={range === r ? 'page' : undefined}
+[7m   [0m [91m                              ~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m134[0m:[93m53[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'range'.
+
+[7m134[0m                 class:list={['range-btn', { active: range === r }]}
+[7m   [0m [91m                                                    ~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m133[0m:[93m36[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'selectedExercise'.
+
+[7m133[0m                 href={`?exercise=${selectedExercise.id}&range=${r}`}
+[7m   [0m [91m                                   ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m130[0m:[93m59[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'DateRanges'.
+
+[7m130[0m           {([DateRanges.Last7Days, DateRanges.Last30Days, DateRanges.All] as const).map(
+[7m   [0m [91m                                                          ~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m130[0m:[93m36[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'DateRanges'.
+
+[7m130[0m           {([DateRanges.Last7Days, DateRanges.Last30Days, DateRanges.All] as const).map(
+[7m   [0m [91m                                   ~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m130[0m:[93m14[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'DateRanges'.
+
+[7m130[0m           {([DateRanges.Last7Days, DateRanges.Last30Days, DateRanges.All] as const).map(
+[7m   [0m [91m             ~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m122[0m:[93m10[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'selectedExercise'.
+
+[7m122[0m     ) : !selectedExercise ? (
+[7m   [0m [91m         ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m116[0m:[93m6[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'exerciseList'.
+
+[7m116[0m     {exerciseList.length === 0 ? (
+[7m   [0m [91m     ~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m108[0m:[93m52[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'range'.
+
+[7m108[0m           <input type="hidden" name="range" value={range} />
+[7m   [0m [91m                                                   ~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m107[0m:[93m10[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'exerciseIdParam'.
+
+[7m107[0m         {exerciseIdParam && (
+[7m   [0m [91m         ~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m102[0m:[93m53[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'exerciseIdParam'.
+
+[7m102[0m             <option value={e.id} selected={e.id === exerciseIdParam}>
+[7m   [0m [91m                                                    ~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m101[0m:[93m30[0m - [91merror[0m[90m ts(7006): [0mParameter 'e' implicitly has an 'any' type.
+
+[7m101[0m           {exerciseList.map((e) => (
+[7m   [0m [91m                             ~[0m
+[96msrc/pages/progress.astro[0m:[93m101[0m:[93m12[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'exerciseList'.
+
+[7m101[0m           {exerciseList.map((e) => (
+[7m   [0m [91m           ~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m81[0m:[93m2[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'AppLayout'.
+
+[7m81[0m <AppLayout title="Progreso ÔÇö Gym Up">
+[7m  [0m [91m ~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m77[0m:[93m36[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'userId'.
+
+[7m77[0m   calculateStreakUseCase.execute({ userId: user.id }),
+[7m  [0m [91m                                   ~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m76[0m:[93m36[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'userId'.
+
+[7m76[0m   getCalendarDataUseCase.execute({ userId: user.id }),
+[7m  [0m [91m                                   ~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m62[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'date'.
+
+[7m62[0m   date: p.date,
+[7m  [0m [91m  ~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m55[0m:[93m5[0m - [91merror[0m[90m ts(18004): [0mNo value exists in scope for the shorthand property 'range'. Either declare one or provide an initializer.
+
+[7m55[0m     range,
+[7m  [0m [91m    ~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m54[0m:[93m17[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'selectedExercise'.
+
+[7m54[0m     exerciseId: selectedExercise.id,
+[7m  [0m [91m                ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m53[0m:[93m13[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'user'.
+
+[7m53[0m     userId: user.id,
+[7m  [0m [91m            ~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m52[0m:[93m19[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getExerciseHistoryUseCase'.
+
+[7m52[0m   history = await getExerciseHistoryUseCase.execute({
+[7m  [0m [91m                  ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m46[0m:[93m61[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'userId'.
+
+[7m46[0m const exerciseList = await getExerciseListUseCase.execute({ userId: user.id });
+[7m  [0m [91m                                                            ~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m21[0m:[93m15[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'ChartDataPoint'.
+
+[7m21[0m import type { ChartDataPoint } from '../components/progress-chart';
+[7m  [0m [91m              ~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m19[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'type'.
+
+[7m19[0m   type DateRange,
+[7m  [0m [91m  ~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m18[0m:[93m3[0m - [91merror[0m[90m ts(2695): [0mLeft side of comma operator is unused and has no side effects.
+
+[7m18[0m   DateRanges,
+[7m  [0m [91m  ~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m18[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'DateRanges'.
+
+[7m18[0m   DateRanges,
+[7m  [0m [91m  ~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m15[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getCalendarDataUseCase'.
+
+[7m15[0m   getCalendarDataUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m14[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'calculateStreakUseCase'.
+
+[7m14[0m   calculateStreakUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m13[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getExerciseHistoryUseCase'.
+
+[7m13[0m   getExerciseHistoryUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m12[0m:[93m3[0m - [91merror[0m[90m ts(2695): [0mLeft side of comma operator is unused and has no side effects.
+
+[7m12[0m   getExerciseListUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m13[0m   getExerciseHistoryUseCase,
+[7m  [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m14[0m   calculateStreakUseCase,
+[7m  [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m15[0m   getCalendarDataUseCase,
+[7m  [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m12[0m:[93m3[0m - [91merror[0m[90m ts(2695): [0mLeft side of comma operator is unused and has no side effects.
+
+[7m12[0m   getExerciseListUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m13[0m   getExerciseHistoryUseCase,
+[7m  [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m14[0m   calculateStreakUseCase,
+[7m  [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m12[0m:[93m3[0m - [91merror[0m[90m ts(2695): [0mLeft side of comma operator is unused and has no side effects.
+
+[7m12[0m   getExerciseListUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m13[0m   getExerciseHistoryUseCase,
+[7m  [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m12[0m:[93m3[0m - [91merror[0m[90m ts(2695): [0mLeft side of comma operator is unused and has no side effects.
+
+[7m12[0m   getExerciseListUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m12[0m:[93m3[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getExerciseListUseCase'.
+
+[7m12[0m   getExerciseListUseCase,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m10[0m:[93m10[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getSessionIdFromRequest'.
+
+[7m10[0m import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+[7m  [0m [91m         ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m9[0m:[93m10[0m - [91merror[0m[90m ts(2304): [0mCannot find name 'getAuthService'.
+
+[7m9[0m import { getAuthService } from '../lib/contexts/auth/auth.composition';
+[7m [0m [91m         ~~~~~~~~~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m77[0m:[93m42[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m77[0m   calculateStreakUseCase.execute({ userId: user.id }),
+[7m  [0m [91m                                         ~[0m
+[96msrc/pages/progress.astro[0m:[93m76[0m:[93m42[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m76[0m   getCalendarDataUseCase.execute({ userId: user.id }),
+[7m  [0m [91m                                         ~[0m
+[96msrc/pages/progress.astro[0m:[93m62[0m:[93m7[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m62[0m   date: p.date,
+[7m  [0m [91m      ~[0m
+[96msrc/pages/progress.astro[0m:[93m46[0m:[93m67[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m46[0m const exerciseList = await getExerciseListUseCase.execute({ userId: user.id });
+[7m  [0m [91m                                                                  ~[0m
+[96msrc/pages/progress.astro[0m:[93m34[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m34[0m   return Astro.redirect('/login');
+[7m  [0m [91m  ~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m ts(1109): [0mExpression expected.
+
+[7m29[0m   return Astro.redirect('/login');
+[7m  [0m [91m  ~~~~~~[0m
+[96msrc/pages/progress.astro[0m:[93m19[0m:[93m8[0m - [91merror[0m[90m ts(1005): [0m'}' expected.
+
+[7m19[0m   type DateRange,
+[7m  [0m [91m       ~~~~~~~~~[0m
+
+[96msrc/pages/register.astro[0m:[93m50[0m:[93m13[0m - [93mwarning[0m[90m ts(6133): [0m'cookie' is declared but its value is never read.
+
+[7m50[0m       const cookie = createSessionCookie(session.sessionId, session.expiresAt);
+[7m  [0m [93m            ~~~~~~[0m
+
+[96msrc/pages/workout/[id].astro[0m:[93m20[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'createAutoSave' is declared but its value is never read.
+
+[7m20[0m import { createAutoSave } from '../../lib/client/auto-save';
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mtests/progress/sqlite-progress.repository.test.ts[0m:[93m12[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m12[0m import { eq } from 'drizzle-orm';
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mtests/workout-tracking/cascade.test.ts[0m:[93m142[0m:[93m12[0m - [93mwarning[0m[90m ts(6133): [0m'w2' is declared but its value is never read.
+
+[7m142[0m     const [w2] = await handle.db
+[7m   [0m [93m           ~~[0m
+
+[96mtests/workout-tracking/log-set.use-case.test.ts[0m:[93m46[0m:[93m9[0m - [93mwarning[0m[90m ts(6133): [0m'routineRepo' is declared but its value is never read.
+
+[7m46[0m   const routineRepo = new SqliteRoutineRepository(handle.db);
+[7m  [0m [93m        ~~~~~~~~~~~[0m
+
+[96mtests/workout-tracking/sqlite-workout.repository.test.ts[0m:[93m21[0m:[93m41[0m - [93mwarning[0m[90m ts(6133): [0m'routineDays' is declared but its value is never read.
+
+[7m21[0m import { profiles, workouts, exercises, routineDays } from '@db/schema';
+[7m  [0m [93m                                        ~~~~~~~~~~~[0m
+
+Result (86 files): 
+- 134 errors
+- 0 warnings
+- 12 hints
+

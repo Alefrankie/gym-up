@@ -11,6 +11,7 @@
 //   - empty when user has no workouts
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { SqliteExerciseQueryRepository } from '@/lib/contexts/progress/infrastructure/sqlite/sqlite-exercise-query.repository';
 import { createTestDb, type TestDbHandle } from './test-db';
 import {
@@ -149,12 +150,9 @@ describe('SqliteExerciseQueryRepository — getLoggedExercises', () => {
   });
 
   it('exercises logged across multiple completed workouts are deduplicated', async () => {
-    const wid1 = await seedCompletedWorkout(userId, 'completed');
-    await handle.db.update(workouts).set({ workoutDate: new Date('2026-08-01T12:00:00Z') }).where(/* hack */);
-    // Easier: insert two distinct workouts on different dates
-    await handle.db.delete(workouts);
+    // Insert two distinct workouts on different dates
     const w1 = await seedCompletedWorkout(userId, 'completed');
-    await handle.db.update(workouts).set({ workoutDate: new Date('2026-07-25T12:00:00Z') });
+    await handle.db.update(workouts).set({ workoutDate: new Date('2026-07-25T12:00:00Z') }).where(eq(workouts.id, w1));
     const w2 = (await handle.db.insert(workouts).values({
       userId,
       routineDayId,
