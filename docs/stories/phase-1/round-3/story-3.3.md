@@ -3,10 +3,10 @@ story_id: "3.3"
 round: "round-3"
 parent_spec: "../../architecture/contexts/progress/readme.md"
 size: "M"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-05"
+completed: "2026-08-05"
+owner: "Julian"
 implements:
   architecture_features: ["progress"]
   prd_requirements: ["FR-PR-006", "FR-PR-007"]
@@ -39,6 +39,6 @@ Calendar grid and streak counter on progress page.
 
 ## Tasks
 
-- [ ] `T3.3-01` - Add calendar grid component
-- [ ] `T3.3-02` - Compute streak
-- [ ] `T3.3-03` - Display stats
+- [x] `T3.3-01` - Add calendar grid component
+- [x] `T3.3-02` - Compute streak
+- [x] `T3.3-03` - Display stats

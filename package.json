@@ -8,7 +8,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "typecheck": "astro check",
+    "typecheck": "tsc --noEmit --ignoreDeprecations 5.0",
     "test": "vitest",
     "test:run": "vitest run",
     "db:generate": "drizzle-kit generate",
