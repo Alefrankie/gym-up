@@ -1,0 +1,180 @@
+---
+// src/components/calendar-grid.astro
+//
+// Story 3.3 — Calendar grid component.
+// Shows last 4 weeks (28 days) with dots on workout days.
+// Pure SSR, zero JS. Spanish labels (Lun-Dom).
+
+import type { CalendarDay } from '../lib/contexts/progress/domain/progress.types';
+
+interface Props {
+  days: CalendarDay[];
+}
+
+const { days } = Astro.props;
+
+const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+// Parse dates and group by week
+const parsedDays = days.map((d) => ({
+  date: new Date(d.date + 'T00:00:00Z'),
+  hasWorkout: d.hasWorkout,
+  dayOfMonth: new Date(d.date + 'T00:00:00Z').getUTCDate(),
+  dayOfWeek: (new Date(d.date + 'T00:00:00Z').getUTCDay() + 6) % 7, // Mon=0, Sun=6
+}));
+
+// Group into weeks (7 days each)
+const weeks: typeof parsedDays[] = [];
+for (let i = 0; i < parsedDays.length; i += 7) {
+  weeks.push(parsedDays.slice(i, i + 7));
+}
+---
+
+<div class="calendar-grid">
+  <div class="calendar-header">
+    <h3 class="calendar-title">Calendario</h3>
+    <span class="calendar-subtitle">Últimas 4 semanas</span>
+  </div>
+  
+  <div class="calendar-body">
+    <!-- Day labels header -->
+    <div class="calendar-labels">
+      {dayLabels.map((label) => (
+        <span class="calendar-label">{label}</span>
+      ))}
+    </div>
+    
+    <!-- Weeks rows -->
+    {weeks.map((week) => (
+      <div class="calendar-week">
+        {week.map((day) => (
+          <div
+            class:list={[
+              'calendar-day',
+              { 'has-workout': day.hasWorkout },
+            ]}
+            title={day.hasWorkout ? 'Entrenamiento completado' : `${day.date.toISOString().split('T')[0]}`}
+          >
+            <span class="day-number">{day.dayOfMonth}</span>
+            {day.hasWorkout && <span class="workout-dot"></span>}
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  .calendar-grid {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+
+  .calendar-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .calendar-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+  }
+
+  .calendar-subtitle {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+  }
+
+  .calendar-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .calendar-labels {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .calendar-label {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.35rem;
+  }
+
+  .calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    position: relative;
+    transition: background-color 150ms ease;
+  }
+
+  .calendar-day.has-workout {
+    background: rgba(255, 77, 77, 0.15);
+    border-color: rgba(255, 77, 77, 0.3);
+  }
+
+  .day-number {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+  }
+
+  .calendar-day.has-workout .day-number {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .workout-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ff4d4d;
+    margin-top: 2px;
+  }
+
+  /* Responsive: smaller on mobile */
+  @media (max-width: 480px) {
+    .calendar-grid {
+      padding: 1rem;
+    }
+
+    .calendar-label {
+      font-size: 0.65rem;
+    }
+
+    .day-number {
+      font-size: 0.7rem;
+    }
+
+    .workout-dot {
+      width: 5px;
+      height: 5px;
+    }
+  }
+</style>

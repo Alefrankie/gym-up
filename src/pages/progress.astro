@@ -1,0 +1,405 @@
+// src/pages/progress.astro
+//
+// Story 3.2 — Progress Charts page. SSR + query-string state per Q4.
+// Auth gate mirrors dashboard.astro. Unit conversion (kg → lbs) happens
+// here before passing to the chart, per ADR-006 (store kg, display per unit).
+
+---
+import AppLayout from '../layouts/app-layout.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+import {
+  getExerciseListUseCase,
+  getExerciseHistoryUseCase,
+  calculateStreakUseCase,
+  getCalendarDataUseCase,
+} from '../lib/contexts/progress/progress.composition';
+import {
+  DateRanges,
+  type DateRange,
+} from '../lib/contexts/progress/domain/progress.constants';
+import type { ChartDataPoint } from '../components/progress-chart';
+import ProgressChart from '../components/progress-chart.tsx';
+import CalendarGrid from '../components/calendar-grid.astro';
+import StreakCounter from '../components/streak-counter.astro';
+
+// ---------- Auth gate ----------
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+const authService = getAuthService();
+const user = await authService.getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// ---------- Query string ----------
+const exerciseIdParam = Astro.url.searchParams.get('exercise') ?? '';
+const rangeParam = Astro.url.searchParams.get('range');
+const range: DateRange =
+  rangeParam === DateRanges.Last7Days || rangeParam === DateRanges.Last30Days
+    ? rangeParam
+    : DateRanges.All;
+
+// ---------- Data ----------
+const exerciseList = await getExerciseListUseCase.execute({ userId: user.id });
+const selectedExercise =
+  exerciseList.find((e) => e.id === exerciseIdParam) ?? null;
+
+let history: ChartDataPoint[] = [];
+if (selectedExercise) {
+  history = await getExerciseHistoryUseCase.execute({
+    userId: user.id,
+    exerciseId: selectedExercise.id,
+    range,
+  });
+}
+
+// ---------- Unit conversion (ADR-006) ----------
+const factor = user.weightUnit === 'lbs' ? 2.20462 : 1;
+const displayHistory: ChartDataPoint[] = history.map((p) => ({
+  date: p.date,
+  weight: Math.round(p.weight * factor * 10) / 10,
+  volume: Math.round(p.volume * factor * 10) / 10,
+}));
+
+const rangeLabel = (r: DateRange): string =>
+  r === DateRanges.Last7Days
+    ? '7 días'
+    : r === DateRanges.Last30Days
+      ? '30 días'
+      : 'Todo';
+
+// ---------- Calendar + Streak (story 3.3) ----------
+const [calendarDays, streak] = await Promise.all([
+  getCalendarDataUseCase.execute({ userId: user.id }),
+  calculateStreakUseCase.execute({ userId: user.id }),
+]);
+---
+
+<AppLayout title="Progreso — Gym Up">
+  <div class="progress-container">
+    <header class="progress-header">
+      <div class="progress-header-text">
+        <h1>Tu progreso</h1>
+        <p>Visualiza tu evolución por ejercicio.</p>
+      </div>
+      <a href="/dashboard" class="btn-link">← Volver al dashboard</a>
+    </header>
+
+    <section class="progress-card selector-card">
+      <form method="get" class="progress-selector">
+        <label for="exercise-select" class="selector-label">Ejercicio:</label>
+        <select
+          id="exercise-select"
+          name="exercise"
+          class="selector-input"
+          onchange="this.form.submit()"
+        >
+          <option value="">— Selecciona un ejercicio —</option>
+          {exerciseList.map((e) => (
+            <option value={e.id} selected={e.id === exerciseIdParam}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+        {exerciseIdParam && (
+          <input type="hidden" name="range" value={range} />
+        )}
+        <noscript>
+          <button type="submit" class="btn btn-primary">Ver</button>
+        </noscript>
+      </form>
+    </section>
+
+    {exerciseList.length === 0 ? (
+      <section class="progress-card empty-state">
+        <h2>Aún no hay datos</h2>
+        <p>Registra workouts para ver tu progreso aquí.</p>
+        <a href="/history" class="btn btn-secondary">Ir a historial</a>
+      </section>
+    ) : !selectedExercise ? (
+      <section class="progress-card empty-state">
+        <h2>Selecciona un ejercicio</h2>
+        <p>Elige un ejercicio del dropdown para ver tus gráficas.</p>
+      </section>
+    ) : (
+      <>
+        <nav class="range-filter" aria-label="Filtro de rango de fechas">
+          {([DateRanges.Last7Days, DateRanges.Last30Days, DateRanges.All] as const).map(
+            (r) => (
+              <a
+                href={`?exercise=${selectedExercise.id}&range=${r}`}
+                class:list={['range-btn', { active: range === r }]}
+                aria-current={range === r ? 'page' : undefined}
+              >
+                {rangeLabel(r)}
+              </a>
+            ),
+          )}
+        </nav>
+
+        {history.length === 0 ? (
+          <section class="progress-card empty-state">
+            <h2>Sin datos en este rango</h2>
+            <p>
+              No hay sets registrados en {rangeLabel(range).toLowerCase()}.
+              Prueba con otro rango para ver más datos.
+            </p>
+          </section>
+        ) : (
+          <div class="progress-charts">
+            <div class="progress-chart-card">
+              <ProgressChart
+                client:load
+                exerciseId={selectedExercise.id}
+                exerciseName={selectedExercise.name}
+                data={displayHistory}
+                type="weight"
+                weightUnit={user.weightUnit}
+              />
+            </div>
+            <div class="progress-chart-card">
+              <ProgressChart
+                client:load
+                exerciseId={selectedExercise.id}
+                exerciseName={selectedExercise.name}
+                data={displayHistory}
+                type="volume"
+                weightUnit={user.weightUnit}
+              />
+            </div>
+          </div>
+        )}
+      </>
+    )}
+
+    <!-- Story 3.3: Calendar + Streak (always shown, user-wide stats) -->
+    <div class="progress-summary">
+      <CalendarGrid days={calendarDays} />
+      <StreakCounter streak={streak} />
+    </div>
+  </div>
+</AppLayout>
+
+<style>
+  .progress-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .progress-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .progress-header-text h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .progress-header-text p {
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+  }
+
+  .btn-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+    transition: background-color 150ms ease, color 150ms ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .btn-link:hover,
+  .btn-link:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-link:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .progress-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .progress-card h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .progress-card p {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0 0 1rem 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+  }
+
+  .empty-state h2 {
+    color: #ffb84d;
+  }
+
+  .progress-selector {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .selector-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .selector-input {
+    flex: 1 1 240px;
+    min-width: 0;
+    padding: 0.55rem 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+
+  .selector-input:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+    border-color: #ff4d4d;
+  }
+
+  .range-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .range-btn {
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  }
+
+  .range-btn:hover,
+  .range-btn:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .range-btn:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .range-btn.active {
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.12);
+    border-color: rgba(255, 77, 77, 0.5);
+  }
+
+  .progress-charts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 900px) {
+    .progress-charts {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .progress-chart-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    min-height: 360px;
+  }
+
+  .progress-chart-card :global(.progress-chart) {
+    position: relative;
+    height: 320px;
+  }
+
+  .progress-summary {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .progress-summary {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.55rem 1.1rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+
+  .btn-primary {
+    background: #ff4d4d;
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #e64545;
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+</style>

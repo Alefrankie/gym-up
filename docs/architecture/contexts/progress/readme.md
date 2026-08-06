@@ -79,7 +79,7 @@ export const CalendarRules = {
 ### Invariants
 
 - Progress is DERIVED from workout history. No separate progress entity stored.
-- Volume = sum of (set_number × reps × weight) for all entries of an exercise in a workout.
+- Volume = sum of (reps × weight) for all entries of an exercise in a workout.
 - Streak = consecutive days with completed workouts ending today (or yesterday if no workout today).
 - A "workout day" = day with at least one workout where status = 'completed'.
 - Calendar shows last `CalendarRules.DisplayDays` (28) days (4 weeks). Each day is binary: has workout or not.
