@@ -53,7 +53,8 @@ Active link highlighted. Hidden on landing/login/register.
 ## ExerciseCard
 
 **File**: `src/components/exercise-card.astro`
-**Feature**: [workout-tracking](../prd/features/workout-tracking.md) FR-WT-008
+**Feature**: [workout-tracking](../prd/features/workout-tracking.md) FR-WT-008, FR-WT-009, FR-WT-010
+**Refined in**: [Story 2.7](../stories/phase-1/round-2/story-2.7-ux-reword.md)
 
 | Prop | Type | Description |
 |------|------|-------------|
@@ -61,10 +62,32 @@ Active link highlighted. Hidden on landing/login/register.
 | `targetSets` | `number` | Target sets from routine |
 | `targetReps` | `number` | Target reps from routine |
 | `exerciseId` | `string` | UUID |
-| `workoutId` | `string` | Current workout UUID |
+| `workoutId` | `string` | Current workout UUID (reserved for Story 2.4 / 2.5) |
 | `weightUnit` | `'kg' \| 'lbs'` | User preference [ADR-006](./decisions/006-kg-storage.md) |
+| `initialEntries` | `WorkoutEntry[]` (optional) | Saved entries to pre-fill rows on resume. Added in Story 2.4. Defaults to `[]`. |
 
-Pre-populated with target sets. Each set: reps, weight, checkmark. Checkmark → starts rest timer. Notes field optional. Auto-save on change (debounce 500ms).
+### Row anatomy (per set, top → bottom)
+
+1. **Reps** (number input) — pre-filled from previous row when empty.
+2. **Peso (kg/lbs)** (number input, step 0.5) — pre-filled from previous row when empty.
+3. **Hecho** (checkbox) — primary completion signal. Tapping it is the canonical "I did this set" action; also kicks off the rest timer in Story 2.5.
+4. **Notas** (text input) — collapsed behind a "✏️ nota" toggle by default (Story 2.7). Same `name` attribute as before, so the auto-save payload is unchanged.
+
+### UX behaviors (Story 2.7)
+
+- **Pre-fill propagation**: typing in set N's reps or weight copies the value to set N+1 if N+1 is empty. First row of a card uses `targetReps` as placeholder. The `+ Añadir set` clone also inherits from the previous row.
+- **Collapsed notes**: notes field hidden by default; reveals on tap of the toggle. The input keeps the same `name` (`entries[N][notes]`) so the data model and auto-save (Story 2.4) are unaware.
+- **Primary check**: the "Hecho" checkbox is visually emphasized as the row's primary action.
+- **Cap**: `WorkoutEntryRules.MaxSetsPerExercise` (10) — `+ Añadir set` hides at the cap.
+
+### Form contract (unchanged)
+
+Each rendered row emits inputs with names `entries[N][reps]`, `entries[N][weight]`, `entries[N][completed]`, `entries[N][notes]`, `entries[N][exercise_id]`. The auto-save module from Story 2.4 reads these names verbatim; UX changes in Story 2.7 never alter them.
+
+### Out of scope
+
+- No domain logic, no use case, no repository.
+- The rest timer (Story 2.5) and workout summary (Story 2.6) are not modified by Story 2.7.
 
 ---
 

@@ -89,8 +89,8 @@ const displayWeight = (entry: WorkoutEntry | undefined): number | undefined => {
               value={displayWeight(entry)}
             />
           </label>
-          <label class="set-field set-field-checkbox">
-            <span class="set-label">Hecho</span>
+          <label class="set-field set-field-checkbox set-field-done">
+            <span class="set-label">✓ Hecho</span>
             <input
               type="checkbox"
               name={`entries[${setNumber}][completed]`}
@@ -99,8 +99,10 @@ const displayWeight = (entry: WorkoutEntry | undefined): number | undefined => {
               checked={entry?.completed ?? false}
             />
           </label>
-          <label class="set-field set-field-notes">
-            <span class="set-label">Notas <span class="set-label-optional">(opcional)</span></span>
+          <details class="set-field set-field-notes">
+            <summary class="set-notes-summary">
+              <span aria-hidden="true">✏️</span> nota <span class="set-label-optional">(opcional)</span>
+            </summary>
             <input
               type="text"
               name={`entries[${setNumber}][notes]`}
@@ -109,7 +111,7 @@ const displayWeight = (entry: WorkoutEntry | undefined): number | undefined => {
               class="set-input"
               value={entry?.notes ?? ''}
             />
-          </label>
+          </details>
           <input type="hidden" name={`entries[${setNumber}][exercise_id]`} value={exerciseId} />
         </li>
       );
@@ -138,6 +140,38 @@ const displayWeight = (entry: WorkoutEntry | undefined): number | undefined => {
       addButton.hidden = currentSets >= maxSets;
     };
 
+    // Story 2.7 — pre-fill propagation.
+    // When the user types reps or weight in row N, copy the value to row N+1
+    // ONLY if N+1's matching field is empty. First set of the card has no
+    // previous row, so it stays empty and uses targetReps as placeholder
+    // (rendered server-side). Works for dynamically cloned rows too.
+    const propagateIfEmpty = (sourceInput: HTMLInputElement) => {
+      const row = sourceInput.closest<HTMLLIElement>('.set-row');
+      if (!row) return;
+      const setNumber = Number(row.dataset.setNumber ?? '0');
+      const fieldMatch = sourceInput.name.match(/entries\[\d+\]\[(\w+)\]/);
+      const field = fieldMatch?.[1];
+      if (!field) return;
+      const nextRow = setList.querySelector<HTMLLIElement>(
+        `.set-row[data-set-number="${setNumber + 1}"]`
+      );
+      if (!nextRow) return;
+      const nextInput = nextRow.querySelector<HTMLInputElement>(
+        `input[name="entries[${setNumber + 1}][${field}]"]`
+      );
+      if (nextInput && nextInput.value === '') {
+        nextInput.value = sourceInput.value;
+      }
+    };
+
+    setList.addEventListener('input', (e) => {
+      const target = e.target as HTMLInputElement | null;
+      if (!target || !target.name) return;
+      if (target.name.endsWith('[reps]') || target.name.endsWith('[weight]')) {
+        propagateIfEmpty(target);
+      }
+    });
+
     addButton.addEventListener('click', () => {
       const rows = setList.querySelectorAll<HTMLLIElement>('.set-row');
       const lastRow = rows[rows.length - 1];
@@ -151,13 +185,24 @@ const displayWeight = (entry: WorkoutEntry | undefined): number | undefined => {
       if (setNumberLabel) setNumberLabel.textContent = String(nextSetNumber);
 
       // Update input name attributes: entries[N][field] → entries[N+1][field].
-      // Reset values on the cloned row.
+      // Story 2.7 — reps and weight INHERIT from the source row so the new
+      // set starts with the same values. Checkbox and notes reset.
       newRow.querySelectorAll<HTMLInputElement>('input[name^="entries["]').forEach((input) => {
         const oldName = input.getAttribute('name') ?? '';
         const newName = oldName.replace(/entries\[\d+\]/, `entries[${nextSetNumber}]`);
         input.setAttribute('name', newName);
-        if (input.type === 'checkbox') input.checked = false;
-        else input.value = '';
+        const fieldMatch = oldName.match(/entries\[\d+\]\[(\w+)\]/);
+        const field = fieldMatch?.[1];
+        if (input.type === 'checkbox') {
+          input.checked = false;
+        } else if (field === 'reps' || field === 'weight') {
+          const sourceInput = lastRow.querySelector<HTMLInputElement>(
+            `input[name="${oldName}"]`
+          );
+          input.value = sourceInput?.value ?? '';
+        } else {
+          input.value = '';
+        }
       });
 
       setList.appendChild(newRow);
@@ -273,11 +318,78 @@ const displayWeight = (entry: WorkoutEntry | undefined): number | undefined => {
     align-items: center;
   }
 
+  /* Story 2.7 — primary completion action. */
+  .set-field-done {
+    background: rgba(255, 77, 77, 0.08);
+    border: 1px solid rgba(255, 77, 77, 0.25);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.55rem;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+
+  .set-field-done:has(.set-checkbox:checked) {
+    background: rgba(255, 77, 77, 0.25);
+    border-color: rgba(255, 77, 77, 0.6);
+  }
+
+  .set-field-done .set-label {
+    color: #ff8a8a;
+    font-weight: 600;
+  }
+
+  .set-field-done:has(.set-checkbox:checked) .set-label {
+    color: #fff;
+  }
+
   .set-checkbox {
-    width: 1.2rem;
-    height: 1.2rem;
+    width: 1.4rem;
+    height: 1.4rem;
     cursor: pointer;
     accent-color: #ff4d4d;
+  }
+
+  /* Story 2.7 — notes collapsed by default. */
+  .set-field-notes {
+    margin: 0;
+  }
+
+  .set-notes-summary {
+    list-style: none;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .set-notes-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .set-notes-summary::before {
+    content: '+';
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    line-height: 1rem;
+    text-align: center;
+    border-radius: 0.25rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+  }
+
+  details[open] > .set-notes-summary::before {
+    content: '−';
+  }
+
+  .set-field-notes .set-input {
+    margin-top: 0.35rem;
   }
 
   .add-set-button {
