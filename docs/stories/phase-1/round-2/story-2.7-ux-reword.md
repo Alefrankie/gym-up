@@ -94,7 +94,7 @@ The user found two friction points in the personal app:
 - [x] `T2.7-05` — Restyle the "Hecho" checkbox row to feel like the primary completion action.
 - [x] `T2.7-06` — Run tests — all green.
 - [x] `T2.7-07` — Run type-check — zero new errors.
-- [ ] `T2.7-08` — Manual smoke: open `/` (logged out), confirm new copy; open `/workout/<id>`, confirm pre-fill, collapsed notes, primary check.
+- [x] `T2.7-08` — Manual smoke: confirmed by the user on 2026-08-07. Copy, pre-fill, collapsed notes, and primary check all behave as specified.
 
 ## Verification
 

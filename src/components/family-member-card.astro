@@ -1,0 +1,135 @@
+---
+// src/components/family-member-card.astro
+//
+// Story 4.1 — Family member card component.
+// Per docs/architecture/components.md: FR-PV-005.
+// Shows: displayName, routineType, totalWorkouts, currentStreak, lastWorkout.
+// Email is NEVER displayed (FR-PV-003). Photos NEVER visible (ADR-005).
+// Pure SSR, zero JS.
+
+import type { MemberCard } from '../lib/contexts/public-view/domain/member';
+
+interface Props {
+  member: MemberCard;
+}
+
+const { member } = Astro.props;
+const detailUrl = `/family/${member.id}`;
+---
+
+<a href={detailUrl} class="family-card" aria-label={`Ver progreso de ${member.displayName}`}>
+  <div class="card-header">
+    <h3 class="card-name">{member.displayName}</h3>
+    <span class="card-routine">{member.routineType === 'hombre' ? '💪 Hombre' : '🏃 Mujer'}</span>
+  </div>
+
+  <div class="card-stats">
+    <div class="stat">
+      <span class="stat-value">{member.totalWorkouts}</span>
+      <span class="stat-label">{member.totalWorkouts === 1 ? 'entrenamiento' : 'entrenamientos'}</span>
+    </div>
+
+    <div class="stat-divider"></div>
+
+    <div class="stat">
+      <span class="stat-emoji">🔥</span>
+      <span class="stat-value">{member.currentStreak}</span>
+      <span class="stat-label">{member.currentStreak === 1 ? 'día' : 'días'}</span>
+    </div>
+  </div>
+
+  {member.lastWorkout && (
+    <p class="card-last-workout">Último: {member.lastWorkout}</p>
+  )}
+
+  {!member.lastWorkout && (
+    <p class="card-last-workout card-last-workout--empty">Aún sin entrenamientos</p>
+  )}
+</a>
+
+<style>
+  .family-card {
+    display: block;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    text-decoration: none;
+    color: #fff;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .family-card:hover {
+    background: rgba(255, 77, 77, 0.1);
+    border-color: rgba(255, 77, 77, 0.3);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .card-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: #fff;
+  }
+
+  .card-routine {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: capitalize;
+  }
+
+  .card-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+
+  .stat-emoji {
+    font-size: 1rem;
+  }
+
+  .stat-value {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ff4d4d;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .stat-divider {
+    width: 1px;
+    height: 2rem;
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .card-last-workout {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+  }
+
+  .card-last-workout--empty {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.35);
+  }
+</style>
