@@ -2,10 +2,37 @@
 //
 // Tests for LocalAuthService.
 // Tests registration, login, logout, and getCurrentUser.
+//
+// IMPORTANT: LocalAuthService accepts an injected db parameter.
+// Tests use an in-memory SQLite database to avoid polluting local.db.
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import Database from 'better-sqlite3';
+import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { LocalAuthService } from '../../src/lib/contexts/auth/local-auth.service';
 import type { SessionRepository, PasswordHasher } from '../../src/lib/contexts/auth/auth.types';
+import * as schema from '@db/schema';
+
+// ---------- In-memory test DB ----------
+const DDL = `
+  CREATE TABLE profiles (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    routine_type TEXT NOT NULL,
+    weight_unit TEXT NOT NULL DEFAULT 'kg',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+`;
+
+function createTestDb() {
+  const sqlite = new Database(':memory:');
+  sqlite.pragma('foreign_keys = ON');
+  sqlite.exec(DDL);
+  const db = drizzle(sqlite, { schema }) as BetterSQLite3Database<typeof schema>;
+  return { db, sqlite };
+}
 
 // Mock implementations
 const mockSessionRepository: SessionRepository = {
@@ -22,13 +49,20 @@ const mockPasswordHasher: PasswordHasher = {
 
 describe('LocalAuthService', () => {
   let authService: LocalAuthService;
+  let testDb: ReturnType<typeof createTestDb>;
 
   beforeEach(() => {
+    testDb = createTestDb();
     authService = new LocalAuthService(
       mockSessionRepository,
       mockPasswordHasher,
-      7 * 24 * 60 * 60 * 1000 // 7 days
+      7 * 24 * 60 * 60 * 1000, // 7 days
+      testDb.db, // inject in-memory DB instead of production local.db
     );
+  });
+
+  afterAll(() => {
+    testDb?.sqlite.close();
   });
 
   describe('register', () => {

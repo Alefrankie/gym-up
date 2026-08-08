@@ -4,8 +4,8 @@
 // Uses SQLite for session storage and argon2 for password hashing.
 
 import { eq } from 'drizzle-orm';
-import { db } from '@/lib/db/client';
 import { profiles } from '@db/schema';
+import { db as defaultDb, type Db } from '@/lib/db/client';
 import type {
   AuthService,
   RegisterInput,
@@ -20,20 +20,26 @@ import type {
  * Local implementation of AuthService.
  * Uses SQLite sessions table + httpOnly cookie.
  * Password hash stored in profiles table.
+ *
+ * The `db` parameter allows injecting a test database (in-memory SQLite)
+ * so unit tests don't pollute the production local.db.
  */
 export class LocalAuthService implements AuthService {
   private sessionRepository: SessionRepository;
   private passwordHasher: PasswordHasher;
   private sessionDurationMs: number;
+  private db: Db;
 
   constructor(
     sessionRepository: SessionRepository,
     passwordHasher: PasswordHasher,
-    sessionDurationMs: number = 7 * 24 * 60 * 60 * 1000 // 7 days default
+    sessionDurationMs: number = 7 * 24 * 60 * 60 * 1000, // 7 days default
+    db: Db = defaultDb,
   ) {
     this.sessionRepository = sessionRepository;
     this.passwordHasher = passwordHasher;
     this.sessionDurationMs = sessionDurationMs;
+    this.db = db;
   }
 
   /**
@@ -43,7 +49,7 @@ export class LocalAuthService implements AuthService {
    */
   async register(input: RegisterInput): Promise<Session> {
     // Check if user already exists
-    const existingUser = await db
+    const existingUser = await this.db
       .select({ id: profiles.id })
       .from(profiles)
       .where(eq(profiles.email, input.email))
@@ -58,7 +64,7 @@ export class LocalAuthService implements AuthService {
 
     // Create profiles row
     const userId = crypto.randomUUID();
-    await db.insert(profiles).values({
+    await this.db.insert(profiles).values({
       id: userId,
       email: input.email,
       passwordHash,
@@ -93,7 +99,7 @@ export class LocalAuthService implements AuthService {
    */
   async login(input: LoginInput): Promise<Session> {
     // Find user by email
-    const userResult = await db
+    const userResult = await this.db
       .select({
         id: profiles.id,
         email: profiles.email,
@@ -162,7 +168,7 @@ export class LocalAuthService implements AuthService {
     }
 
     // Get user from profiles table
-    const userResult = await db
+    const userResult = await this.db
       .select({
         id: profiles.id,
         email: profiles.email,
