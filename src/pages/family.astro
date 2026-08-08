@@ -1,0 +1,164 @@
+---
+// src/pages/family.astro
+//
+// Story 4.1 — Family page.
+// Shows all family members with stats.
+// Auth-gated. SSR only. Zero JS on page.
+//
+// Per public-view/readme.md: Step 1-3 of view-family.flow.md.
+// Per ADR-010: uses public-view composition root.
+// Per ADR-004: all profiles visible (read-all).
+// Per ADR-005: photos NEVER visible.
+// Per FR-PV-003: email NEVER displayed.
+
+import AppLayout from '../layouts/app-layout.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+import { getAllMembersUseCase } from '../lib/contexts/public-view/public-view.composition';
+import FamilyMemberCard from '../components/family-member-card.astro';
+
+// ---------- Auth gate ----------
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+const authService = getAuthService();
+const user = await authService.getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// ---------- Data ----------
+let members;
+let error: string | null = null;
+try {
+  members = await getAllMembersUseCase.execute();
+} catch (e) {
+  error = 'No se pudieron cargar los miembros. Intentá de nuevo.';
+  members = [];
+}
+---
+
+<AppLayout title="Familia — Gym Up">
+  <div class="family-container">
+    <header class="family-header">
+      <div class="family-header-text">
+        <h1>Tu familia</h1>
+        <p>Progreso de todos los miembros.</p>
+      </div>
+      <a href="/dashboard" class="btn-link">← Volver al dashboard</a>
+    </header>
+
+    {error && (
+      <section class="family-error">
+        <p>{error}</p>
+      </section>
+    )}
+
+    {members.length === 0 && !error && (
+      <section class="family-empty">
+        <h2>Aún no hay miembros</h2>
+        <p>Cuando se registren otros usuarios, aparecerán aquí.</p>
+      </section>
+    )}
+
+    {members.length === 1 && (
+      <section class="family-single">
+        <p>Sos el único miembro registrado. Invitá a tu familia para ver su progreso aquí.</p>
+      </section>
+    )}
+
+    {members.length > 0 && (
+      <section class="family-grid">
+        {members.map((member) => (
+          <FamilyMemberCard member={member} />
+        ))}
+      </section>
+    )}
+  </div>
+</AppLayout>
+
+<style>
+  .family-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .family-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .family-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    color: #fff;
+  }
+
+  .family-header p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .btn-link {
+    color: #ff4d4d;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .btn-link:hover {
+    text-decoration: underline;
+  }
+
+  .family-error {
+    background: rgba(255, 77, 77, 0.1);
+    border: 1px solid rgba(255, 77, 77, 0.3);
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #ff4d4d;
+  }
+
+  .family-empty,
+  .family-single {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .family-empty h2,
+  .family-single h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem 0;
+    color: #fff;
+  }
+
+  .family-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 600px) {
+    .family-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 900px) {
+    .family-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

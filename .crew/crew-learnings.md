@@ -28,21 +28,23 @@ Update all test fixtures that create records in the modified table. The project 
 
 ---
 
-trigger: "when implementing authentication in this project"
+trigger: "when creating a new context in this project"
 scope: project
-confidence: 1
-last-used: 2026-07-27
+confidence: 2
+last-used: 2026-08-08
 status: quarantine
 
 ---
 
-The project uses a per-context architecture with composition roots. Auth context should be in `src/lib/contexts/auth/` with:
-- `auth.types.ts` (interfaces)
-- `local-auth.service.ts` (implementation)
-- `sqlite-session.repository.ts` (session storage)
-- `auth.composition.ts` (composition root)
+The project uses a per-context architecture with composition roots (ADR-010). Every context follows the same structure:
+- `domain/` — types, abstract repository ports, constants
+- `application/` — use cases (orchestration only, no business logic in services)
+- `infrastructure/sqlite/` — SQLite repository implementations
+- `<context>.composition.ts` — wiring root that exports use case singletons
 
-Reason: Project 1.3 established this pattern for auth context.
+This pattern applies to ALL contexts: auth, workout-tracking, progress, public-view, and future contexts.
+
+Reason: Confirmed across 10+ sessions (1.3 through 4.1). The pattern is now stable and should be considered for promotion to project rules.
 
 ---
 trigger: "when a story says 'apply X to authenticated pages' but X is already used by public pages"

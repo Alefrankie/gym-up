@@ -1,0 +1,146 @@
+---
+// src/pages/family/[user_id].astro
+//
+// Story 4.1 — Member profile page (read-only).
+// Per public-view/readme.md: Step 4-5 of view-family.flow.md.
+// Per FR-PV-006: read-only progress, no edit capabilities.
+// Per FR-PV-004: photos NEVER visible (ADR-005).
+// Per FR-PV-003: email NEVER displayed.
+//
+// Reuses: calendar-grid.astro, streak-counter.astro from story 3.3.
+// Dynamic routing with prerender = false (SSR per request).
+
+import AppLayout from '../../layouts/app-layout.astro';
+import { getAuthService } from '../../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../../lib/auth/cookie-helpers';
+import { getMemberDetailUseCase } from '../../lib/contexts/public-view/public-view.composition';
+import { getCalendarDataUseCase } from '../../lib/contexts/progress/progress.composition';
+import CalendarGrid from '../../components/calendar-grid.astro';
+import StreakCounter from '../../components/streak-counter.astro';
+
+export const prerender = false;
+
+// ---------- Auth gate ----------
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+const authService = getAuthService();
+const user = await authService.getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// ---------- Params ----------
+const { user_id } = Astro.params;
+if (!user_id) {
+  return Astro.redirect('/family');
+}
+
+// ---------- Data ----------
+const memberDetail = await getMemberDetailUseCase.execute(user_id);
+
+if (!memberDetail) {
+  return Astro.redirect('/family');
+}
+
+const calendarDays = await getCalendarDataUseCase.execute({
+  userId: user_id,
+  days: 28,
+});
+
+const streak = {
+  current: memberDetail.stats.currentStreak,
+  total: memberDetail.stats.totalWorkouts,
+};
+---
+
+<AppLayout title={`${memberDetail.profile.displayName} — Gym Up`}>
+  <div class="member-container">
+    <header class="member-header">
+      <div class="member-header-text">
+        <h1>{memberDetail.profile.displayName}</h1>
+        <p>
+          {memberDetail.profile.routineType === 'hombre' ? '💪 Hombre' : '🏃 Mujer'}
+          {memberDetail.profile.lastWorkout && (
+            <span> · Último: {memberDetail.profile.lastWorkout}</span>
+          )}
+        </p>
+      </div>
+      <a href="/family" class="btn-link">← Volver a familia</a>
+    </header>
+
+    <section class="member-stats-row">
+      <CalendarGrid days={calendarDays} />
+      <StreakCounter streak={streak} />
+    </section>
+
+    {memberDetail.workouts.length === 0 && (
+      <section class="member-empty">
+        <p>{memberDetail.profile.displayName} aún no tiene entrenamientos registrados.</p>
+      </section>
+    )}
+  </div>
+</AppLayout>
+
+<style>
+  .member-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .member-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .member-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    color: #fff;
+  }
+
+  .member-header p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .btn-link {
+    color: #ff4d4d;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .btn-link:hover {
+    text-decoration: underline;
+  }
+
+  .member-stats-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (min-width: 768px) {
+    .member-stats-row {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  .member-empty {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+  }
+</style>
