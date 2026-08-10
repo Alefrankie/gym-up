@@ -94,7 +94,13 @@ export class SqlitePhotoRepository implements PhotoRepository {
     const photoDateMs = input.photoDate
       ? new Date(input.photoDate).getTime()
       : Date.now();
-    const storagePath = buildStoragePath(currentUserId, photoDateMs);
+    // Respect a caller-provided storagePath so the file extension matches
+    // the uploaded format (jpg/png/webp). When the caller passes an empty
+    // string (legacy / tests), fall back to the canonical `{userId}/{ms}.jpg`.
+    const storagePath =
+      input.storagePath && input.storagePath.length > 0
+        ? input.storagePath
+        : buildStoragePath(currentUserId, photoDateMs);
 
     // Write a placeholder file on disk so the smoke test can verify
     // the filesystem side of the contract. Production upload flows

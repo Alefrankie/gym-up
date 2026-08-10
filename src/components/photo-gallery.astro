@@ -1,0 +1,296 @@
+---
+// src/components/photo-gallery.astro
+//
+// Story 4.2 — Private photo gallery. Grid of thumbnails, tap → modal
+// fullscreen with caption + delete. All bytes are streamed by the
+// authenticated route at /photos/file/[id]; nothing public.
+
+import type { PhotoViewDTO } from '@/lib/contexts/private-photos/domain/private-photos.types';
+
+interface Props {
+  photos: PhotoViewDTO[];
+}
+
+const { photos } = Astro.props;
+const hasPhotos = photos.length > 0;
+---
+
+{
+  hasPhotos ? (
+    <ul class="photo-gallery" data-test-id="photo-gallery">
+      {photos.map((photo) => (
+        <li class="photo-gallery-item" data-test-id={`photo-tile-${photo.id}`}>
+          <button
+            type="button"
+            class="photo-gallery-thumb"
+            data-test-id={`photo-open-${photo.id}`}
+            data-photo-id={photo.id}
+            data-photo-url={photo.url}
+            data-photo-caption={photo.caption ?? ''}
+            aria-label={`Abrir foto del ${photo.date}`}
+          >
+            <img
+              src={photo.url}
+              alt={photo.caption ? `Foto: ${photo.caption}` : `Foto del ${photo.date}`}
+              loading="lazy"
+            />
+          </button>
+          {photo.caption && (
+            <p class="photo-gallery-caption">{photo.caption}</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="photo-gallery-empty" data-test-id="photo-gallery-empty">
+      Aún no subiste fotos. Empezá con la primera arriba.
+    </p>
+  )
+}
+
+<!-- Modal fullscreen (hidden until a tile is clicked) -->
+<dialog
+  class="photo-modal"
+  data-test-id="photo-modal"
+  aria-label="Foto en tamaño completo"
+>
+  <div class="photo-modal-backdrop" data-test-id="photo-modal-backdrop"></div>
+  <div class="photo-modal-content">
+    <img
+      class="photo-modal-image"
+      data-test-id="photo-modal-image"
+      alt=""
+    />
+    <p class="photo-modal-caption" data-test-id="photo-modal-caption"></p>
+    <div class="photo-modal-actions">
+      <button
+        type="button"
+        class="photo-modal-close"
+        data-test-id="photo-modal-close"
+      >
+        Cerrar
+      </button>
+      <form
+        class="photo-modal-delete-form"
+        data-test-id="photo-modal-delete-form"
+        method="post"
+      >
+        <input type="hidden" name="photoId" data-test-id="photo-modal-photo-id" />
+        <button
+          type="button"
+          class="photo-modal-delete"
+          data-test-id="photo-modal-delete"
+        >
+          Borrar
+        </button>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  type Modal = HTMLDialogElement;
+
+  function showModal(modal: Modal, url: string, caption: string): void {
+    const img = modal.querySelector<HTMLImageElement>('[data-test-id="photo-modal-image"]');
+    const captionEl = modal.querySelector<HTMLElement>('[data-test-id="photo-modal-caption"]');
+    const photoIdInput = modal.querySelector<HTMLInputElement>('[data-test-id="photo-modal-photo-id"]');
+    const form = modal.querySelector<HTMLFormElement>('[data-test-id="photo-modal-delete-form"]');
+    if (!img || !captionEl || !photoIdInput || !form) return;
+    img.src = url;
+    img.alt = caption || 'Foto';
+    captionEl.textContent = caption;
+    captionEl.hidden = !caption;
+    if (!modal.open) modal.showModal();
+  }
+
+  function closeModal(modal: Modal): void {
+    if (modal.open) modal.close();
+  }
+
+  async function confirmAndDelete(form: HTMLFormElement): Promise<void> {
+    if (!window.confirm('¿Borrar esta foto? Esta acción no se puede deshacer.')) {
+      return;
+    }
+    const photoId = form.querySelector<HTMLInputElement>('[data-test-id="photo-modal-photo-id"]')?.value;
+    if (!photoId) return;
+    const response = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' });
+    if (response.redirected) {
+      window.location.href = response.url;
+      return;
+    }
+    if (!response.ok) {
+      window.alert(`No se pudo borrar (${response.status}).`);
+      return;
+    }
+    window.location.reload();
+  }
+
+  function init(): void {
+    const modal = document.querySelector<HTMLDialogElement>('[data-test-id="photo-modal"]');
+    if (!modal) return;
+    const tiles = document.querySelectorAll<HTMLButtonElement>('[data-test-id^="photo-open-"]');
+    tiles.forEach((tile) => {
+      tile.addEventListener('click', () => {
+        const url = tile.dataset.photoUrl ?? '';
+        const caption = tile.dataset.photoCaption ?? '';
+        showModal(modal, url, caption);
+      });
+    });
+    const closeBtn = modal.querySelector<HTMLButtonElement>('[data-test-id="photo-modal-close"]');
+    closeBtn?.addEventListener('click', () => closeModal(modal));
+    const backdrop = modal.querySelector<HTMLElement>('[data-test-id="photo-modal-backdrop"]');
+    backdrop?.addEventListener('click', () => closeModal(modal));
+    const deleteBtn = modal.querySelector<HTMLButtonElement>('[data-test-id="photo-modal-delete"]');
+    deleteBtn?.addEventListener('click', () => {
+      const form = modal.querySelector<HTMLFormElement>('[data-test-id="photo-modal-delete-form"]');
+      if (form) void confirmAndDelete(form);
+    });
+    modal.addEventListener('cancel', () => closeModal(modal));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+  .photo-gallery {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.85rem;
+  }
+
+  .photo-gallery-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .photo-gallery-thumb {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.65rem;
+    overflow: hidden;
+    padding: 0;
+    cursor: pointer;
+    aspect-ratio: 1 / 1;
+    transition: transform 150ms ease, border-color 150ms ease;
+  }
+
+  .photo-gallery-thumb:hover,
+  .photo-gallery-thumb:focus-visible {
+    border-color: #ff4d4d;
+    transform: translateY(-2px);
+  }
+
+  .photo-gallery-thumb:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .photo-gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .photo-gallery-caption {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.8rem;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .photo-gallery-empty {
+    margin: 0;
+    padding: 1.25rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.55);
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 0.65rem;
+  }
+
+  /* ----- Modal ----- */
+  .photo-modal {
+    width: min(90vw, 720px);
+    max-width: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #fff;
+  }
+
+  .photo-modal::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+  }
+
+  .photo-modal-backdrop {
+    display: none;
+  }
+
+  .photo-modal-content {
+    position: relative;
+    background: #12121a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1rem;
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .photo-modal-image {
+    width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 0.65rem;
+    background: #000;
+  }
+
+  .photo-modal-caption {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+  }
+
+  .photo-modal-actions {
+    display: flex;
+    gap: 0.65rem;
+    justify-content: flex-end;
+  }
+
+  .photo-modal-close,
+  .photo-modal-delete {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .photo-modal-delete {
+    background: rgba(255, 77, 77, 0.2);
+    border-color: rgba(255, 77, 77, 0.5);
+  }
+
+  .photo-modal-close:hover,
+  .photo-modal-delete:hover {
+    filter: brightness(1.15);
+  }
+</style>
