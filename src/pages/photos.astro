@@ -1,0 +1,90 @@
+---
+// src/pages/photos.astro
+//
+// Story 4.2 — Private Photos page. Lists the owner's photo gallery and
+// exposes the upload form. Authenticated route: redirect to /login if
+// the session is missing or invalid.
+//
+// Resolves photos via `GetMyPhotosUseCase` (per-context composition root,
+// ADR-010) — no direct repository or DB access from the page.
+
+import AppLayout from '../layouts/app-layout.astro';
+import PhotoUpload from '../components/photo-upload.astro';
+import PhotoGallery from '../components/photo-gallery.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+import {
+  getMyPhotosUseCase,
+} from '../lib/contexts/private-photos/private-photos.composition';
+
+// Auth: resolve session + current user.
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+const user = await getAuthService().getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// Read the owner's photos via the use case.
+const photos = await getMyPhotosUseCase.execute({ userId: user.id });
+---
+
+<AppLayout title="Fotos — Gym Up">
+  <div class="photos-page">
+    <header class="photos-header">
+      <h1>Mis fotos</h1>
+      <p class="photos-subtitle">
+        Privadas, solo vos podés verlas. Cada byte se sirve por una ruta que valida tu sesión.
+      </p>
+    </header>
+
+    <PhotoUpload />
+
+    <section class="photos-section" aria-labelledby="photos-gallery-title">
+      <h2 id="photos-gallery-title" class="photos-section-title">
+        Galería ({photos.length})
+      </h2>
+      <PhotoGallery photos={photos} />
+    </section>
+  </div>
+</AppLayout>
+
+<style>
+  .photos-page {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .photos-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .photos-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.4rem 0;
+  }
+
+  .photos-subtitle {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.95rem;
+  }
+
+  .photos-section {
+    margin-top: 1rem;
+  }
+
+  .photos-section-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 0.85rem 0;
+  }
+</style>

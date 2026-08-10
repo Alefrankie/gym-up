@@ -50,6 +50,35 @@ Active link highlighted. Hidden on landing/login/register.
 
 ---
 
+## Layout
+
+**File**: `src/layouts/layout.astro`
+
+Shared page shell used by every route. Renders `<head>` metadata, navbar, `<slot />` for page content, and footer.
+
+### Global styles (`<style is:global>`)
+
+Because Astro scopes `<style>` blocks per component, any CSS targeting elements rendered **inside** the layout template (navbar, footer, body) must use `is:global`. This block contains:
+
+| Category | What lives here |
+|----------|----------------|
+| CSS variables | `:root` custom properties (`--primary`, `--bg-dark`, `--font-heading`, etc.) |
+| Reset | `*`, `html`, `body` base styles |
+| Navbar | `.navbar`, `.nav-container`, `.nav-logo`, `.nav-links`, `.nav-cta` |
+| Footer | `.footer`, `.footer-container`, `.footer-brand`, `.footer-links`, `.footer-col`, `.footer-bottom` |
+| Animations | `@keyframes pulse`, `@keyframes float` |
+| Responsive | `.nav-links` hidden at ≤640px, `.footer-links` stacked at ≤968px |
+
+### Page-specific styles
+
+Each page component (`index.astro`, `dashboard.astro`, etc.) keeps its own scoped `<style>` for section-only elements (hero, features, CTA, etc.). Page styles may reference CSS variables defined in the layout's `:root`.
+
+### Why `is:global`?
+
+Astro's scoped styles only match elements in the current component's template. Since the navbar and footer HTML live in `layout.astro` but are styled from that same file, `is:global` is required so the selectors are emitted unscoped and actually match the rendered elements. Without it, navbar/footer render unstyled (dark blocks with raw link text).
+
+---
+
 ## ExerciseCard
 
 **File**: `src/components/exercise-card.astro`

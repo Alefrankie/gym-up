@@ -80,6 +80,12 @@ const { title = 'Gym Up' } = Astro.props;
 </html>
 
 <style is:global>
+  /*
+   * is:global required — these selectors target elements in THIS template
+   * (navbar, footer, body) which Astro would otherwise scope out.
+   * Page-specific styles stay scoped in each page's own <style>.
+   * See: docs/architecture/components.md → Layout section.
+   */
   /* ========== CSS VARIABLES ========== */
   :root {
     --primary: #ff4d4d;

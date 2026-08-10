@@ -1,0 +1,281 @@
+---
+// src/components/photo-upload.astro
+//
+// Story 4.2 — Private photo upload form. Client-side validation + canvas
+// compression before sending to POST /api/photos.
+//
+// Per components.md (PhotoUpload section): file input (jpg/png/webp),
+// max 5MB, client-side resize. `workoutId` prop reserved for a later
+// story; the upload is not linked to a workout in 4.2.
+
+interface Props {
+  workoutId?: string | null;
+}
+
+const { workoutId = null } = Astro.props;
+---
+
+<form
+  class="photo-upload"
+  data-test-id="photo-upload-form"
+  data-workout-id={workoutId ?? ''}
+  enctype="multipart/form-data"
+  method="post"
+  action="/api/photos"
+>
+  <label class="photo-upload-label" for="photo-upload-file">
+    Foto (jpg, png, webp · máx 5MB)
+  </label>
+  <input
+    id="photo-upload-file"
+    data-test-id="photo-upload-file"
+    class="photo-upload-input"
+    type="file"
+    name="file"
+    accept="image/jpeg,image/png,image/webp"
+    required
+  />
+
+  <label class="photo-upload-label" for="photo-upload-caption">
+    Caption (opcional · máx 200)
+  </label>
+  <textarea
+    id="photo-upload-caption"
+    data-test-id="photo-upload-caption"
+    class="photo-upload-caption"
+    name="caption"
+    maxlength="200"
+    rows="2"
+  ></textarea>
+
+  <button
+    type="submit"
+    class="photo-upload-submit"
+    data-test-id="photo-upload-submit"
+  >
+    Subir foto
+  </button>
+
+  <p
+    class="photo-upload-status"
+    data-test-id="photo-upload-status"
+    role="status"
+    aria-live="polite"
+    hidden
+  ></p>
+</form>
+
+<script>
+  // Vanilla client-side handling — no React island required.
+  // Compresses to max 1280px wide / 0.85 quality via canvas re-encode,
+  // then submits the FormData. Status text is announced via aria-live.
+  const MAX_DIMENSION = 1280;
+  const JPEG_QUALITY = 0.85;
+
+  type StatusKind = 'idle' | 'compressing' | 'uploading' | 'success' | 'error';
+
+  function setStatus(
+    statusEl: HTMLElement,
+    kind: StatusKind,
+    message: string,
+  ): void {
+    statusEl.dataset.kind = kind;
+    statusEl.textContent = message;
+    statusEl.hidden = false;
+  }
+
+  function clearStatus(statusEl: HTMLElement): void {
+    statusEl.hidden = true;
+    statusEl.textContent = '';
+    statusEl.dataset.kind = 'idle';
+  }
+
+  async function compressImage(file: File): Promise<File> {
+    if (file.size <= 1024 * 1024) {
+      // Skip compression for files already ≤ 1MB.
+      return file;
+    }
+    const bitmap = await createImageBitmap(file).catch(() => null);
+    if (!bitmap) return file;
+
+    const { width, height } = scaleDimensions(bitmap.width, bitmap.height, MAX_DIMENSION);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+
+    const blob = await new Promise<Blob | null>((resolveBlob) =>
+      canvas.toBlob((b) => resolveBlob(b), 'image/jpeg', JPEG_QUALITY),
+    );
+    if (!blob) return file;
+
+    const name = replaceExtension(file.name, 'jpg');
+    return new File([blob], name, { type: 'image/jpeg' });
+  }
+
+  function scaleDimensions(
+    w: number,
+    h: number,
+    max: number,
+  ): { width: number; height: number } {
+    if (w <= max && h <= max) return { width: w, height: h };
+    const ratio = w > h ? max / w : max / h;
+    return { width: Math.round(w * ratio), height: Math.round(h * ratio) };
+  }
+
+  function replaceExtension(filename: string, ext: string): string {
+    const dot = filename.lastIndexOf('.');
+    const base = dot >= 0 ? filename.slice(0, dot) : filename;
+    return `${base}.${ext}`;
+  }
+
+  function init(): void {
+    const form = document.querySelector<HTMLFormElement>('[data-test-id="photo-upload-form"]');
+    if (!form) return;
+    const statusEl = form.querySelector<HTMLElement>('[data-test-id="photo-upload-status"]');
+    const submitBtn = form.querySelector<HTMLButtonElement>('[data-test-id="photo-upload-submit"]');
+    const fileInput = form.querySelector<HTMLInputElement>('[data-test-id="photo-upload-file"]');
+    if (!statusEl || !submitBtn || !fileInput) return;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const file = fileInput.files?.[0];
+      if (!file) {
+        setStatus(statusEl, 'error', 'Elegí una foto primero.');
+        return;
+      }
+      submitBtn.disabled = true;
+      try {
+        setStatus(statusEl, 'compressing', 'Comprimiendo…');
+        const compressed = await compressImage(file);
+
+        setStatus(statusEl, 'uploading', 'Subiendo…');
+        const formData = new FormData();
+        formData.append('file', compressed);
+        const captionEl = form.querySelector<HTMLTextAreaElement>('[data-test-id="photo-upload-caption"]');
+        if (captionEl && captionEl.value.trim()) {
+          formData.append('caption', captionEl.value.trim());
+        }
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData,
+        });
+        if (response.redirected) {
+          window.location.href = response.url;
+          return;
+        }
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '');
+          setStatus(
+            statusEl,
+            'error',
+            `Error al subir (${response.status}). ${detail.slice(0, 200)}`,
+          );
+          return;
+        }
+        setStatus(statusEl, 'success', 'Foto subida. Recargando…');
+        window.location.reload();
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : 'Error desconocido';
+        setStatus(statusEl, 'error', `Falló: ${detail}`);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+  .photo-upload {
+    display: grid;
+    gap: 0.65rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .photo-upload-label {
+    font-family: 'Oswald', sans-serif;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .photo-upload-input,
+  .photo-upload-caption {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+
+  .photo-upload-caption {
+    resize: vertical;
+    min-height: 2.4rem;
+  }
+
+  .photo-upload-input:focus-visible,
+  .photo-upload-caption:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .photo-upload-submit {
+    justify-self: start;
+    background: #ff4d4d;
+    color: #fff;
+    padding: 0.6rem 1.4rem;
+    border: none;
+    border-radius: 0.55rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+
+  .photo-upload-submit:hover:not(:disabled) {
+    background: #e63946;
+  }
+
+  .photo-upload-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .photo-upload-status {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .photo-upload-status[data-kind='error'] {
+    background: rgba(255, 77, 77, 0.15);
+    color: #ffb4b4;
+  }
+
+  .photo-upload-status[data-kind='success'] {
+    background: rgba(0, 212, 255, 0.15);
+    color: #b8efff;
+  }
+</style>
