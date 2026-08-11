@@ -3,10 +3,10 @@ story_id: "4.2"
 round: "round-4"
 parent_spec: "../../architecture/contexts/private-photos/readme.md"
 size: "L"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-10"
+completed: "2026-08-11"
+owner: "Copilot"
 implements:
   architecture_features: ["private-photos"]
   prd_requirements: ["FR-PP-001", "FR-PP-002", "FR-PP-003", "FR-PP-004", "FR-PP-005", "FR-PP-006", "FR-PP-007"]
@@ -44,9 +44,9 @@ Upload, view, and delete private progress photos. Files are stored on the **loca
 
 ## Tasks
 
-- [ ] `T4.2-01` - Create photos page
-- [ ] `T4.2-02` - Create `src/components/photo-upload.astro`
-- [ ] `T4.2-03` - Handle compression + local upload
-- [ ] `T4.2-04` - Create `src/components/photo-gallery.astro`
-- [ ] `T4.2-05` - Add delete with confirmation
-- [ ] `T4.2-06` - Add authenticated route handler for serving photo bytes (ownership check)
+- [x] `T4.2-01` - Create photos page
+- [x] `T4.2-02` - Create `src/components/photo-upload.astro`
+- [x] `T4.2-03` - Handle compression + local upload
+- [x] `T4.2-04` - Create `src/components/photo-gallery.astro`
+- [x] `T4.2-05` - Add delete with confirmation *(bug found in audit 2026-08-11: photoId input was never populated; fixed)*
+- [x] `T4.2-06` - Add authenticated route handler for serving photo bytes (ownership check)

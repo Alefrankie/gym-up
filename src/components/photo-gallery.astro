@@ -91,7 +91,7 @@ const hasPhotos = photos.length > 0;
 <script>
   type Modal = HTMLDialogElement;
 
-  function showModal(modal: Modal, url: string, caption: string): void {
+  function showModal(modal: Modal, id: string, url: string, caption: string): void {
     const img = modal.querySelector<HTMLImageElement>('[data-test-id="photo-modal-image"]');
     const captionEl = modal.querySelector<HTMLElement>('[data-test-id="photo-modal-caption"]');
     const photoIdInput = modal.querySelector<HTMLInputElement>('[data-test-id="photo-modal-photo-id"]');
@@ -101,6 +101,7 @@ const hasPhotos = photos.length > 0;
     img.alt = caption || 'Foto';
     captionEl.textContent = caption;
     captionEl.hidden = !caption;
+    photoIdInput.value = id;
     if (!modal.open) modal.showModal();
   }
 
@@ -132,9 +133,10 @@ const hasPhotos = photos.length > 0;
     const tiles = document.querySelectorAll<HTMLButtonElement>('[data-test-id^="photo-open-"]');
     tiles.forEach((tile) => {
       tile.addEventListener('click', () => {
+        const id = tile.dataset.photoId ?? '';
         const url = tile.dataset.photoUrl ?? '';
         const caption = tile.dataset.photoCaption ?? '';
-        showModal(modal, url, caption);
+        showModal(modal, id, url, caption);
       });
     });
     const closeBtn = modal.querySelector<HTMLButtonElement>('[data-test-id="photo-modal-close"]');

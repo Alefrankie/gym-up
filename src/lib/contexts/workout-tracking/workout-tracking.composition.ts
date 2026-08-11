@@ -19,6 +19,7 @@ import { LogSetUseCase } from './application/log-set.use-case';
 import { CompleteWorkoutUseCase } from './application/complete-workout.use-case';
 import { GetWorkoutHistoryUseCase } from './application/get-workout-history.use-case';
 import { GetWorkoutDetailUseCase } from './application/get-workout-detail.use-case';
+import { UpdateProfileUseCase } from './application/update-profile.use-case';
 
 type StorageBackend = 'sqlite' | 'supabase';
 
@@ -83,6 +84,8 @@ function buildPhotoRepository(backend: StorageBackend): PhotoRepository {
 const backend = resolveStorageBackend();
 
 export const profileRepository: ProfileRepository = buildProfileRepository(backend);
+export const updateProfileUseCase: UpdateProfileUseCase =
+  new UpdateProfileUseCase(profileRepository);
 export const routineRepository: RoutineRepository = buildRoutineRepository(backend);
 export const workoutRepository: WorkoutRepository = buildWorkoutRepository(backend);
 export const photoRepository: PhotoRepository = buildPhotoRepository(backend);

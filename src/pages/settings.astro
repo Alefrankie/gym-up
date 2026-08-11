@@ -1,0 +1,404 @@
+---
+// src/pages/settings.astro
+//
+// Story 4.3 — Settings page.
+//
+// FR-WT-016: update displayName, switch routineType, toggle weightUnit.
+// FR-WT-017: logout (handled by /logout route; rendered as a link below).
+//
+// POST handling:
+//   - The page is the POST target (no separate /api/settings handler).
+//   - PRG pattern (POST → 302 → /settings?saved=1).
+//   - Validation errors are caught and rendered inline; no DB writes happen.
+//   - Success: redirect 302 with `?saved=1` query param; toast renders on load.
+
+import AppLayout from '../layouts/app-layout.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+import { updateProfileUseCase } from '../lib/contexts/workout-tracking/workout-tracking.composition';
+import {
+  ProfileRules,
+  DisplayNameRequiredError,
+  DisplayNameTooLongError,
+  InvalidRoutineTypeError,
+  InvalidWeightUnitError,
+} from '../lib/contexts/workout-tracking/application/update-profile.use-case';
+
+// --- Auth gate (same shape as dashboard.astro) ---
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+const authService = getAuthService();
+const user = await authService.getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// --- POST handler (PRG) ---
+let errorMessage: string | undefined;
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const rawName = formData.get('displayName');
+    const rawRoutine = formData.get('routineType');
+    const rawUnit = formData.get('weightUnit');
+
+    // Build a partial patch — only forward fields the user submitted.
+    // The use case validates each individually; we just gate undefined.
+    const patch: {
+      displayName?: string;
+      routineType?: 'hombre' | 'mujer';
+      weightUnit?: 'kg' | 'lbs';
+    } = {};
+
+    if (typeof rawName === 'string') patch.displayName = rawName;
+    if (typeof rawRoutine === 'string') {
+      if (rawRoutine === 'hombre' || rawRoutine === 'mujer') {
+        patch.routineType = rawRoutine;
+      }
+    }
+    if (typeof rawUnit === 'string') {
+      if (rawUnit === 'kg' || rawUnit === 'lbs') {
+        patch.weightUnit = rawUnit;
+      }
+    }
+
+    await updateProfileUseCase.execute({
+      userId: user.id,
+      displayName: patch.displayName,
+      routineType: patch.routineType,
+      weightUnit: patch.weightUnit,
+    });
+
+    return Astro.redirect('/settings?saved=1');
+  } catch (e: unknown) {
+    if (
+      e instanceof DisplayNameRequiredError ||
+      e instanceof DisplayNameTooLongError ||
+      e instanceof InvalidRoutineTypeError ||
+      e instanceof InvalidWeightUnitError
+    ) {
+      errorMessage = e.message;
+    } else if (e instanceof Error) {
+      errorMessage = `Error al guardar: ${e.message}`;
+    } else {
+      errorMessage = 'Error inesperado al guardar la configuración';
+    }
+  }
+}
+
+// --- Toast trigger (success after PRG redirect) ---
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+
+// After a POST that errored we render with `errorMessage` shown above
+// the form; the input value echoes from `user.displayName` (the use case
+// throws BEFORE writing, so the persisted value is still authoritative).
+// After a successful POST we redirect via PRG, so this GET path never
+// observes a stale form value.
+---
+
+<AppLayout title="Settings — Gym Up">
+  <div class="settings-container">
+    <header class="settings-header">
+      <h1>Configuración</h1>
+      <p class="settings-subtitle">Edita tu perfil, tipo de rutina y unidad de peso.</p>
+    </header>
+
+    {justSaved && (
+      <div class="settings-toast" role="status" aria-live="polite">
+        <span class="toast-icon" aria-hidden="true">✅</span>
+        <span class="toast-text">Configuración guardada</span>
+      </div>
+    )}
+
+    {errorMessage && (
+      <div class="settings-error" role="alert" aria-live="assertive">
+        <span class="error-icon" aria-hidden="true">⚠️</span>
+        <span class="error-message">{errorMessage}</span>
+      </div>
+    )}
+
+    <form method="POST" class="settings-form" novalidate>
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Perfil</legend>
+
+        <div class="form-group">
+          <label for="displayName" class="form-label">Nombre</label>
+          <input
+            type="text"
+            id="displayName"
+            name="displayName"
+            class="form-input"
+            value={user.displayName}
+            maxlength={ProfileRules.MaxDisplayNameLength}
+            required
+          />
+          <p class="form-help">Máximo {ProfileRules.MaxDisplayNameLength} caracteres.</p>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Tipo de rutina</legend>
+        <div class="form-radio-group">
+          <label class="form-radio-label">
+            <input
+              type="radio"
+              name="routineType"
+              value="hombre"
+              checked={user.routineType === 'hombre'}
+            />
+            <span>💪 Hombre</span>
+          </label>
+          <label class="form-radio-label">
+            <input
+              type="radio"
+              name="routineType"
+              value="mujer"
+              checked={user.routineType === 'mujer'}
+            />
+            <span>🏃 Mujer</span>
+          </label>
+        </div>
+        <p class="form-help">
+          Cambiar el tipo de rutina no afecta entrenamientos pasados.
+        </p>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Unidad de peso</legend>
+        <div class="form-radio-group">
+          <label class="form-radio-label">
+            <input
+              type="radio"
+              name="weightUnit"
+              value="kg"
+              checked={user.weightUnit === 'kg'}
+            />
+            <span>kg</span>
+          </label>
+          <label class="form-radio-label">
+            <input
+              type="radio"
+              name="weightUnit"
+              value="lbs"
+              checked={user.weightUnit === 'lbs'}
+            />
+            <span>lbs</span>
+          </label>
+        </div>
+        <p class="form-help">
+          El peso se guarda internamente en kg (ADR-006). Cambia la unidad
+          cuando quieras, sin perder datos.
+        </p>
+      </fieldset>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+
+    <section class="settings-danger">
+      <h2>Sesión</h2>
+      <p>Cierra la sesión actual en este dispositivo.</p>
+      <a href="/logout" class="btn btn-secondary">Cerrar sesión</a>
+    </section>
+  </div>
+</AppLayout>
+
+<style>
+  .settings-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1rem 1.25rem 2rem;
+  }
+
+  .settings-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    margin: 0 0 0.25rem;
+    letter-spacing: 0.02em;
+  }
+
+  .settings-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 1.5rem;
+    font-size: 0.95rem;
+  }
+
+  .settings-toast,
+  .settings-error {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .settings-toast {
+    background: rgba(46, 204, 113, 0.15);
+    border: 1px solid rgba(46, 204, 113, 0.5);
+    color: #2ecc71;
+  }
+
+  .settings-error {
+    background: rgba(255, 77, 77, 0.15);
+    border: 1px solid rgba(255, 77, 77, 0.5);
+    color: #ff8080;
+  }
+
+  .settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .form-fieldset {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 1rem 1.25rem 1.25rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .form-legend {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+    color: #ff4d4d;
+    padding: 0 0.4rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .form-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.25);
+    color: #fff;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #ff4d4d;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .form-radio-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+  }
+
+  .form-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    font-size: 0.95rem;
+    flex: 1 1 auto;
+    min-width: 110px;
+  }
+
+  .form-radio-label:has(input:checked) {
+    border-color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.12);
+  }
+
+  .form-radio-label input[type='radio'] {
+    accent-color: #ff4d4d;
+  }
+
+  .form-help {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.82rem;
+    margin: 0.4rem 0 0;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.7rem 1.4rem;
+    border-radius: 6px;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.95rem;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+  }
+
+  .btn-primary {
+    background: #ff4d4d;
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #e63e3e;
+  }
+
+  .btn-primary:active {
+    transform: translateY(1px);
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .settings-danger {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 1.5rem;
+  }
+
+  .settings-danger h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.15rem;
+    margin: 0 0 0.5rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .settings-danger p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin: 0 0 1rem;
+  }
+</style>

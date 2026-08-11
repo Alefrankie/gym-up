@@ -220,6 +220,18 @@ describe('SqliteProgressRepository — getExerciseHistory', () => {
 // getCalendarData
 // ============================================================================
 
+/** Today at 12:00 UTC — keeps the date key stable regardless of timezone. */
+function todayNoonUtc(): Date {
+  const d = new Date();
+  d.setUTCHours(12, 0, 0, 0);
+  return d;
+}
+
+/** YYYY-MM-DD key in UTC (matches `toDateKey` in the repo). */
+function toDateKeyUtc(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
 describe('SqliteProgressRepository — getCalendarData', () => {
   it('returns exactly N days', async () => {
     const days = await repo.getCalendarData(userId, 7);
@@ -227,9 +239,11 @@ describe('SqliteProgressRepository — getCalendarData', () => {
   });
 
   it('marks hasWorkout=true for days with completed workouts', async () => {
-    await seedCompletedWorkout(userId, new Date('2026-08-04T12:00:00Z'), 'completed');
+    const targetDate = todayNoonUtc();
+    const targetKey = toDateKeyUtc(targetDate);
+    await seedCompletedWorkout(userId, targetDate, 'completed');
     const days = await repo.getCalendarData(userId, 7);
-    const today = days.find((d) => d.date === '2026-08-04');
+    const today = days.find((d) => d.date === targetKey);
     expect(today?.hasWorkout).toBe(true);
   });
 
@@ -240,9 +254,11 @@ describe('SqliteProgressRepository — getCalendarData', () => {
   });
 
   it('excludes in_progress workouts from hasWorkout', async () => {
-    await seedCompletedWorkout(userId, new Date('2026-08-04T12:00:00Z'), 'in_progress');
+    const targetDate = todayNoonUtc();
+    const targetKey = toDateKeyUtc(targetDate);
+    await seedCompletedWorkout(userId, targetDate, 'in_progress');
     const days = await repo.getCalendarData(userId, 7);
-    const today = days.find((d) => d.date === '2026-08-04');
+    const today = days.find((d) => d.date === targetKey);
     expect(today?.hasWorkout).toBe(false);
   });
 

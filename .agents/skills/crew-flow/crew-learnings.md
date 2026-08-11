@@ -6,7 +6,7 @@ Skill-scope rules not yet stable enough to integrate inline. Graduate / decay / 
 trigger: "when a use case depends on today's date (weekday, calendar day, date range)"
 scope: skill
 confidence: 1
-last-used: 2026-07-29
+last-used: 2026-08-11
 status: quarantine
 
 ---
@@ -78,6 +78,18 @@ status: quarantine
 Read the original rationale for the guard. If the current fix directly resolves that concern (changed message, changed data model, changed assumptions), the guard can safely go. If the original concern remains valid, keep the guard and fix the symptom differently.
 
 **Why:** Session zone-matrix-alison-bugs — `vivariumArea > 0` guard (bug 86bagqvjz) existed to prevent a false-positive vivarium-specific banner. Changing the banner to generic resolved that concern — guard was safe to remove.
+
+---
+
+trigger: "when writing tests for date-windowed queries (last N days, between dates, etc.)"
+scope: skill
+confidence: 1
+last-used: 2026-08-11
+status: quarantine
+
+---
+
+When writing tests for date-windowed queries (last N days, between dates, "since X", "until Y"), build the test date from `new Date()` (today, yesterday, -N days) instead of hardcoded ISO strings (`'2026-08-04T12:00:00Z'`). The query window is computed from "now" at test run time, so any test date that's a fixed past date will silently fall outside that window as the calendar advances — the test will pass when written and fail weeks/months later for what looks like a pre-existing failure (the impl is fine; only the fixture is stale). Symptom: `find(d => d.date === 'X')` returns `undefined` and `obj?.hasWorkout` is `undefined` instead of `true/false`. Fix: anchor the fixture to a date that will always fall inside the test's queried window (e.g. `todayNoonUtc()` for `lastNDateKeys(N)` tests, `now - 1day` for cutoff tests). Reason: story 4.3 — `sqlite-progress.repository.test.ts` had hardcoded `'2026-08-04T12:00:00Z'` for `getCalendarData(userId, 7)` tests; on 2026-08-11, 2026-08-04 fell outside the 7-day window and 2 tests failed with what looked like a regression. Implementation was correct.
 
 **How to apply:** `git log -S "guard-expression"` to find the commit that added it; read its message + linked ticket. Confirm the original concern is resolved before removing.
 
