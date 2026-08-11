@@ -3,10 +3,10 @@ story_id: "4.1"
 round: "round-4"
 parent_spec: "../../architecture/contexts/public-view/readme.md"
 size: "M"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-08"
+completed: "2026-08-08"
+owner: "Copilot"
 implements:
   architecture_features: ["public-view"]
   prd_requirements: ["FR-PV-001", "FR-PV-002", "FR-PV-003", "FR-PV-005", "FR-PV-006"]

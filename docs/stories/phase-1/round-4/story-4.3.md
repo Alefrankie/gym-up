@@ -3,10 +3,10 @@ story_id: "4.3"
 round: "round-4"
 parent_spec: "../../architecture/contexts/workout-tracking/readme.md"
 size: "S"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-11"
+completed: "2026-08-11"
+owner: "Copilot"
 implements:
   architecture_features: ["workout-tracking"]
   prd_requirements: ["FR-WT-016", "FR-WT-017"]
@@ -41,7 +41,7 @@ Settings page for profile name, routine type, weight unit, and logout.
 
 ## Tasks
 
-- [ ] `T4.3-01` - Create settings page
-- [ ] `T4.3-02` - Add form fields
-- [ ] `T4.3-03` - Add save logic
-- [ ] `T4.3-04` - Add logout
+- [x] `T4.3-01` - Create settings page
+- [x] `T4.3-02` - Add form fields
+- [x] `T4.3-03` - Add save logic
+- [x] `T4.3-04` - Add logout
