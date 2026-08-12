@@ -3,14 +3,14 @@ story_id: "5.1"
 round: "round-5"
 parent_spec: "../../architecture/contexts/nutrition/readme.md"
 size: "L"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-12"
+completed: "2026-08-12"
+owner: "Julian"
 implements:
   architecture_features: ["nutrition"]
   prd_requirements: ["FR-NA-003", "FR-NA-004", "FR-NA-005"]
-  architecture_decisions: ["ADR-007"]
+  architecture_decisions: ["ADR-010", "ADR-011", "ADR-014"]
   flows: ["analyze-meal.flow.md"]
 blocked_by: ["story-1.3"]
 blocks: ["story-5.2"]

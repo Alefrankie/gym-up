@@ -78,4 +78,4 @@ Dashboard shows today's calorie intake vs goal. Progress bar or ring.
 
 ## AI Provider
 
-TBD — options: Google Gemini Vision, OpenAI GPT-4 Vision, Claude Vision. See [ADR-007](../../architecture/decisions/007-ai-nutrition-analysis.md).
+Google Gemini Vision (`gemini-2.5-flash`). See [ADR-014](../../architecture/decisions/014-ai-nutrition-analysis.md).

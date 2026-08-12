@@ -415,3 +415,29 @@ status: quarantine
 ---
 
 For UI stories, run BOTH the typecheck (`astro check` / `tsc --noEmit` / equivalent) AND the production build (`astro build` / `next build` / equivalent). Typecheck alone is not sufficient — `Astro.url` access in SSR, asset bundling, frontmatter execution, and adapter-specific output are caught by build only, not by `astro check`. A green typecheck can still produce a build that throws at runtime on the first request. Reason: session 1.4 verified both — `astro check` and `astro build` — for the AppLayout + Navigation components; both passed cleanly.
+
+---
+trigger: "validating base64 payloads with a regex in Node.js (especially for large inputs)"
+scope: skill
+confidence: 1
+last-used: 2026-08-12
+status: quarantine
+
+---
+
+Before validating a base64 payload with `RegExp.test()`, check whether the input string can exceed ~5MB. Node's V8 regex engine triggers `RangeError: Maximum call stack size exceeded` on very long strings. Use an O(n) manual char-code walk instead (check each char is `[A-Za-z0-9+/=]`, `=` padding only at end, length divisible by 4). Reason: story 5.1 — `BASE64_PAYLOAD_PATTERN = /^(?:[A-Za-z0-9+/]{4})*...$/` stack-overflows on a 7MB string (6MB decoded photo). Replaced with `isValidBase64Payload()` using a char-code loop; all tests passed, no more stack overflow.
+
+**How to apply:** When a validation function needs to check character sets on user-provided strings that could be large (base64, hex, URL-safe strings), use a manual loop instead of a regex. If the regex uses quantifiers (`{4}`, `+`, `*`) on character classes, it's particularly vulnerable to catastrophic backtracking / stack overflow on long inputs.
+
+---
+trigger: "Node.js `Buffer.from(s, 'base64')` silently drops invalid characters"
+scope: skill
+confidence: 1
+last-used: 2026-08-12
+status: quarantine
+
+---
+
+When validating base64 before decoding, do NOT rely on `Buffer.from(s, 'base64')` to reject invalid characters — Node silently drops them and returns a valid-looking (but wrong) buffer. Validate the alphabet explicitly BEFORE decoding. Reason: story 5.1 — test input `'!!!not-base64!!!'` was decoded to a 9-byte buffer (lenient) instead of failing. The endpoint returned 500 (internal error) instead of the intended 400 (malformed base64). Fixed by adding `isValidBase64Payload()` with explicit alphabet + length checks BEFORE the `Buffer.from()` call.
+
+**How to apply:** Whenever decoding base64 (or any format where `Buffer.from(s, encoding)` is lenient), always validate the input format BEFORE calling `Buffer.from()`. This applies to base64, hex, and other encodings where Node's `Buffer` constructor is permissive by design.
