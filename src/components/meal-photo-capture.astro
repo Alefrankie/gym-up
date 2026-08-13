@@ -1,0 +1,229 @@
+---
+// src/components/meal-photo-capture.astro
+//
+// Story 5.2 — Meal photo capture. Client-side flow:
+//   file → validate → compress (1024 px JPEG 0.85) → base64 →
+//   POST /api/nutrition/analyze (JSON) → CustomEvent on success.
+//
+// Captures via file input + `capture="environment"` (mobile camera).
+// Failure messages are pinned to analyze-meal.flow.md.
+
+import { compressImage } from '@/lib/contexts/nutrition/application/compress-image';
+
+---
+
+<div class="nutrition-capture" data-test-id="nutrition-capture">
+  <label class="nutrition-capture-label" for="nutrition-photo-input">
+    Foto de comida (jpg, png, webp · máx 5 MB)
+  </label>
+
+  <input
+    id="nutrition-photo-input"
+    data-test-id="nutrition-photo-input"
+    class="nutrition-capture-input"
+    type="file"
+    name="photo"
+    accept="image/jpeg,image/png,image/webp"
+    capture="environment"
+    required
+  />
+
+  <button
+    data-test-id="nutrition-analyze-btn"
+    class="nutrition-capture-btn"
+    type="button"
+  >
+    Analizar comida
+  </button>
+
+  <div
+    data-test-id="nutrition-capture-status"
+    class="nutrition-capture-status"
+    role="status"
+    aria-live="polite"
+    hidden
+  ></div>
+</div>
+
+<script>
+  import { compressImage } from '@/lib/contexts/nutrition/application/compress-image';
+  import {
+    mapAnalyzeErrorToMessage,
+  } from '@/lib/contexts/nutrition/application/nutrition-page-helpers';
+
+  type StatusKind = 'idle' | 'compressing' | 'analyzing' | 'success' | 'error';
+
+  function setStatus(el: HTMLElement | null, kind: StatusKind, message: string): void {
+    if (!el) return;
+    el.dataset.kind = kind;
+    el.textContent = message;
+    el.hidden = false;
+  }
+
+  function hideStatus(el: HTMLElement | null): void {
+    if (!el) return;
+    el.dataset.kind = 'idle';
+    el.textContent = '';
+    el.hidden = true;
+  }
+
+  async function fileToBase64(file: File): Promise<{ format: string; base64: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const value = String(reader.result ?? '');
+        // Strip the data-URL prefix ("data:image/jpeg;base64,") if present.
+        const payload = value.includes(',') ? value.split(',')[1] ?? '' : value;
+        const mime = file.type.toLowerCase();
+        const format =
+          mime.includes('png')
+            ? 'png'
+            : mime.includes('webp')
+              ? 'webp'
+              : 'jpg';
+
+        resolve({ format, base64: payload });
+      };
+      reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function init(): void {
+    const root = document.querySelector<HTMLElement>('[data-test-id="nutrition-capture"]');
+    if (!root) return;
+
+    const fileInput = root.querySelector<HTMLInputElement>('[data-test-id="nutrition-photo-input"]');
+    const analyzeBtn = root.querySelector<HTMLButtonElement>('[data-test-id="nutrition-analyze-btn"]');
+    const statusEl = root.querySelector<HTMLElement>('[data-test-id="nutrition-capture-status"]');
+    if (!fileInput || !analyzeBtn || !statusEl) return;
+
+    analyzeBtn.addEventListener('click', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) {
+        setStatus(statusEl, 'error', 'Elegí una foto de comida primero.');
+        return;
+      }
+
+      analyzeBtn.disabled = true;
+      try {
+        setStatus(statusEl, 'compressing', 'Comprimiendo…');
+        const compressed = await compressImage(file, { maxDimension: 1024 });
+        const { format, base64 } = await fileToBase64(compressed);
+
+        setStatus(statusEl, 'analyzing', 'Analyzing your meal…');
+        const res = await fetch('/api/nutrition/analyze', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ format, imageBase64: base64 }),
+        });
+
+        const body = await res.json().catch(() => ({}));
+        const errorBody = body as { code?: string; reason?: string; error?: string } | undefined;
+
+        if (!res.ok) {
+          const code = errorBody?.code ?? 'INTERNAL';
+          const reason = errorBody?.reason;
+          const msg = mapAnalyzeErrorToMessage(code as Parameters<typeof mapAnalyzeErrorToMessage>[0], reason);
+          setStatus(statusEl, 'error', msg);
+          return;
+        }
+
+        setStatus(statusEl, 'success', 'Análisis listo.');
+        document.dispatchEvent(
+          new CustomEvent('nutrition:analyzed', { detail: body }),
+        );
+      } catch (err) {
+        const msg = mapAnalyzeErrorToMessage('NETWORK');
+        setStatus(statusEl, 'error', msg);
+      } finally {
+        analyzeBtn.disabled = false;
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+  .nutrition-capture {
+    display: grid;
+    gap: 0.65rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .nutrition-capture-label {
+    font-family: 'Oswald', sans-serif;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .nutrition-capture-input {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+
+  .nutrition-capture-input:focus-visible {
+    outline: 2px solid #ff4d4d;
+    outline-offset: 2px;
+  }
+
+  .nutrition-capture-btn {
+    justify-self: start;
+    background: #ff4d4d;
+    color: #fff;
+    padding: 0.6rem 1.4rem;
+    border: none;
+    border-radius: 0.55rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+
+  .nutrition-capture-btn:hover:not(:disabled) {
+    background: #e63946;
+  }
+
+  .nutrition-capture-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .nutrition-capture-status {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .nutrition-capture-status[data-kind='error'] {
+    background: rgba(255, 77, 77, 0.15);
+    color: #ffb4b4;
+  }
+
+  .nutrition-capture-status[data-kind='success'] {
+    background: rgba(0, 212, 255, 0.15);
+    color: #b8efff;
+  }
+</style>

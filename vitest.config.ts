@@ -11,5 +11,9 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['tests/**/*.test.ts'],
+    // Default to node (all existing tests assume Node Request/Response).
+    // New UI-level tests opt in per-file with:
+    //   // @vitest-environment happy-dom
+    environment: 'node',
   },
 });

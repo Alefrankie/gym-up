@@ -1,0 +1,580 @@
+---
+// src/components/nutrition-result.astro
+//
+// Story 5.2 — AI analysis result display + per-item edit modal.
+//
+// Renders the AI-provided totals and the list of food_items. Editing
+// is triggered via a modal dialog that allows name + 4 macro overrides.
+// The component emits `nutrition:edited` after every change so the
+// page can track `user_edited` state and render downstream behavior
+// (save button in story 5.3, etc.).
+
+import type { FoodItem } from '@/lib/contexts/nutrition/domain/nutrition.types';
+
+interface Props {
+  result?: {
+    total_calories: number;
+    total_protein: number;
+    total_carbs: number;
+    total_fat: number;
+    food_items: FoodItem[];
+  };
+}
+
+const { result } = Astro.props;
+---
+
+{result ? (
+  <section class="nutrition-result" data-test-id="nutrition-result" aria-label="Resultado del análisis de comida">
+    <h2 class="nutrition-result-title">Resultado</h2>
+
+    <div class="nutrition-totals" data-test-id="nutrition-totals">
+      <p class="nutrition-totals-calories">
+        <strong data-test-id="nutrition-total-calories">{result.total_calories}</strong> kcal
+      </p>
+      <div class="nutrition-totals-macros">
+        <span data-test-id="nutrition-total-protein">Proteína: {result.total_protein} g</span>
+        <span data-test-id="nutrition-total-carbs">Carbos: {result.total_carbs} g</span>
+        <span data-test-id="nutrition-total-fat">Grasa: {result.total_fat} g</span>
+      </div>
+    </div>
+
+    <div class="nutrition-items" data-test-id="nutrition-items">
+      {result.food_items.map((item, i) => (
+        <div
+          class="nutrition-item"
+          data-test-id={`nutrition-item-${i}`}
+          data-index={i}
+          data-name={item.name}
+          data-calories={item.estimated_calories}
+          data-protein={item.estimated_protein}
+          data-carbs={item.estimated_carbs}
+          data-fat={item.estimated_fat}
+        >
+          <div class="nutrition-item-info">
+            <span class="nutrition-item-name">{item.name}</span>
+            <span class="nutrition-item-estimate">{item.estimated_calories} kcal</span>
+          </div>
+          <button
+            type="button"
+            class="nutrition-item-edit"
+            data-test-id={`nutrition-edit-${i}`}
+            data-index={i}
+          >
+            ✏️ Editar
+          </button>
+        </div>
+      ))}
+    </div>
+  </section>
+) : null}
+
+<dialog
+  class="nutrition-edit-modal"
+  data-test-id="nutrition-edit-modal"
+  aria-label="Editar alimento"
+>
+  <form class="nutrition-edit-form" data-test-id="nutrition-edit-form" method="dialog">
+    <h3>Editar alimento</h3>
+    <input type="hidden" data-test-id="nutrition-edit-index" />
+
+    <label class="nutrition-edit-label">
+      Nombre
+      <input
+        data-test-id="nutrition-edit-name"
+        class="nutrition-edit-input"
+        type="text"
+        name="name"
+        required
+      />
+    </label>
+
+    <label class="nutrition-edit-label">
+      Calorías (kcal)
+      <input
+        data-test-id="nutrition-edit-calories"
+        class="nutrition-edit-input"
+        type="number"
+        name="calories"
+        min="0"
+        step="1"
+        required
+      />
+    </label>
+
+    <label class="nutrition-edit-label">
+      Proteína (g)
+      <input
+        data-test-id="nutrition-edit-protein"
+        class="nutrition-edit-input"
+        type="number"
+        name="protein"
+        min="0"
+        step="1"
+        required
+      />
+    </label>
+
+    <label class="nutrition-edit-label">
+      Carbos (g)
+      <input
+        data-test-id="nutrition-edit-carbs"
+        class="nutrition-edit-input"
+        type="number"
+        name="carbs"
+        min="0"
+        step="1"
+        required
+      />
+    </label>
+
+    <label class="nutrition-edit-label">
+      Grasa (g)
+      <input
+        data-test-id="nutrition-edit-fat"
+        class="nutrition-edit-input"
+        type="number"
+        name="fat"
+        min="0"
+        step="1"
+        required
+      />
+    </label>
+
+    <div class="nutrition-edit-actions">
+      <button
+        data-test-id="nutrition-edit-cancel"
+        class="nutrition-edit-cancel"
+        type="button"
+      >
+        Cancelar
+      </button>
+      <button
+        data-test-id="nutrition-edit-save"
+        class="nutrition-edit-save"
+        type="submit"
+      >
+        Guardar cambios
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  import {
+    recalculateTotals,
+    applyFoodItemEdit,
+    detectUserEdited,
+  } from '@/lib/contexts/nutrition/application/nutrition-page-helpers';
+  import type { FoodItem } from '@/lib/contexts/nutrition/domain/nutrition.types';
+
+  let state = {
+    items: [] as FoodItem[],
+    originalItems: [] as FoodItem[],
+    userEdited: false,
+  };
+  let returnFocusEl: HTMLElement | null = null;
+
+  /** Escape HTML entities to prevent XSS when injecting into innerHTML. */
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function readItemsFromDOM(): FoodItem[] {
+    const nodes = document.querySelectorAll<HTMLElement>('[data-test-id^="nutrition-item-"]');
+    const items: FoodItem[] = [];
+    nodes.forEach((node) => {
+      items.push({
+        name: String(node.dataset.name ?? ''),
+        estimated_calories: Number(node.dataset.calories ?? 0),
+        estimated_protein: Number(node.dataset.protein ?? 0),
+        estimated_carbs: Number(node.dataset.carbs ?? 0),
+        estimated_fat: Number(node.dataset.fat ?? 0),
+      });
+    });
+    return items;
+  }
+
+  function renderTotals(): void {
+    const totalEl = document.querySelector<HTMLElement>('[data-test-id="nutrition-total-calories"]');
+    const proteinEl = document.querySelector<HTMLElement>('[data-test-id="nutrition-total-protein"]');
+    const carbsEl = document.querySelector<HTMLElement>('[data-test-id="nutrition-total-carbs"]');
+    const fatEl = document.querySelector<HTMLElement>('[data-test-id="nutrition-total-fat"]');
+
+    const t = recalculateTotals(state.items);
+    if (totalEl) totalEl.textContent = String(t.total_calories);
+    if (proteinEl) proteinEl.textContent = `Proteína: ${t.total_protein} g`;
+    if (carbsEl) carbsEl.textContent = `Carbos: ${t.total_carbs} g`;
+    if (fatEl) fatEl.textContent = `Grasa: ${t.total_fat} g`;
+  }
+
+  function renderItems(): void {
+    const container = document.querySelector<HTMLElement>('[data-test-id="nutrition-items"]');
+    if (!container) return;
+
+    container.innerHTML = state.items
+      .map(
+        (item, i) => `
+          <div class="nutrition-item"
+               data-test-id="nutrition-item-${i}"
+               data-index="${i}"
+               data-name="${escapeHtml(item.name)}"
+               data-calories="${item.estimated_calories}"
+               data-protein="${item.estimated_protein}"
+               data-carbs="${item.estimated_carbs}"
+               data-fat="${item.estimated_fat}">
+            <div class="nutrition-item-info">
+              <span class="nutrition-item-name">${escapeHtml(item.name)}</span>
+              <span class="nutrition-item-estimate">${item.estimated_calories} kcal</span>
+            </div>
+            <button type="button"
+                    class="nutrition-item-edit"
+                    data-test-id="nutrition-edit-${i}"
+                    data-index="${i}">
+              ✏️ Editar
+            </button>
+          </div>
+        `,
+      )
+      .join('');
+
+    bindItemEditButtons();
+  }
+
+  function bindItemEditButtons(): void {
+    const buttons = document.querySelectorAll<HTMLButtonElement>('[data-test-id^="nutrition-edit-"]');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        returnFocusEl = btn;
+        openEditModal(Number(btn.dataset.index));
+      });
+    });
+  }
+
+  function openEditModal(index: number): void {
+    const modal = document.querySelector<HTMLDialogElement>('[data-test-id="nutrition-edit-modal"]');
+    const indexInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-index"]');
+    const nameInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-name"]');
+    const caloriesInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-calories"]');
+    const proteinInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-protein"]');
+    const carbsInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-carbs"]');
+    const fatInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-fat"]');
+    if (!modal || !indexInput || !nameInput || !caloriesInput || !proteinInput || !carbsInput || !fatInput) return;
+
+    const item = state.items[index];
+    if (!item) return;
+
+    indexInput.value = String(index);
+    nameInput.value = item.name;
+    caloriesInput.value = String(item.estimated_calories);
+    proteinInput.value = String(item.estimated_protein);
+    carbsInput.value = String(item.estimated_carbs);
+    fatInput.value = String(item.estimated_fat);
+
+    if (!modal.open) modal.showModal();
+  }
+
+  function closeModal(): void {
+    const modal = document.querySelector<HTMLDialogElement>('[data-test-id="nutrition-edit-modal"]');
+    if (modal?.open) modal.close();
+    returnFocusEl?.focus();
+    returnFocusEl = null;
+  }
+
+  function persistChanges(): void {
+    state.userEdited = detectUserEdited(state.items, state.originalItems);
+    renderTotals();
+    renderItems();
+
+    document.dispatchEvent(
+      new CustomEvent('nutrition:edited', {
+        detail: {
+          result: {
+            ...recalculateTotals(state.items),
+            food_items: state.items,
+          },
+          user_edited: state.userEdited,
+        },
+      }),
+    );
+  }
+
+  function handleSave(): void {
+    const indexInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-index"]');
+    const nameInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-name"]');
+    const caloriesInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-calories"]');
+    const proteinInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-protein"]');
+    const carbsInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-carbs"]');
+    const fatInput = document.querySelector<HTMLInputElement>('[data-test-id="nutrition-edit-fat"]');
+    if (!indexInput || !nameInput || !caloriesInput || !proteinInput || !carbsInput || !fatInput) return;
+
+    const index = Number(indexInput.value);
+    const edits = {
+      name: nameInput.value.trim(),
+      estimated_calories: Number(caloriesInput.value ?? 0),
+      estimated_protein: Number(proteinInput.value ?? 0),
+      estimated_carbs: Number(carbsInput.value ?? 0),
+      estimated_fat: Number(fatInput.value ?? 0),
+    };
+
+    state.items = applyFoodItemEdit(state.items, index, edits);
+    persistChanges();
+    closeModal();
+  }
+
+  function init(): void {
+    // Look for the page-level result section (always present) OR the
+    // component's own section (only present when result prop is passed).
+    const section =
+      document.querySelector<HTMLElement>('[data-test-id="nutrition-result-section"]') ??
+      document.querySelector<HTMLElement>('[data-test-id="nutrition-result"]');
+    if (!section) return;
+
+    state.items = readItemsFromDOM();
+    state.originalItems = [...state.items];
+    state.userEdited = false;
+
+    bindItemEditButtons();
+
+    const modal = document.querySelector<HTMLDialogElement>('[data-test-id="nutrition-edit-modal"]');
+    const cancelBtn = document.querySelector<HTMLButtonElement>('[data-test-id="nutrition-edit-cancel"]');
+    const saveBtn = document.querySelector<HTMLButtonElement>('[data-test-id="nutrition-edit-save"]');
+    const form = document.querySelector<HTMLFormElement>('[data-test-id="nutrition-edit-form"]');
+
+    cancelBtn?.addEventListener('click', () => closeModal());
+    modal?.addEventListener('cancel', () => closeModal());
+    modal?.addEventListener('click', (e) => {
+      const rect = modal.getBoundingClientRect();
+      const outsideDialog =
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom;
+      if (outsideDialog) closeModal();
+    });
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSave();
+    });
+    modal?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const focusable = modal.querySelectorAll<HTMLElement>(
+        'input, button:not([disabled])',
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+
+    document.addEventListener('nutrition:analyzed', ((e: CustomEvent) => {
+      // The endpoint returns { result: AIAnalysisResult, rawResponse: null }
+      // where AIAnalysisResult = { total_calories, total_protein, ..., food_items: FoodItem[] }
+      const analysisResult = e.detail?.result;
+      const items: FoodItem[] = analysisResult?.food_items;
+      if (!items || !items.length) return;
+
+      // If the result section doesn't exist yet (no initial prop), create it.
+      let resultSection = document.querySelector<HTMLElement>('[data-test-id="nutrition-result"]');
+      if (!resultSection) {
+        const wrapper = document.querySelector<HTMLElement>('[data-test-id="nutrition-result-section"]');
+        if (wrapper) {
+          wrapper.innerHTML = `
+            <section class="nutrition-result" data-test-id="nutrition-result" aria-label="Resultado del análisis de comida">
+              <h2 class="nutrition-result-title">Resultado</h2>
+              <div class="nutrition-totals" data-test-id="nutrition-totals">
+                <p class="nutrition-totals-calories">
+                  <strong data-test-id="nutrition-total-calories">0</strong> kcal
+                </p>
+                <div class="nutrition-totals-macros">
+                  <span data-test-id="nutrition-total-protein">Proteína: 0 g</span>
+                  <span data-test-id="nutrition-total-carbs">Carbos: 0 g</span>
+                  <span data-test-id="nutrition-total-fat">Grasa: 0 g</span>
+                </div>
+              </div>
+              <div class="nutrition-items" data-test-id="nutrition-items"></div>
+            </section>
+          `;
+          resultSection = wrapper.querySelector('[data-test-id="nutrition-result"]');
+        }
+      }
+
+      state.items = items;
+      state.originalItems = [...items];
+      state.userEdited = false;
+
+      persistChanges();
+    }) as EventListener);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+  .nutrition-result {
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+  }
+
+  .nutrition-result-title {
+    font-family: 'Oswald', sans-serif;
+    color: #fff;
+    margin: 0 0 0.75rem 0;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .nutrition-totals {
+    margin-bottom: 1rem;
+  }
+
+  .nutrition-totals-calories {
+    font-family: 'Oswald', sans-serif;
+    color: #fff;
+    font-size: 1.6rem;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .nutrition-totals-macros {
+    display: flex;
+    gap: 1rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+  }
+
+  .nutrition-items {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .nutrition-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 0.85rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+  }
+
+  .nutrition-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .nutrition-item-name {
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nutrition-item-estimate {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+  }
+
+  .nutrition-item-edit {
+    background: rgba(255, 77, 77, 0.18);
+    color: #ffb4b4;
+    border: 1px solid rgba(255, 77, 77, 0.45);
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+  }
+
+  .nutrition-item-edit:hover:not(:disabled) {
+    filter: brightness(1.15);
+  }
+
+  /* Dialog modal */
+  .nutrition-edit-modal {
+    width: min(90vw, 620px);
+    max-width: none;
+    background: #12121a;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+
+  .nutrition-edit-modal::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+  }
+
+  .nutrition-edit-form {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .nutrition-edit-label {
+    display: grid;
+    gap: 0.35rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+  }
+
+  .nutrition-edit-input {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    color: #fff;
+    font-family: inherit;
+  }
+
+  .nutrition-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .nutrition-edit-cancel,
+  .nutrition-edit-save {
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .nutrition-edit-save {
+    background: #ff4d4d;
+    border-color: rgba(255, 77, 77, 0.65);
+  }
+
+  .nutrition-edit-save:hover {
+    background: #e63946;
+  }
+</style>

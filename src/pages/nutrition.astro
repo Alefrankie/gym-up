@@ -1,0 +1,69 @@
+---
+// src/pages/nutrition.astro
+//
+// Story 5.2 — Nutrition page (photo capture → AI analysis → result/edit).
+// Auth gate mirrors photos.astro. No Save button yet — that lands in
+// story 5.3 once nutrition_entries persistence is ready.
+
+import AppLayout from '../layouts/app-layout.astro';
+import MealPhotoCapture from '../components/meal-photo-capture.astro';
+import NutritionResult from '../components/nutrition-result.astro';
+import { getAuthService } from '../lib/contexts/auth/auth.composition';
+import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+
+const sessionId = getSessionIdFromRequest(Astro.request);
+if (!sessionId) {
+  return Astro.redirect('/login');
+}
+
+const user = await getAuthService().getCurrentUser(sessionId);
+if (!user) {
+  return Astro.redirect('/login');
+}
+---
+
+<AppLayout title="Nutrition — Gym Up">
+  <div class="nutrition-page">
+    <header class="nutrition-page-header">
+      <h1>Nutrition</h1>
+      <p class="nutrition-page-subtitle">
+        Sacale foto a tu comida y recibí una estimación de calorías y macros.
+      </p>
+    </header>
+
+    <MealPhotoCapture />
+
+    <section class="nutrition-page-result" data-test-id="nutrition-result-section" aria-label="Resultado del análisis">
+      <NutritionResult />
+    </section>
+  </div>
+</AppLayout>
+
+<style>
+  .nutrition-page {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .nutrition-page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .nutrition-page-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.4rem 0;
+  }
+
+  .nutrition-page-subtitle {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.95rem;
+  }
+
+  .nutrition-page-result {
+    margin-top: 1rem;
+  }
+</style>
