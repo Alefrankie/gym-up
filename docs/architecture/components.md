@@ -43,6 +43,7 @@ All component filenames are **kebab-case**, regardless of framework. Do not use 
 | 📋 | History | `/history` |
 | 📊 | Progress | `/progress` |
 | 📷 | Photos | `/photos` |
+| 🥗 | Nutrition | `/nutrition` |
 | 👥 | Family | `/family` |
 | ⚙️ | Settings | `/settings` |
 

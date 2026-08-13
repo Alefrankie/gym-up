@@ -21,11 +21,11 @@ export const PhotoRules = {
 export const AIAnalysisRules = {
   /** 30-second timeout, per FR-NA-004. */
   TimeoutMs: 30_000,
-  /** Gemini model — pinned by ADR-014. */
-  DefaultModel: 'gemini-2.5-flash',
-  /** Gemini REST endpoint template (model is injected). */
+  /** Gemini model — gemini-3.5-flash (gemini-2.5-flash deprecated for new users per ADR-014). */
+  DefaultModel: 'gemini-3.5-flash',
+  /** Gemini REST endpoint template (model is injected). Uses v1beta. */
   GeminiEndpoint:
-    'https://generativelanguage.googleapis.com/v1/models/{model}:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
 } as const;
 
 /**

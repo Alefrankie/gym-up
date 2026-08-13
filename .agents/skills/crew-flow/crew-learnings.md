@@ -441,3 +441,35 @@ status: quarantine
 When validating base64 before decoding, do NOT rely on `Buffer.from(s, 'base64')` to reject invalid characters — Node silently drops them and returns a valid-looking (but wrong) buffer. Validate the alphabet explicitly BEFORE decoding. Reason: story 5.1 — test input `'!!!not-base64!!!'` was decoded to a 9-byte buffer (lenient) instead of failing. The endpoint returned 500 (internal error) instead of the intended 400 (malformed base64). Fixed by adding `isValidBase64Payload()` with explicit alphabet + length checks BEFORE the `Buffer.from()` call.
 
 **How to apply:** Whenever decoding base64 (or any format where `Buffer.from(s, encoding)` is lenient), always validate the input format BEFORE calling `Buffer.from()`. This applies to base64, hex, and other encodings where Node's `Buffer` constructor is permissive by design.
+
+---
+
+trigger: "before rendering AI-generated or user content in innerHTML"
+scope: skill
+confidence: 1
+last-used: 2026-08-14
+status: quarantine
+
+---
+
+Always escape HTML entities (`<`, `>`, `&`, `\"`, `'`) before interpolating dynamic content into `innerHTML`. This applies to AI-generated text (food item names, descriptions), user input, and any data from external APIs. Use a dedicated `escapeHtml()` helper; never rely on the source being "safe".
+
+**Why:** Story 5.2 — `nutrition-result.astro` rendered AI food item names in innerHTML without escaping. A malicious AI response containing `<img onerror="alert(1)">` would execute arbitrary JS. Caught by Fely QA, patched with `escapeHtml()`.
+
+**How to apply:** Before any `innerHTML = ...` that includes a dynamic string from AI/user/API: (1) add an `escapeHtml` helper, (2) wrap every dynamic interpolation in it, (3) verify the test suite has at least one case with a `<` in the input string.
+
+---
+
+trigger: "when extracting a shared helper from an existing component"
+scope: skill
+confidence: 1
+last-used: 2026-08-14
+status: quarantine
+
+---
+
+When extracting a function from one component into a shared module, identify every hardcoded constant that differs between the source and future consumers and make it a parameter from day one (options object with defaults). Do not hardcode the source component's values as the shared default and expect consumers to override later — this creates invisible coupling.
+
+**Why:** Story 5.2 — `compressImage` was extracted from `photo-upload.astro` (1280 px) into a shared helper. The default was set to 1024 px per the nutrition flow, and `photo-upload.astro` had to override via `{ maxDimension: 1280 }`. This worked because the options object was designed upfront, but the 1280 vs 1024 divergence was only discovered during gap analysis — had the helper been designed without the options pattern, the refactor would have been blocked.
+
+**How to apply:** Before writing `export function sharedHelper(...)`, list every constant in the source that another consumer might want different. If ≥ 1 such constant exists, take an options object as the second parameter with defaults matching the primary consumer. This keeps the helper testable and avoids silent coupling.

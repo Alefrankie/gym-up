@@ -67,10 +67,12 @@ const { workoutId = null } = Astro.props;
 
 <script>
   // Vanilla client-side handling — no React island required.
-  // Compresses to max 1280px wide / 0.85 quality via canvas re-encode,
-  // then submits the FormData. Status text is announced via aria-live.
-  const MAX_DIMENSION = 1280;
-  const JPEG_QUALITY = 0.85;
+  // Compresses via canvas re-encode using the shared nutrition helper
+  // (also used by meal-photo-capture.astro). Photo upload keeps its
+  // own 1280px max dimension — different from nutrition's 1024px flow.
+  import { compressImage } from '@/lib/contexts/nutrition/application/compress-image';
+
+  const PHOTO_MAX_DIMENSION = 1280;
 
   type StatusKind = 'idle' | 'compressing' | 'uploading' | 'success' | 'error';
 
@@ -88,48 +90,6 @@ const { workoutId = null } = Astro.props;
     statusEl.hidden = true;
     statusEl.textContent = '';
     statusEl.dataset.kind = 'idle';
-  }
-
-  async function compressImage(file: File): Promise<File> {
-    if (file.size <= 1024 * 1024) {
-      // Skip compression for files already ≤ 1MB.
-      return file;
-    }
-    const bitmap = await createImageBitmap(file).catch(() => null);
-    if (!bitmap) return file;
-
-    const { width, height } = scaleDimensions(bitmap.width, bitmap.height, MAX_DIMENSION);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
-    ctx.drawImage(bitmap, 0, 0, width, height);
-    bitmap.close?.();
-
-    const blob = await new Promise<Blob | null>((resolveBlob) =>
-      canvas.toBlob((b) => resolveBlob(b), 'image/jpeg', JPEG_QUALITY),
-    );
-    if (!blob) return file;
-
-    const name = replaceExtension(file.name, 'jpg');
-    return new File([blob], name, { type: 'image/jpeg' });
-  }
-
-  function scaleDimensions(
-    w: number,
-    h: number,
-    max: number,
-  ): { width: number; height: number } {
-    if (w <= max && h <= max) return { width: w, height: h };
-    const ratio = w > h ? max / w : max / h;
-    return { width: Math.round(w * ratio), height: Math.round(h * ratio) };
-  }
-
-  function replaceExtension(filename: string, ext: string): string {
-    const dot = filename.lastIndexOf('.');
-    const base = dot >= 0 ? filename.slice(0, dot) : filename;
-    return `${base}.${ext}`;
   }
 
   function init(): void {
@@ -150,7 +110,7 @@ const { workoutId = null } = Astro.props;
       submitBtn.disabled = true;
       try {
         setStatus(statusEl, 'compressing', 'Comprimiendo…');
-        const compressed = await compressImage(file);
+        const compressed = await compressImage(file, { maxDimension: PHOTO_MAX_DIMENSION });
 
         setStatus(statusEl, 'uploading', 'Subiendo…');
         const formData = new FormData();

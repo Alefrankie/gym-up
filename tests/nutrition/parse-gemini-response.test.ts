@@ -248,4 +248,97 @@ describe('parseGeminiResponse', () => {
       expect(() => parseGeminiResponse(null)).toThrow(AIUnrecognizedFoodError);
     });
   });
+
+  describe('markdown code block stripping', () => {
+    it('strips ```json fences and parses the inner JSON', () => {
+      const geminiResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: '```json\n' + JSON.stringify({
+                    total_calories: 400,
+                    total_protein: 25,
+                    total_carbs: 50,
+                    total_fat: 10,
+                    food_items: [
+                      { name: 'Pasta', estimated_calories: 400, estimated_protein: 25, estimated_carbs: 50, estimated_fat: 10 },
+                    ],
+                  }) + '\n```',
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      const result = parseGeminiResponse(geminiResponse);
+      expect(result.total_calories).toBe(400);
+      expect(result.food_items[0].name).toBe('Pasta');
+    });
+
+    it('strips ``` fences (no language tag) and parses the inner JSON', () => {
+      const inner = JSON.stringify({
+        total_calories: 200,
+        total_protein: 10,
+        total_carbs: 30,
+        total_fat: 5,
+        food_items: [
+          { name: 'Salad', estimated_calories: 200, estimated_protein: 10, estimated_carbs: 30, estimated_fat: 5 },
+        ],
+      });
+      const geminiResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: '```\n' + inner + '\n```' }],
+            },
+          },
+        ],
+      };
+
+      const result = parseGeminiResponse(geminiResponse);
+      expect(result.food_items).toHaveLength(1);
+    });
+
+    it('handles text before/after the code fence (extracts the fenced block)', () => {
+      const inner = JSON.stringify({
+        total_calories: 150,
+        total_protein: 8,
+        total_carbs: 20,
+        total_fat: 3,
+        food_items: [
+          { name: 'Fruit', estimated_calories: 150, estimated_protein: 8, estimated_carbs: 20, estimated_fat: 3 },
+        ],
+      });
+      const geminiResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: 'Here is the analysis:\n```json\n' + inner + '\n```\nDone.' }],
+            },
+          },
+        ],
+      };
+
+      const result = parseGeminiResponse(geminiResponse);
+      expect(result.total_calories).toBe(150);
+    });
+  });
+
+  describe('explicit error response', () => {
+    it('throws AIUnrecognizedFoodError when response has {"error": "unrecognized"}', () => {
+      const bad = {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: JSON.stringify({ error: 'unrecognized' }) }],
+            },
+          },
+        ],
+      };
+      expect(() => parseGeminiResponse(bad)).toThrow(AIUnrecognizedFoodError);
+    });
+  });
 });

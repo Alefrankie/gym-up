@@ -60,7 +60,22 @@ function extractText(outer: OuterEnvelope): string {
   if (typeof firstText !== 'string' || firstText.length === 0) {
     throw new AIUnrecognizedFoodError();
   }
-  return firstText;
+  return stripMarkdownCodeBlocks(firstText);
+}
+
+/**
+ * Strip markdown code fences (```json...``` or ```...```) that Gemini
+ * sometimes wraps around JSON responses. The parser needs raw JSON.
+ * Handles: bare fences, fences with surrounding text, and plain JSON.
+ */
+function stripMarkdownCodeBlocks(text: string): string {
+  const trimmed = text.trim();
+  // Match a fenced code block anywhere in the text (may have surrounding text).
+  const fenceMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (fenceMatch) {
+    return fenceMatch[1].trim();
+  }
+  return trimmed;
 }
 
 // ---------- Step 2: inner JSON parse -----------------------------------
@@ -80,6 +95,11 @@ function validateAndCoerce(value: unknown): AIAnalysisResult {
     throw new AIUnrecognizedFoodError();
   }
   const obj = value as Record<string, unknown>;
+
+  // Handle explicit "unrecognized" response from the model.
+  if (obj.error === 'unrecognized') {
+    throw new AIUnrecognizedFoodError();
+  }
 
   const total_calories = requireNonNegativeNumber(obj.total_calories);
   const total_protein = requireNonNegativeNumber(obj.total_protein);

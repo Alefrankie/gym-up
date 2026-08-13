@@ -112,7 +112,7 @@ describe('GeminiVisionAdapter', () => {
       await adapter.analyzePhoto({ bytes: SAMPLE_BYTES, format: 'jpg' });
 
       const calledUrl = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(String(calledUrl)).toContain('gemini-2.5-flash');
+      expect(String(calledUrl)).toContain('gemini-3.5-flash');
       expect(String(calledUrl)).toContain('test-key');
     });
 

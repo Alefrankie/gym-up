@@ -35,3 +35,14 @@ hardcoded defaults that override caller-provided values. Reason: story 4.2 —
 `SqlitePhotoRepository.create()` hardcoded `extension: 'jpg'` in `buildStoragePath`,
 ignoring the format the caller passed in `input.storagePath`. This silently broke
 PNG/WEBP uploads (files saved as `.jpg`, served with `Content-Type: image/jpeg`).
+
+---
+trigger: "before changing vitest config environment default"
+scope: project
+confidence: 1
+last-used: 2026-08-14
+status: quarantine
+
+---
+
+Before changing `environment` in `vitest.config.ts`, run the full test suite first to confirm existing tests don't dependent on the current environment. Existing tests that use Node-specific APIs (e.g. `Request.json()`, `Buffer`, native fetch) will break silently when switched to `happy-dom` or `jsdom`. If you need a different environment for new tests, use per-file opt-in (`// @vitest-environment happy-dom`) instead of changing the global default. Reason: story 5.2 — changing default to `happy-dom` broke 12 route-handler tests that relied on Node's `Request.json()`.

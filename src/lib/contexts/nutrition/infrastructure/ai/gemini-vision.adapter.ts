@@ -37,7 +37,30 @@ import { parseGeminiResponse } from '../../application/parse-gemini-response';
 const PROVIDER_NAME = 'Gemini Vision';
 const ENV_VAR_NAME = 'GEMINI_API_KEY';
 const PROMPT =
-  'Analyze this food photo. Return JSON with total_calories, total_protein, total_carbs, total_fat, food_items.';
+  `You are a nutrition analysis API. Analyze this food photo and estimate calories and macronutrients.
+
+IMPORTANT: Return ONLY valid JSON, no markdown, no explanation, no code blocks.
+
+Expected JSON schema:
+{
+  "total_calories": <number>,
+  "total_protein": <number in grams>,
+  "total_carbs": <number in grams>,
+  "total_fat": <number in grams>,
+  "food_items": [
+    {
+      "name": "<food item name>",
+      "estimated_calories": <number>,
+      "estimated_protein": <number in grams>,
+      "estimated_carbs": <number in grams>,
+      "estimated_fat": <number in grams>
+    }
+  ]
+}
+
+If you cannot identify the food, return: {"error": "unrecognized"}
+
+Do not include any text outside the JSON object.`;
 
 export interface GeminiVisionAdapterOptions {
   /** Override the model (default: `AIAnalysisRules.DefaultModel`). */
