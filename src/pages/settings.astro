@@ -23,6 +23,11 @@ import {
   InvalidRoutineTypeError,
   InvalidWeightUnitError,
 } from '../lib/contexts/workout-tracking/application/update-profile.use-case';
+import {
+  getSetCalorieGoalUseCase,
+  getNutritionGoalRepository,
+} from '../lib/contexts/nutrition/nutrition.composition';
+import { CalorieGoalRules } from '../lib/contexts/nutrition/domain/nutrition.constants';
 
 // --- Auth gate (same shape as dashboard.astro) ---
 const sessionId = getSessionIdFromRequest(Astro.request);
@@ -64,12 +69,31 @@ if (Astro.request.method === 'POST') {
       }
     }
 
+    // Update profile
     await updateProfileUseCase.execute({
       userId: user.id,
       displayName: patch.displayName,
       routineType: patch.routineType,
       weightUnit: patch.weightUnit,
     });
+
+    // Update calorie goal (story 5.3)
+    const rawGoal = formData.get('dailyCalorieGoal');
+    if (rawGoal != null && rawGoal !== '') {
+      const parsedGoal = Number(rawGoal);
+      if (Number.isFinite(parsedGoal) && parsedGoal > 0) {
+        await getSetCalorieGoalUseCase().execute({
+          userId: user.id,
+          goal: parsedGoal,
+        });
+      }
+    } else {
+      // Empty string means clear the goal
+      await getSetCalorieGoalUseCase().execute({
+        userId: user.id,
+        goal: null,
+      });
+    }
 
     return Astro.redirect('/settings?saved=1');
   } catch (e: unknown) {
@@ -86,6 +110,14 @@ if (Astro.request.method === 'POST') {
       errorMessage = 'Error inesperado al guardar la configuración';
     }
   }
+}
+
+// --- GET path: fetch current calorie goal ---
+let currentGoal: number | null = null;
+if (Astro.request.method === 'GET') {
+  const goalRepo = getNutritionGoalRepository();
+  const goal = await goalRepo.getGoal(user.id);
+  currentGoal = goal?.dailyCalorieGoal ?? null;
 }
 
 // --- Toast trigger (success after PRG redirect) ---
@@ -191,6 +223,29 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
           El peso se guarda internamente en kg (ADR-006). Cambia la unidad
           cuando quieras, sin perder datos.
         </p>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Meta calórica diaria (opcional)</legend>
+        <div class="form-group">
+          <label for="dailyCalorieGoal" class="form-label">Calorías objetivo</label>
+          <input
+            type="number"
+            id="dailyCalorieGoal"
+            name="dailyCalorieGoal"
+            class="form-input"
+            value={currentGoal ?? ''}
+            min={CalorieGoalRules.Min}
+            max={CalorieGoalRules.Max}
+            placeholder="Ej: 2000"
+          />
+          <p class="form-help">
+            {user.routineType === 'hombre'
+              ? `Recomendado para hombres: ~${CalorieGoalRules.RecommendedMale} kcal`
+              : `Recomendado para mujeres: ~${CalorieGoalRules.RecommendedFemale} kcal`}
+            . Dejalo vacío para no mostrar la barra de progreso.
+          </p>
+        </div>
       </fieldset>
 
       <div class="form-actions">

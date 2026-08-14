@@ -3,10 +3,10 @@ story_id: "5.2"
 round: "round-5"
 parent_spec: "../../architecture/contexts/nutrition/readme.md"
 size: "M"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-13"
+completed: "2026-08-13"
+owner: "Julian"
 implements:
   architecture_features: ["nutrition"]
   prd_requirements: ["FR-NA-001", "FR-NA-002", "FR-NA-006", "FR-NA-007"]
@@ -43,8 +43,8 @@ UI for capturing food photos and displaying AI analysis results.
 
 ## Tasks
 
-- [ ] `T5.2-01` - Create `src/components/meal-photo-capture.astro`
-- [ ] `T5.2-02` - Add compression logic
-- [ ] `T5.2-03` - Create `src/components/nutrition-result.astro`
-- [ ] `T5.2-04` - Add edit/adjust functionality
-- [ ] `T5.2-05` - Create nutrition page
+- [x] `T5.2-01` - Create `src/components/meal-photo-capture.astro`
+- [x] `T5.2-02` - Add compression logic
+- [x] `T5.2-03` - Create `src/components/nutrition-result.astro`
+- [x] `T5.2-04` - Add edit/adjust functionality
+- [x] `T5.2-05` - Create nutrition page

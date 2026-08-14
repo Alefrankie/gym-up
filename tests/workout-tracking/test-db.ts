@@ -90,10 +90,29 @@ const DDL = `
     caption TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   );
+  CREATE TABLE nutrition_entries (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    storage_path TEXT NOT NULL,
+    photo_date INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+    total_calories INTEGER NOT NULL DEFAULT 0,
+    total_protein INTEGER NOT NULL DEFAULT 0,
+    total_carbs INTEGER NOT NULL DEFAULT 0,
+    total_fat INTEGER NOT NULL DEFAULT 0,
+    food_items TEXT NOT NULL,
+    ai_raw_response TEXT,
+    user_edited INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  CREATE TABLE nutrition_goals (
+    user_id TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+    daily_calorie_goal INTEGER,
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
 `;
 
 /**
- * Create a fresh in-memory SQLite + Drizzle client with all 8 tables.
+ * Create a fresh in-memory SQLite + Drizzle client with all 10 tables.
  * Caller must `close()` to free the handle (Vitest `afterAll`).
  */
 export function createTestDb(): TestDbHandle {

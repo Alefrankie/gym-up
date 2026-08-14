@@ -15,6 +15,27 @@
       "when": 1785082334825,
       "tag": "0001_demonic_mordo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785168934102,
+      "tag": "0002_auth_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785255345204,
+      "tag": "0003_add_email_password_to_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785341756306,
+      "tag": "0004_nutrition",
+      "breakpoints": true
     }
   ]
 }

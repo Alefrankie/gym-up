@@ -123,3 +123,54 @@ export function mapNutritionError(err: unknown): ErrorMapping {
 export function isPhotoFormat(value: unknown): value is PhotoFormat {
   return value === 'jpg' || value === 'png' || value === 'webp';
 }
+
+// =============================================================
+// Story 5.3 — Save/Goal/History errors
+// =============================================================
+
+/** Photo exceeds 5MB hard limit (defense in depth on server side). */
+export class PhotoSizeExceededError extends NutritionDomainError {
+  readonly code = 'INVALID_INPUT' as const;
+  constructor(public readonly actualBytes: number) {
+    super(`Photo exceeds 5MB (got ${actualBytes} bytes).`);
+    this.name = 'PhotoSizeExceededError';
+  }
+}
+
+/** Photo format not in {jpg, png, webp}. */
+export class UnsupportedPhotoFormatError extends NutritionDomainError {
+  readonly code = 'INVALID_INPUT' as const;
+  constructor(public readonly format: string) {
+    super(`Unsupported photo format: ${format}. Allowed: jpg, png, webp.`);
+    this.name = 'UnsupportedPhotoFormatError';
+  }
+}
+
+/** Nutrition entry data violates domain invariants. */
+export class InvalidNutritionDataError extends NutritionDomainError {
+  readonly code = 'INVALID_INPUT' as const;
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidNutritionDataError';
+  }
+}
+
+/** food_items array is empty (must have >= 1 item). */
+export class EmptyFoodItemsError extends NutritionDomainError {
+  readonly code = 'INVALID_INPUT' as const;
+  constructor() {
+    super('food_items must contain at least 1 item.');
+    this.name = 'EmptyFoodItemsError';
+  }
+}
+
+/** Calorie goal outside allowed range [1, 10000]. */
+export class InvalidCalorieGoalError extends NutritionDomainError {
+  readonly code = 'INVALID_INPUT' as const;
+  constructor(public readonly goal: number | null) {
+    super(
+      `Invalid calorie goal: ${goal}. Must be null or between 1 and 10000.`,
+    );
+    this.name = 'InvalidCalorieGoalError';
+  }
+}

@@ -3,10 +3,10 @@ story_id: "5.3"
 round: "round-5"
 parent_spec: "../../architecture/contexts/nutrition/readme.md"
 size: "M"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-14"
+completed: "2026-08-15"
+owner: "Julian"
 implements:
   architecture_features: ["nutrition"]
   prd_requirements: ["FR-NA-008", "FR-NA-009", "FR-NA-010", "FR-NA-011"]
@@ -41,8 +41,8 @@ Save analyzed meals, show history, daily calorie summary vs goal. Photo blobs ar
 
 ## Tasks
 
-- [ ] `T5.3-01` - Save nutrition entry (local photo + DB record)
-- [ ] `T5.3-02` - Create `src/components/nutrition-history.astro`
-- [ ] `T5.3-03` - Create `src/components/daily-calorie-bar.astro`
-- [ ] `T5.3-04` - Add calorie goal to settings
-- [ ] `T5.3-05` - Add daily summary to dashboard
+- [x] `T5.3-01` - Save nutrition entry (local photo + DB record)
+- [x] `T5.3-02` - Create `src/components/nutrition-history.astro`
+- [x] `T5.3-03` - Create `src/components/daily-calorie-bar.astro`
+- [x] `T5.3-04` - Add calorie goal to settings
+- [x] `T5.3-05` - Add daily summary to dashboard

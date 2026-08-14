@@ -229,3 +229,56 @@ export const sessions = sqliteTable('sessions', {
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+/**
+ * Nutrition entry. Stores one analyzed meal with photo reference and macro breakdown.
+ * Owner-only per ADR-005.
+ *
+ * Round 1: SQLite with local filesystem photo storage.
+ * Round 6: Postgres + Supabase Storage.
+ */
+export const nutritionEntries = sqliteTable('nutrition_entries', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  storagePath: text('storage_path').notNull(),
+  photoDate: integer('photo_date', { mode: 'timestamp_ms' })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+  totalCalories: integer('total_calories').notNull().default(0),
+  totalProtein: integer('total_protein').notNull().default(0),
+  totalCarbs: integer('total_carbs').notNull().default(0),
+  totalFat: integer('total_fat').notNull().default(0),
+  /** JSON-serialized FoodItem[] array. Read with JSON.parse, write with JSON.stringify. */
+  foodItems: text('food_items').notNull(),
+  /** JSON-serialized raw AI provider response. null when not provided. */
+  aiRawResponse: text('ai_raw_response'),
+  userEdited: integer('user_edited', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type NutritionEntry = typeof nutritionEntries.$inferSelect;
+export type NewNutritionEntry = typeof nutritionEntries.$inferInsert;
+
+/**
+ * Nutrition goal. One-to-one with profiles (PK = user_id).
+ * Stores the user's daily calorie target.
+ * null goal means unset (no progress bar shown).
+ */
+export const nutritionGoals = sqliteTable('nutrition_goals', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  dailyCalorieGoal: integer('daily_calorie_goal'),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type NutritionGoal = typeof nutritionGoals.$inferSelect;
+export type NewNutritionGoal = typeof nutritionGoals.$inferInsert;

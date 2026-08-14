@@ -1,0 +1,148 @@
+---
+// src/components/daily-calorie-bar.astro
+//
+// Story 5.3 — Daily calorie progress bar (consumed vs goal).
+// Shows a horizontal bar with color gradient based on percentage consumed.
+
+interface Props {
+  consumed: number;
+  goal: number | null;
+  remaining: number | null;
+}
+
+const { consumed, goal, remaining } = Astro.props;
+
+const percent = goal != null ? Math.min((consumed / goal) * 100, 100) : 0;
+const barColor =
+  percent >= 100
+    ? '#ff4d4d'
+    : percent >= 80
+      ? '#ff9800'
+      : '#4caf50';
+---
+
+<div class="daily-calorie-bar" data-test-id="daily-calorie-bar" aria-label="Resumen calórico diario">
+  {goal == null ? (
+    <div class="daily-calorie-bar-empty" data-test-id="daily-calorie-bar-empty">
+      <p class="daily-calorie-bar-empty-text">
+        Hoy comiste: <strong data-test-id="daily-calorie-consumed">{consumed}</strong> kcal
+      </p>
+      <a href="/settings" class="daily-calorie-bar-goal-link">
+        Configurá tu meta calórica →
+      </a>
+    </div>
+  ) : (
+    <div class="daily-calorie-bar-content">
+      <div class="daily-calorie-bar-header">
+        <span class="daily-calorie-bar-label">Nutrition Today</span>
+        <span class="daily-calorie-bar-ratio" data-test-id="daily-calorie-bar-text">
+          {consumed} / {goal} kcal ({Math.round(percent)}%)
+        </span>
+      </div>
+      <div class="daily-calorie-bar-track">
+        <div
+          class="daily-calorie-bar-fill"
+          data-test-id="daily-calorie-bar-fill"
+          style={`width: ${percent}%; background: ${barColor};`}
+        ></div>
+      </div>
+      {remaining != null && remaining <= 0 ? (
+        <p class="daily-calorie-bar-status daily-calorie-bar-status--over" data-test-id="daily-calorie-bar-status">
+          🎯 ¡Meta alcanzada! {consumed - goal} kcal por encima.
+        </p>
+      ) : remaining != null ? (
+        <p class="daily-calorie-bar-status" data-test-id="daily-calorie-bar-status">
+          Te quedan <strong>{remaining}</strong> kcal para tu meta.
+        </p>
+      ) : null}
+    </div>
+  )}
+</div>
+
+<style>
+  .daily-calorie-bar {
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+  }
+
+  .daily-calorie-bar-empty {
+    text-align: center;
+  }
+
+  .daily-calorie-bar-empty-text {
+    color: rgba(255, 255, 255, 0.65);
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+  }
+
+  .daily-calorie-bar-goal-link {
+    display: inline-block;
+    background: rgba(255, 77, 77, 0.15);
+    color: #ff4d4d;
+    padding: 0.45rem 1rem;
+    border-radius: 0.5rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: background-color 150ms ease;
+  }
+
+  .daily-calorie-bar-goal-link:hover {
+    background: rgba(255, 77, 77, 0.25);
+  }
+
+  .daily-calorie-bar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .daily-calorie-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .daily-calorie-bar-label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .daily-calorie-bar-ratio {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .daily-calorie-bar-track {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .daily-calorie-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 300ms ease, background 300ms ease;
+  }
+
+  .daily-calorie-bar-status {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .daily-calorie-bar-status--over {
+    color: #ff4d4d;
+  }
+</style>
