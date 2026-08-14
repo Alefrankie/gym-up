@@ -1,0 +1,258 @@
+---
+// src/components/nutrition-history.astro
+//
+// Story 5.3 — Nutrition history list with thumbnails.
+// Shows the user's saved nutrition entries (newest first).
+// Empty state: "Todavía no guardaste comidas" with CTA.
+
+interface FoodItem {
+  name: string;
+  estimated_calories: number;
+  estimated_protein: number;
+  estimated_carbs: number;
+  estimated_fat: number;
+}
+
+interface NutritionEntry {
+  id: string;
+  userId: string;
+  storagePath: string;
+  photoDate: number;
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  foodItems: string; // JSON-serialized
+  aiRawResponse: string | null;
+  userEdited: boolean;
+  createdAt: number;
+}
+
+interface Props {
+  entries: NutritionEntry[];
+}
+
+const { entries } = Astro.props;
+
+function formatDate(ts: number): string {
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts * 1000);
+  return d.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function parseFoodItems(jsonStr: string): FoodItem[] {
+  try {
+    return JSON.parse(jsonStr) as FoodItem[];
+  } catch {
+    return [];
+  }
+}
+---
+
+<section class="nutrition-history" data-test-id="nutrition-history" aria-label="Historial de comidas">
+  <h2 class="nutrition-history-title">Historial reciente</h2>
+
+  {entries.length === 0 ? (
+    <div class="nutrition-history-empty" data-test-id="nutrition-history-empty">
+      <p class="nutrition-history-empty-text">
+        Todavía no guardaste comidas.
+      </p>
+      <a href="/nutrition" class="nutrition-history-empty-cta">
+        Analizá tu primera comida →
+      </a>
+    </div>
+  ) : (
+    <div class="nutrition-history-grid" data-test-id="nutrition-history-grid">
+      {entries.map((entry, i) => {
+        const foodItems = parseFoodItems(entry.foodItems);
+        return (
+          <div
+            class="nutrition-history-card"
+            data-test-id={`nutrition-history-item-${i}`}
+          >
+            <img
+              class="nutrition-history-thumb"
+              src={`/nutrition/photo/${entry.id}`}
+              alt={`Foto de comida`}
+              loading="lazy"
+            />
+            <div class="nutrition-history-card-body">
+              <div class="nutrition-history-card-meta">
+                <span class="nutrition-history-card-date">{formatDate(entry.createdAt)}</span>
+                <span class="nutrition-history-card-time">{formatTime(entry.createdAt)}</span>
+                {entry.userEdited ? (
+                  <span class="nutrition-history-edited-badge" data-test-id={`nutrition-history-edited-${i}`}>✏️ Editado</span>
+                ) : null}
+              </div>
+              <div class="nutrition-history-card-totals">
+                <span class="nutrition-history-card-calories">{entry.totalCalories} kcal</span>
+                <span class="nutrition-history-card-macros">
+                  P:{entry.totalProtein}g · C:{entry.totalCarbs}g · G:{entry.totalFat}g
+                </span>
+              </div>
+              <div class="nutrition-history-card-items">
+                {foodItems.slice(0, 3).map((item) => (
+                  <span class="nutrition-history-food-item">{item.name}</span>
+                ))}
+                {foodItems.length > 3 ? (
+                  <span class="nutrition-history-food-more">+{foodItems.length - 3} más</span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</section>
+
+<style>
+  .nutrition-history {
+    margin-top: 2rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+  }
+
+  .nutrition-history-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 1rem 0;
+  }
+
+  .nutrition-history-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+
+  .nutrition-history-empty-text {
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+  }
+
+  .nutrition-history-empty-cta {
+    display: inline-block;
+    background: #ff4d4d;
+    color: #fff;
+    padding: 0.6rem 1.4rem;
+    border: none;
+    border-radius: 0.55rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    transition: background-color 150ms ease;
+  }
+
+  .nutrition-history-empty-cta:hover {
+    background: #e63e3e;
+  }
+
+  .nutrition-history-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .nutrition-history-card {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    align-items: center;
+  }
+
+  .nutrition-history-thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .nutrition-history-card-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .nutrition-history-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .nutrition-history-card-date {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .nutrition-history-card-time {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+  }
+
+  .nutrition-history-edited-badge {
+    font-size: 0.75rem;
+    color: #ff9800;
+    background: rgba(255, 152, 0, 0.15);
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.3rem;
+  }
+
+  .nutrition-history-card-totals {
+    margin-bottom: 0.25rem;
+  }
+
+  .nutrition-history-card-calories {
+    color: #ff4d4d;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-right: 0.5rem;
+  }
+
+  .nutrition-history-card-macros {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+  }
+
+  .nutrition-history-card-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .nutrition-history-food-item {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.3rem;
+  }
+
+  .nutrition-history-food-more {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+  }
+</style>

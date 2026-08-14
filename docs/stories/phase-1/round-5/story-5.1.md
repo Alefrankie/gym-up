@@ -41,8 +41,8 @@ Server-side endpoint that accepts a food photo, sends to AI provider, returns ca
 
 ## Tasks
 
-- [ ] `T5.1-01` - Create server route structure
-- [ ] `T5.1-02` - Integrate AI provider (Gemini or OpenAI)
-- [ ] `T5.1-03` - Parse AI response into structured DTOs
-- [ ] `T5.1-04` - Handle timeout and error cases
-- [ ] `T5.1-05` - Add validation (format, size)
+- [x] `T5.1-01` - Create server route structure
+- [x] `T5.1-02` - Integrate AI provider (Gemini or OpenAI)
+- [x] `T5.1-03` - Parse AI response into structured DTOs
+- [x] `T5.1-04` - Handle timeout and error cases
+- [x] `T5.1-05` - Add validation (format, size)

@@ -4,6 +4,8 @@
 // spec (`docs/architecture/contexts/nutrition/readme.md`) and uses
 // typed literals (per golden-rules: no raw strings).
 
+import type { PhotoFormat } from './nutrition.types';
+
 /**
  * Photo validation rules. The endpoint enforces these BEFORE calling
  * the AI provider (defense in depth — the client should also compress
@@ -82,4 +84,39 @@ function isCanonicalBase64Chars(s: string): boolean {
 
 export function isValidBase64Payload(s: string): boolean {
   return isCanonicalBase64Length(s) && isCanonicalBase64Chars(s);
+}
+
+// =============================================================
+// Story 5.3 — Calorie goal rules
+// =============================================================
+
+/**
+ * Daily calorie goal validation rules.
+ * Goal is optional per FR-NA-010; null = unset.
+ */
+export const CalorieGoalRules = {
+  Min: 1,
+  Max: 10_000,
+  RecommendedFemale: 1800,
+  RecommendedMale: 2500,
+} as const;
+
+// =============================================================
+// Storage path builder for nutrition photos
+// =============================================================
+
+/**
+ * Build the relative storage path for a nutrition photo.
+ * Respects the caller-provided format (NO hardcoded 'jpg').
+ *
+ * Pattern: `{userId}/{timestampMs}.{ext}`
+ *
+ * @see crew-learning: "repository must respect caller-provided derived values"
+ */
+export function buildNutritionStoragePath(
+  userId: string,
+  dateMs: number,
+  format: PhotoFormat,
+): string {
+  return `${userId}/${dateMs}.${format}`;
 }

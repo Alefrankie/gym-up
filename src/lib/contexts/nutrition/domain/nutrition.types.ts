@@ -98,3 +98,62 @@ export const ContentTypes: Readonly<Record<PhotoFormat, string>> = {
   png: 'image/png',
   webp: 'image/webp',
 } as const;
+
+// =============================================================
+// Story 5.3 — Nutrition History + Daily Summary types
+// =============================================================
+
+/**
+ * Persisted nutrition entry. One analyzed meal stored in DB.
+ * `foodItems` is stored as JSON text; `aiRawResponse` may be null.
+ */
+export interface NutritionEntry {
+  id: string;
+  userId: string;
+  storagePath: string;
+  photoDate: Date; // integer({ mode: 'timestamp_ms' }) → Date in Drizzle
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  foodItems: string; // JSON-serialized FoodItem[]
+  aiRawResponse: string | null; // JSON-serialized provider response
+  userEdited: boolean;
+  createdAt: Date; // integer({ mode: 'timestamp' }) → Date in Drizzle
+}
+
+/**
+ * One-to-one with profiles. `dailyCalorieGoal` is null when unset.
+ */
+export interface NutritionGoal {
+  userId: string;
+  dailyCalorieGoal: number | null;
+  updatedAt: Date; // integer({ mode: 'timestamp' }) → Date in Drizzle
+}
+
+/**
+ * Input for creating a nutrition entry (SaveNutritionEntryUseCase).
+ */
+export interface NutritionEntryCreateDTO {
+  userId: string;
+  storagePath: string;
+  photoDate: number; // timestamp_ms
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  foodItems: FoodItem[];
+  aiRawResponse: Record<string, unknown> | null;
+  userEdited: boolean;
+  /** Optional explicit createdAt. Used in tests for deterministic ordering. */
+  createdAt?: Date;
+}
+
+/**
+ * Computed daily calorie summary. Not persisted — derived on read.
+ */
+export interface DailySummary {
+  consumed: number;
+  goal: number | null;
+  remaining: number | null;
+}

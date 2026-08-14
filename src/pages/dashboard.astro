@@ -9,9 +9,11 @@
 // root (ADR-010) — never imports repositories or the DB directly.
 
 import AppLayout from '../layouts/app-layout.astro';
+import DailyCalorieBar from '../components/daily-calorie-bar.astro';
 import { getAuthService } from '../lib/contexts/auth/auth.composition';
 import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
 import { getTodayWorkoutUseCase } from '../lib/contexts/workout-tracking/workout-tracking.composition';
+import { getGetDailyCalorieSummaryUseCase } from '../lib/contexts/nutrition/nutrition.composition';
 import { CardioRules } from '../lib/contexts/workout-tracking/domain/workout-tracking.constants';
 
 // Auth: resolve session + current user.
@@ -45,6 +47,11 @@ const todayResult = await getTodayWorkoutUseCase.execute({
 
 // Cardio banner copy (single source of truth: CardioRules).
 const cardioCopy = `Cardio: Warmup ${CardioRules.MinWarmupMinutes}-${CardioRules.MaxWarmupMinutes} min walk antes · Cooldown ${CardioRules.MinCooldownMinutes}-${CardioRules.MaxCooldownMinutes} min walk después`;
+
+// Daily nutrition summary (story 5.3)
+const dailySummary = await getGetDailyCalorieSummaryUseCase().execute({
+  userId: user.id,
+});
 ---
 
 <AppLayout title="Dashboard — Gym Up">
@@ -129,6 +136,16 @@ const cardioCopy = `Cardio: Warmup ${CardioRules.MinWarmupMinutes}-${CardioRules
         </div>
       </section>
     )}
+
+    {/* Daily calorie summary — story 5.3 */}
+    <section class="dashboard-card dashboard-nutrition" aria-label="Resumen de nutrición diaria">
+      <h2>🥗 Nutrition Today</h2>
+      <DailyCalorieBar
+        consumed={dailySummary.consumed}
+        goal={dailySummary.goal}
+        remaining={dailySummary.remaining}
+      />
+    </section>
   </div>
 </AppLayout>
 

@@ -2,14 +2,15 @@
 // src/pages/nutrition.astro
 //
 // Story 5.2 — Nutrition page (photo capture → AI analysis → result/edit).
-// Auth gate mirrors photos.astro. No Save button yet — that lands in
-// story 5.3 once nutrition_entries persistence is ready.
+// Story 5.3 — Added nutrition history + save flow.
 
 import AppLayout from '../layouts/app-layout.astro';
 import MealPhotoCapture from '../components/meal-photo-capture.astro';
 import NutritionResult from '../components/nutrition-result.astro';
+import NutritionHistory from '../components/nutrition-history.astro';
 import { getAuthService } from '../lib/contexts/auth/auth.composition';
 import { getSessionIdFromRequest } from '../lib/auth/cookie-helpers';
+import { getGetNutritionHistoryUseCase } from '../lib/contexts/nutrition/nutrition.composition';
 
 const sessionId = getSessionIdFromRequest(Astro.request);
 if (!sessionId) {
@@ -20,6 +21,12 @@ const user = await getAuthService().getCurrentUser(sessionId);
 if (!user) {
   return Astro.redirect('/login');
 }
+
+// Fetch nutrition history for the history section
+const historyEntries = await getGetNutritionHistoryUseCase().execute({
+  userId: user.id,
+  limit: 10,
+});
 ---
 
 <AppLayout title="Nutrition — Gym Up">
@@ -36,6 +43,8 @@ if (!user) {
     <section class="nutrition-page-result" data-test-id="nutrition-result-section" aria-label="Resultado del análisis">
       <NutritionResult />
     </section>
+
+    <NutritionHistory entries={historyEntries} />
   </div>
 </AppLayout>
 
