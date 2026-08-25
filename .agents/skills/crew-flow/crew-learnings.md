@@ -83,8 +83,8 @@ Read the original rationale for the guard. If the current fix directly resolves 
 
 trigger: "when writing tests for date-windowed queries (last N days, between dates, etc.)"
 scope: skill
-confidence: 1
-last-used: 2026-08-11
+confidence: 2
+last-used: 2026-08-25
 status: quarantine
 
 ---
@@ -457,6 +457,61 @@ Always escape HTML entities (`<`, `>`, `&`, `\"`, `'`) before interpolating dyna
 **Why:** Story 5.2 — `nutrition-result.astro` rendered AI food item names in innerHTML without escaping. A malicious AI response containing `<img onerror="alert(1)">` would execute arbitrary JS. Caught by Fely QA, patched with `escapeHtml()`.
 
 **How to apply:** Before any `innerHTML = ...` that includes a dynamic string from AI/user/API: (1) add an `escapeHtml` helper, (2) wrap every dynamic interpolation in it, (3) verify the test suite has at least one case with a `<` in the input string.
+
+---
+trigger: "before assuming a Supabase migration is applied to the remote"
+scope: skill
+confidence: 1
+last-used: 2026-08-25
+status: quarantine
+
+---
+
+Before assuming a Supabase migration is applied to the remote project, verify the actual schema with `supabase db query --linked` (list `information_schema.tables` for the target schema). `supabase db push` reporting "Schema migrations are up to date" only means there are no LOCAL migration files to push — it does NOT mean the schema exists remotely. Reason: story 6.1 — the remote had zero `public` tables while the user believed `001_initial_schema.sql` was already pushed; the seed failed with `relation "public.profiles" does not exist`.
+
+---
+trigger: "before running a Supabase CLI command the user references"
+scope: skill
+confidence: 1
+last-used: 2026-08-25
+status: quarantine
+
+---
+
+Verify the command exists in the installed CLI version (`supabase <cmd> --help`) before running it — command names changed across versions. `supabase db seed run` does not exist in CLI 2.115.0; the remote equivalent is `supabase db push --include-seed` (local: `supabase db reset`). Reason: story 6.1 — the user's referenced command errored with "Unknown subcommand 'seed' for 'supabase db'".
+
+---
+trigger: "running SQL with spaces/quotes via supabase db query"
+scope: skill
+confidence: 1
+last-used: 2026-08-25
+status: quarantine
+
+---
+
+`supabase db query --linked "<sql>"` does not accept SQL containing spaces/quotes as a positional argument — the CLI splits it into multiple positional args and errors with `UnexpectedArgument`. Write the SQL to a temp file and use `supabase db query --linked -f <file>` instead. Reason: story 6.1 — an INSERT with JSON metadata and spaces failed to parse as a single argument.
+
+---
+trigger: "when env values look truncated or placeholder-like"
+scope: skill
+confidence: 1
+last-used: 2026-08-25
+status: quarantine
+
+---
+
+Verify env values programmatically (length, content) when they look truncated or placeholder-like — do not trust the editor display or the user's claim that they are correct. Reason: story 6.1 — `.env` contained literal `...` truncations (`SUPABASE_URL=https://sxbsxnj...supabase.co`, len=29) while the user believed it was fully populated; the truncated URL broke REST/PostgREST calls.
+
+---
+trigger: "naming a Supabase migration file"
+scope: skill
+confidence: 1
+last-used: 2026-08-25
+status: quarantine
+
+---
+
+The Supabase CLI accepts `<digits>_<name>.sql` migration filenames — the leading digits become the migration version (e.g. `001_initial_schema.sql` → version `001`). No need to force a 14-digit timestamp name; `supabase db push` records the leading digits in `supabase_migrations.schema_migrations`. Reason: story 6.1 — `001_initial_schema.sql` was applied and recorded as version `001` without issue.
 
 ---
 

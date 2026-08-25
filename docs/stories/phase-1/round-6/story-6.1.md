@@ -3,10 +3,10 @@ story_id: "6.1"
 round: "round-6"
 parent_spec: "../../architecture/contexts/workout-tracking/readme.md"
 size: "M"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-25"
+completed: "2026-08-25"
+owner: "crew-flow"
 implements:
   architecture_features: ["workout-tracking"]
   architecture_decisions: ["ADR-001", "ADR-003", "ADR-004", "ADR-005", "ADR-006", "ADR-007"]
@@ -48,11 +48,11 @@ Provision the Supabase project, wire env vars, and port the SQLite DDL to a Post
 
 ## Tasks
 
-- [ ] `T6.1-01` - Provision Supabase project (prod + preview)
-- [ ] `T6.1-02` - Add env vars to `.env.example` and Vercel
-- [ ] `T6.1-03` - Add `STORAGE_BACKEND` config reader
-- [ ] `T6.1-04` - Author `supabase/migrations/001_initial_schema.sql` (Postgres DDL)
-- [ ] `T6.1-05` - Add `auth.users` → `profiles` trigger with metadata mapping
-- [ ] `T6.1-06` - Port seed data to `supabase/seed.sql`
-- [ ] `T6.1-07` - Run migration + seed against the Supabase project
-- [ ] `T6.1-08` - Verify tables, seed rows, and trigger
+- [x] `T6.1-01` - Provision Supabase project (prod + preview)
+- [x] `T6.1-02` - Add env vars to `.env.example` and Vercel
+- [x] `T6.1-03` - Add `STORAGE_BACKEND` config reader
+- [x] `T6.1-04` - Author `supabase/migrations/001_initial_schema.sql` (Postgres DDL)
+- [x] `T6.1-05` - Add `auth.users` → `profiles` trigger with metadata mapping
+- [x] `T6.1-06` - Port seed data to `supabase/seed.sql`
+- [x] `T6.1-07` - Run migration + seed against the Supabase project
+- [x] `T6.1-08` - Verify tables, seed rows, and trigger
