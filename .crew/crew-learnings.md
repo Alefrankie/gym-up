@@ -82,3 +82,14 @@ status: quarantine
 ---
 
 SQLite's `unixepoch()` returns seconds. Entries created within the same second get identical `createdAt` values, making `ORDER BY created_at DESC` non-deterministic for ordering tests. For date-sensitive ordering tests, always inject explicit timestamps via optional DTO fields (e.g. `createdAt?: Date` in the input). Reason: story 5.3 — `findByUser returns entries newest first` test failed because both entries were created in the same second.
+
+---
+trigger: "porting a SQLite schema with local auth to a Supabase seed"
+scope: project
+confidence: 1
+last-used: 2026-08-25
+status: quarantine
+
+---
+
+When porting the Round-1 SQLite schema (local auth) to a Supabase seed: `profiles` (email/password_hash) maps to `auth.users` + the `handle_new_user()` trigger (profiles has no email/password_hash columns in Postgres); the `sessions` table does NOT exist in Postgres (Supabase Auth manages sessions). Timestamps: unix seconds/ms → `to_timestamp(...)`. Reason: story 6.1 — seed.sql maps local profiles to auth.users with the trigger, and omits sessions.
