@@ -5,6 +5,7 @@
 // No central container — each context owns its own wiring.
 
 import { db } from '@/lib/db/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { ProfileRepository } from './domain/profile.repository';
 import { RoutineRepository } from './domain/routine.repository';
 import { WorkoutRepository } from './domain/workout.repository';
@@ -13,6 +14,10 @@ import { SqliteProfileRepository } from './infrastructure/sqlite/sqlite-profile.
 import { SqliteRoutineRepository } from './infrastructure/sqlite/sqlite-routine.repository';
 import { SqliteWorkoutRepository } from './infrastructure/sqlite/sqlite-workout.repository';
 import { SqlitePhotoRepository } from './infrastructure/sqlite/sqlite-photo.repository';
+import { SupabaseProfileRepository } from './infrastructure/supabase/supabase-profile.repository';
+import { SupabaseRoutineRepository } from './infrastructure/supabase/supabase-routine.repository';
+import { SupabaseWorkoutRepository } from './infrastructure/supabase/supabase-workout.repository';
+import { SupabasePhotoRepository } from './infrastructure/supabase/supabase-photo.repository';
 import { GetTodayWorkoutUseCase } from './application/get-today-workout.use-case';
 import { StartWorkoutUseCase } from './application/start-workout.use-case';
 import { LogSetUseCase } from './application/log-set.use-case';
@@ -38,10 +43,7 @@ function buildProfileRepository(backend: StorageBackend): ProfileRepository {
     case 'sqlite':
       return new SqliteProfileRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabaseXxxRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabaseProfileRepository(getSupabaseClient());
   }
 }
 
@@ -50,10 +52,7 @@ function buildRoutineRepository(backend: StorageBackend): RoutineRepository {
     case 'sqlite':
       return new SqliteRoutineRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabaseXxxRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabaseRoutineRepository(getSupabaseClient());
   }
 }
 
@@ -62,10 +61,7 @@ function buildWorkoutRepository(backend: StorageBackend): WorkoutRepository {
     case 'sqlite':
       return new SqliteWorkoutRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabaseXxxRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabaseWorkoutRepository(getSupabaseClient());
   }
 }
 
@@ -74,10 +70,7 @@ function buildPhotoRepository(backend: StorageBackend): PhotoRepository {
     case 'sqlite':
       return new SqlitePhotoRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabaseXxxRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabasePhotoRepository(getSupabaseClient());
   }
 }
 

@@ -16,10 +16,14 @@ describe('GetDailyCalorieSummaryUseCase', () => {
   let goalRepo: SqliteNutritionGoalRepository;
   let userId: string;
 
-  // Use a fixed "today" for deterministic tests
-  const today = new Date('2026-08-14T12:00:00Z');
-  const todayStartMs = new Date('2026-08-14T00:00:00Z').getTime();
-  const todayEndMs = new Date('2026-08-14T23:59:59.999Z').getTime() + 1;
+  // "today" derivado de now para que la ventana diaria (UTC) siempre coincida
+  // con las entradas creadas sin createdAt explícito (default = Date.now()).
+  // Per crew-learning: construir fechas de test desde new Date(), no ISO fijo.
+  const today = new Date();
+  const todayStartMs = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+  ).getTime();
+  const todayEndMs = todayStartMs + 86400000;
   const yesterdayMs = todayStartMs - 86400000;
 
   beforeEach(async () => {

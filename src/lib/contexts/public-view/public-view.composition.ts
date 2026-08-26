@@ -9,13 +9,20 @@
 // The public-view repos read directly from schema tables.
 
 import { db } from '@/lib/db/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { SqlitePublicProfileRepository } from './infrastructure/sqlite/sqlite-public-profile.repository';
 import { SqlitePublicWorkoutRepository } from './infrastructure/sqlite/sqlite-public-workout.repository';
+import { SupabasePublicProfileRepository } from './infrastructure/supabase/supabase-public-profile.repository';
+import { SupabasePublicWorkoutRepository } from './infrastructure/supabase/supabase-public-workout.repository';
+import { PublicProfileRepository } from './domain/public-profile.repository';
+import { PublicWorkoutRepository } from './domain/public-workout.repository';
 import { GetAllMembersUseCase } from './application/get-all-members.use-case';
 import { CalculateMemberStatsUseCase } from './application/calculate-member-stats.use-case';
 import { GetMemberDetailUseCase } from './application/get-member-detail-use-case';
 import { CalculateStreakUseCase } from '@/lib/contexts/progress/application/calculate-streak.use-case';
 import { SqliteProgressRepository } from '@/lib/contexts/progress/infrastructure/sqlite/sqlite-progress.repository';
+import { SupabaseProgressRepository } from '@/lib/contexts/progress/infrastructure/supabase/supabase-progress.repository';
+import { ProgressRepository } from '@/lib/contexts/progress/domain/ports/ProgressRepository';
 
 type StorageBackend = 'sqlite' | 'supabase';
 
@@ -35,42 +42,34 @@ const backend = resolveStorageBackend();
 
 function buildPublicProfileRepository(
   backend: StorageBackend,
-): SqlitePublicProfileRepository {
+): PublicProfileRepository {
   switch (backend) {
     case 'sqlite':
       return new SqlitePublicProfileRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabasePublicProfileRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabasePublicProfileRepository(getSupabaseClient());
   }
 }
 
 function buildPublicWorkoutRepository(
   backend: StorageBackend,
-): SqlitePublicWorkoutRepository {
+): PublicWorkoutRepository {
   switch (backend) {
     case 'sqlite':
       return new SqlitePublicWorkoutRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabasePublicWorkoutRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabasePublicWorkoutRepository(getSupabaseClient());
   }
 }
 
 function buildProgressRepositoryForStreak(
   backend: StorageBackend,
-): SqliteProgressRepository {
+): ProgressRepository {
   switch (backend) {
     case 'sqlite':
       return new SqliteProgressRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1.',
-      );
+      return new SupabaseProgressRepository(getSupabaseClient());
   }
 }
 

@@ -18,7 +18,12 @@ async function loadCompositionFresh() {
 describe('workout-tracking composition', () => {
   beforeEach(() => {
     for (const key of Object.keys(process.env)) {
-      if (key === 'STORAGE_BACKEND' || key === 'DATABASE_URL') {
+      if (
+        key === 'STORAGE_BACKEND' ||
+        key === 'DATABASE_URL' ||
+        key === 'SUPABASE_URL' ||
+        key === 'SUPABASE_ANON_KEY'
+      ) {
         delete process.env[key];
       }
     }
@@ -38,10 +43,27 @@ describe('workout-tracking composition', () => {
     expect(typeof mod.profileRepository.create).toBe('function');
   });
 
-  it('throws a clear error when STORAGE_BACKEND=supabase in Round 1', async () => {
+  it('exports Supabase-backed repositories when STORAGE_BACKEND=supabase (story 6.2)', async () => {
     process.env.DATABASE_URL = 'file::memory:';
     process.env.STORAGE_BACKEND = 'supabase';
-    await expect(loadCompositionFresh()).rejects.toThrow(/Round 6/);
+    process.env.SUPABASE_URL = 'https://dummy.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'dummy-anon-key';
+    const mod = await loadCompositionFresh();
+    expect(mod.profileRepository).toBeDefined();
+    expect(typeof mod.profileRepository.findById).toBe('function');
+    expect(typeof mod.workoutRepository.findById).toBe('function');
+    expect(typeof mod.routineRepository.findAll).toBe('function');
+    expect(typeof mod.photoRepository.findById).toBe('function');
+  });
+
+  it('throws a clear error when STORAGE_BACKEND=supabase but Supabase env is missing', async () => {
+    process.env.DATABASE_URL = 'file::memory:';
+    process.env.STORAGE_BACKEND = 'supabase';
+    // Empty strings (not deleted) so the .env loader does not re-populate
+    // them from the real .env file — simulates missing credentials.
+    process.env.SUPABASE_URL = '';
+    process.env.SUPABASE_ANON_KEY = '';
+    await expect(loadCompositionFresh()).rejects.toThrow(/SUPABASE_URL/);
   });
 
   it('throws a clear error when STORAGE_BACKEND is invalid', async () => {
