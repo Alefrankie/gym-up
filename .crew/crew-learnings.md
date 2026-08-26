@@ -93,3 +93,14 @@ status: quarantine
 ---
 
 When porting the Round-1 SQLite schema (local auth) to a Supabase seed: `profiles` (email/password_hash) maps to `auth.users` + the `handle_new_user()` trigger (profiles has no email/password_hash columns in Postgres); the `sessions` table does NOT exist in Postgres (Supabase Auth manages sessions). Timestamps: unix seconds/ms → `to_timestamp(...)`. Reason: story 6.1 — seed.sql maps local profiles to auth.users with the trigger, and omits sessions.
+
+---
+trigger: "diagnosing a test failure that imports src/lib/db/client.ts"
+scope: project
+confidence: 1
+last-used: 2026-08-27
+status: quarantine
+
+---
+
+Before diagnosing a test failure that imports `src/lib/db/client.ts` (e.g. "Cannot open database because the directory does not exist"), verify `.env` `DATABASE_URL` is still `file:./local.db`. `DATABASE_URL` is the SQLite connection string (used by `src/lib/db/client.ts` and `drizzle.config.ts` with dialect sqlite); a Postgres URL (`postgresql://...`) breaks the SQLite client at import time. The Supabase Postgres connection belongs to the CLI (supabase link / config.toml), not the app runtime — the app talks to Supabase via `SUPABASE_URL` + `SUPABASE_ANON_KEY`. Reason: story 6.2 — `.env` had `DATABASE_URL=postgresql://...` and `local-auth.service.test.ts` failed at import; restoring `file:./local.db` fixed it.

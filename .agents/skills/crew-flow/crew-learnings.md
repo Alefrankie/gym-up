@@ -83,8 +83,8 @@ Read the original rationale for the guard. If the current fix directly resolves 
 
 trigger: "when writing tests for date-windowed queries (last N days, between dates, etc.)"
 scope: skill
-confidence: 2
-last-used: 2026-08-25
+confidence: 3
+last-used: 2026-08-27
 status: quarantine
 
 ---
@@ -428,6 +428,39 @@ status: quarantine
 Before validating a base64 payload with `RegExp.test()`, check whether the input string can exceed ~5MB. Node's V8 regex engine triggers `RangeError: Maximum call stack size exceeded` on very long strings. Use an O(n) manual char-code walk instead (check each char is `[A-Za-z0-9+/=]`, `=` padding only at end, length divisible by 4). Reason: story 5.1 — `BASE64_PAYLOAD_PATTERN = /^(?:[A-Za-z0-9+/]{4})*...$/` stack-overflows on a 7MB string (6MB decoded photo). Replaced with `isValidBase64Payload()` using a char-code loop; all tests passed, no more stack overflow.
 
 **How to apply:** When a validation function needs to check character sets on user-provided strings that could be large (base64, hex, URL-safe strings), use a manual loop instead of a regex. If the regex uses quantifiers (`{4}`, `+`, `*`) on character classes, it's particularly vulnerable to catastrophic backtracking / stack overflow on long inputs.
+
+---
+trigger: "assuming RLS policies are sufficient for table access in Supabase"
+scope: skill
+confidence: 1
+last-used: 2026-08-27
+status: quarantine
+
+---
+
+Before assuming RLS policies alone secure a Supabase table, verify the roles have table-level GRANTs (SELECT/INSERT/UPDATE/DELETE). Tables created by SQL migration do NOT receive DML grants automatically in Supabase (only TRUNCATE/REFERENCES/TRIGGER by default) — without them, RLS policies are dead and every request fails with `permission denied` (42501). Grant DML to `authenticated` (RLS then restricts at row level); keep `anon` grant-free for private apps. Reason: story 6.2 — migration 001 tables had zero DML grants; the anon key authenticated but every query returned 42501 until `003_grants.sql` added the grants.
+
+---
+trigger: "writing integration tests that need Supabase users"
+scope: skill
+confidence: 1
+last-used: 2026-08-27
+status: quarantine
+
+---
+
+When integration tests need Supabase users, prefer creating them via SQL (CLI `supabase db query --linked -f <file>` inserting into `auth.users` with `crypt(password, gen_salt('bf'))`) and signing in, instead of `auth.signUp` — signUp has a per-hour rate limit ("email rate limit exceeded") that repeated test runs exhaust quickly. Use fixed emails + sign-in-first (fallback to signUp only if the user does not exist) so subsequent runs never hit the rate limit. Reason: story 6.2 — the RLS integration tests failed repeatedly with the signup rate limit; switching to SQL-created users made them pass deterministically.
+
+---
+trigger: "writing RLS policies on storage.objects in Supabase"
+scope: skill
+confidence: 1
+last-used: 2026-08-27
+status: quarantine
+
+---
+
+When writing RLS policies on `storage.objects`, compare ownership with `auth.uid()::text = owner_id` — `owner_id` is TEXT in current Supabase versions while `auth.uid()` returns UUID; `uuid = text` throws `SQLSTATE 42883: operator does not exist`. Reason: story 6.2 — migration 002 failed at the storage.objects policy until the cast was added.
 
 ---
 trigger: "Node.js `Buffer.from(s, 'base64')` silently drops invalid characters"

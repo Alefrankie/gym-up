@@ -3,10 +3,10 @@ story_id: "6.2"
 round: "round-6"
 parent_spec: "../../architecture/contexts/workout-tracking/readme.md"
 size: "L"
-status: "draft"
-started: "TBD"
-completed: "TBD"
-owner: "TBD"
+status: "completed"
+started: "2026-08-26"
+completed: "2026-08-27"
+owner: "crew-flow"
 implements:
   architecture_features: ["workout-tracking", "progress", "public-view", "private-photos"]
   architecture_decisions: ["ADR-001", "ADR-004", "ADR-005", "ADR-006", "ADR-007", "ADR-010"]
@@ -53,13 +53,13 @@ Add a `SupabaseXxxRepository` concrete class for every abstract repository from 
 
 ## Tasks
 
-- [ ] `T6.2-01` - Create `src/lib/supabase/client.ts`
-- [ ] `T6.2-02` - Implement `SupabaseProfileRepository`
-- [ ] `T6.2-03` - Implement `SupabaseRoutineRepository`
-- [ ] `T6.2-04` - Implement `SupabaseWorkoutRepository`
-- [ ] `T6.2-05` - Implement `SupabasePhotoRepository` (row-level; storage in 6.3)
-- [ ] `T6.2-06` - Add RLS policies to the migration (`profiles`, `workouts`, `workout_entries`, `progress_photos`)
-- [ ] `T6.2-07` - Update per-context composition root to branch on `STORAGE_BACKEND`
-- [ ] `T6.2-08` - Integration test: non-owner cannot read/write another user's workout
-- [ ] `T6.2-09` - Integration test: non-owner cannot read/delete another user's photo row
-- [ ] `T6.2-10` - Regression test: `STORAGE_BACKEND=sqlite` still boots the app and passes local unit tests
+- [x] `T6.2-01` - Create `src/lib/supabase/client.ts`
+- [x] `T6.2-02` - Implement `SupabaseProfileRepository`
+- [x] `T6.2-03` - Implement `SupabaseRoutineRepository`
+- [x] `T6.2-04` - Implement `SupabaseWorkoutRepository`
+- [x] `T6.2-05` - Implement `SupabasePhotoRepository` (row-level; storage in 6.3)
+- [x] `T6.2-06` - Add RLS policies to the migration (`profiles`, `workouts`, `workout_entries`, `progress_photos`)
+- [x] `T6.2-07` - Update per-context composition root to branch on `STORAGE_BACKEND`
+- [x] `T6.2-08` - Integration test: non-owner cannot read/write another user's workout
+- [x] `T6.2-09` - Integration test: non-owner cannot read/delete another user's photo row
+- [x] `T6.2-10` - Regression test: `STORAGE_BACKEND=sqlite` still boots the app and passes local unit tests

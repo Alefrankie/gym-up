@@ -5,8 +5,13 @@
 // No central container — each context owns its own wiring.
 
 import { db } from '@/lib/db/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { SqliteProgressRepository } from './infrastructure/sqlite/sqlite-progress.repository';
 import { SqliteExerciseQueryRepository } from './infrastructure/sqlite/sqlite-exercise-query.repository';
+import { SupabaseProgressRepository } from './infrastructure/supabase/supabase-progress.repository';
+import { SupabaseExerciseQueryRepository } from './infrastructure/supabase/supabase-exercise-query.repository';
+import { ProgressRepository } from './domain/ports/ProgressRepository';
+import { ExerciseQueryRepository } from './domain/ports/ExerciseQueryRepository';
 import { GetExerciseListUseCase } from './application/get-exercise-list.use-case';
 import { GetExerciseHistoryUseCase } from './application/get-exercise-history.use-case';
 import { CalculateStreakUseCase } from './application/calculate-streak.use-case';
@@ -24,29 +29,23 @@ function resolveStorageBackend(): StorageBackend {
   );
 }
 
-function buildProgressRepository(backend: StorageBackend): SqliteProgressRepository {
+function buildProgressRepository(backend: StorageBackend): ProgressRepository {
   switch (backend) {
     case 'sqlite':
       return new SqliteProgressRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabaseProgressRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabaseProgressRepository(getSupabaseClient());
   }
 }
 
 function buildExerciseQueryRepository(
   backend: StorageBackend,
-): SqliteExerciseQueryRepository {
+): ExerciseQueryRepository {
   switch (backend) {
     case 'sqlite':
       return new SqliteExerciseQueryRepository(db);
     case 'supabase':
-      throw new Error(
-        'STORAGE_BACKEND=supabase is not supported in Round 1. ' +
-          'SupabaseExerciseQueryRepository lands in Round 6 (story 6.2).',
-      );
+      return new SupabaseExerciseQueryRepository(getSupabaseClient());
   }
 }
 

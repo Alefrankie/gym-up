@@ -14,6 +14,7 @@
 
 import { resolve } from 'node:path';
 import { db } from '@/lib/db/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { GeminiVisionAdapter } from './infrastructure/ai/gemini-vision.adapter';
 import { AnalyzeMealUseCase } from './application/analyze-meal.use-case';
 import { SaveNutritionEntryUseCase } from './application/save-nutrition-entry.use-case';
@@ -22,6 +23,8 @@ import { GetDailyCalorieSummaryUseCase } from './application/get-daily-calorie-s
 import { SetCalorieGoalUseCase } from './application/set-calorie-goal.use-case';
 import { SqliteNutritionEntryRepository } from './infrastructure/sqlite/sqlite-nutrition-entry.repository';
 import { SqliteNutritionGoalRepository } from './infrastructure/sqlite/sqlite-nutrition-goal.repository';
+import { SupabaseNutritionEntryRepository } from './infrastructure/supabase/supabase-nutrition-entry.repository';
+import { SupabaseNutritionGoalRepository } from './infrastructure/supabase/supabase-nutrition-goal.repository';
 import { AIAnalysisRules } from './domain/nutrition.constants';
 import type { NutritionEntryRepository } from './domain/nutrition-entry-repository';
 import type { NutritionGoalRepository } from './domain/nutrition-goal-repository';
@@ -37,6 +40,20 @@ import type { SetCalorieGoalUseCase as SetCalorieGoalUseCaseType } from './appli
  */
 export const uploadsRoot = resolve(process.cwd(), 'uploads', 'nutrition');
 
+type StorageBackend = 'sqlite' | 'supabase';
+
+function resolveStorageBackend(): StorageBackend {
+  const raw = (process.env.STORAGE_BACKEND ?? 'sqlite').toLowerCase();
+  if (raw === 'sqlite' || raw === 'supabase') {
+    return raw;
+  }
+  throw new Error(
+    `Invalid STORAGE_BACKEND="${raw}". Expected 'sqlite' (Rounds 1-5) or 'supabase' (Round 6).`,
+  );
+}
+
+const backend = resolveStorageBackend();
+
 // =============================================================
 // Repositories (lazy singletons)
 // =============================================================
@@ -46,16 +63,20 @@ let goalRepositoryInstance: NutritionGoalRepository | null = null;
 
 export function getNutritionEntryRepository(): NutritionEntryRepository {
   if (!entryRepositoryInstance) {
-    entryRepositoryInstance = new SqliteNutritionEntryRepository(db, {
-      uploadsRoot,
-    });
+    entryRepositoryInstance =
+      backend === 'supabase'
+        ? new SupabaseNutritionEntryRepository(getSupabaseClient())
+        : new SqliteNutritionEntryRepository(db, { uploadsRoot });
   }
   return entryRepositoryInstance;
 }
 
 export function getNutritionGoalRepository(): NutritionGoalRepository {
   if (!goalRepositoryInstance) {
-    goalRepositoryInstance = new SqliteNutritionGoalRepository(db);
+    goalRepositoryInstance =
+      backend === 'supabase'
+        ? new SupabaseNutritionGoalRepository(getSupabaseClient())
+        : new SqliteNutritionGoalRepository(db);
   }
   return goalRepositoryInstance;
 }

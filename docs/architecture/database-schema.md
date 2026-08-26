@@ -148,6 +148,36 @@ CREATE TABLE progress_photos (
 CREATE INDEX idx_photos_user ON progress_photos(user_id, photo_date DESC);
 ```
 
+#### `nutrition_entries` (story 6.2 — migración `002_nutrition_and_rls.sql`)
+
+```sql
+CREATE TABLE nutrition_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  storage_path TEXT NOT NULL,
+  photo_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  total_calories INT NOT NULL DEFAULT 0,
+  total_protein INT NOT NULL DEFAULT 0,
+  total_carbs INT NOT NULL DEFAULT 0,
+  total_fat INT NOT NULL DEFAULT 0,
+  food_items TEXT NOT NULL DEFAULT '[]',
+  ai_raw_response TEXT,
+  user_edited BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_nutrition_entries_user ON nutrition_entries(user_id, created_at DESC);
+```
+
+#### `nutrition_goals` (story 6.2 — migración `002_nutrition_and_rls.sql`)
+
+```sql
+CREATE TABLE nutrition_goals (
+  user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  daily_calorie_goal INT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
 ---
 
 ### Seed Data
@@ -310,40 +340,79 @@ ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routine_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routine_exercises ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nutrition_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nutrition_goals ENABLE ROW LEVEL SECURITY;
 
--- Profiles: read all, write own
-CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
+-- Profiles: read all, write own (INSERT lo maneja el trigger handle_new_user)
+CREATE POLICY "profiles_select_read_all" ON profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 -- Workouts: read all, write own
-CREATE POLICY "workouts_select" ON workouts FOR SELECT USING (true);
-CREATE POLICY "workouts_insert" ON workouts FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "workouts_update" ON workouts FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "workouts_delete" ON workouts FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "workouts_select_read_all" ON workouts FOR SELECT USING (true);
+CREATE POLICY "workouts_insert_own" ON workouts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "workouts_update_own" ON workouts FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "workouts_delete_own" ON workouts FOR DELETE USING (auth.uid() = user_id);
 
 -- Workout entries: read all, write own (via workout ownership)
-CREATE POLICY "entries_select" ON workout_entries FOR SELECT USING (true);
-CREATE POLICY "entries_insert" ON workout_entries FOR INSERT WITH CHECK (
+CREATE POLICY "workout_entries_select_read_all" ON workout_entries FOR SELECT USING (true);
+CREATE POLICY "workout_entries_insert_own" ON workout_entries FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM workouts WHERE workouts.id = workout_id AND workouts.user_id = auth.uid())
 );
-CREATE POLICY "entries_update" ON workout_entries FOR UPDATE USING (
+CREATE POLICY "workout_entries_update_own" ON workout_entries FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM workouts WHERE workouts.id = workout_id AND workouts.user_id = auth.uid())
+) WITH CHECK (
   EXISTS (SELECT 1 FROM workouts WHERE workouts.id = workout_id AND workouts.user_id = auth.uid())
 );
-CREATE POLICY "entries_delete" ON workout_entries FOR DELETE USING (
+CREATE POLICY "workout_entries_delete_own" ON workout_entries FOR DELETE USING (
   EXISTS (SELECT 1 FROM workouts WHERE workouts.id = workout_id AND workouts.user_id = auth.uid())
 );
 
--- Routine data: read-only
-CREATE POLICY "routines_read" ON routines FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "routine_days_read" ON routine_days FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "routine_exercises_read" ON routine_exercises FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "exercises_read" ON exercises FOR SELECT USING (auth.role() = 'authenticated');
+-- Routine data: read-only (seed data per ADR-003)
+CREATE POLICY "routines_select_read_all" ON routines FOR SELECT USING (true);
+CREATE POLICY "routine_days_select_read_all" ON routine_days FOR SELECT USING (true);
+CREATE POLICY "routine_exercises_select_read_all" ON routine_exercises FOR SELECT USING (true);
+CREATE POLICY "exercises_select_read_all" ON exercises FOR SELECT USING (true);
 
--- Progress photos: PRIVATE — owner only
-CREATE POLICY "photos_select" ON progress_photos FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "photos_insert" ON progress_photos FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "photos_delete" ON progress_photos FOR DELETE USING (auth.uid() = user_id);
+-- Progress photos: PRIVATE — owner only (ADR-005)
+CREATE POLICY "progress_photos_select_own" ON progress_photos FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "progress_photos_insert_own" ON progress_photos FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "progress_photos_update_own" ON progress_photos FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "progress_photos_delete_own" ON progress_photos FOR DELETE USING (auth.uid() = user_id);
+
+-- Nutrition entries: PRIVATE — owner only (ADR-005)
+CREATE POLICY "nutrition_entries_select_own" ON nutrition_entries FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "nutrition_entries_insert_own" ON nutrition_entries FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "nutrition_entries_update_own" ON nutrition_entries FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "nutrition_entries_delete_own" ON nutrition_entries FOR DELETE USING (auth.uid() = user_id);
+
+-- Nutrition goals: PRIVATE — owner only (ADR-005)
+CREATE POLICY "nutrition_goals_select_own" ON nutrition_goals FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "nutrition_goals_insert_own" ON nutrition_goals FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "nutrition_goals_update_own" ON nutrition_goals FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "nutrition_goals_delete_own" ON nutrition_goals FOR DELETE USING (auth.uid() = user_id);
+```
+
+### RPC — `get_profile_by_email` (story 6.2)
+
+`public.profiles` no tiene columna `email` (vive en `auth.users`). El RPC permite a `ProfileRepository.findByEmail` cumplir su contrato en Supabase.
+
+```sql
+CREATE OR REPLACE FUNCTION public.get_profile_by_email(target_email TEXT)
+RETURNS TABLE (id UUID, display_name TEXT, routine_type TEXT, weight_unit TEXT, created_at TIMESTAMPTZ)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT u.id, p.display_name, p.routine_type, p.weight_unit, p.created_at
+  FROM auth.users u
+  LEFT JOIN public.profiles p ON p.id = u.id
+  WHERE u.email = target_email
+  LIMIT 1;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_profile_by_email(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_profile_by_email(TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_profile_by_email(TEXT) TO authenticated;
 ```
 
 ### Storage Bucket
@@ -352,10 +421,13 @@ CREATE POLICY "photos_delete" ON progress_photos FOR DELETE USING (auth.uid() = 
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('progress-photos', 'progress-photos', false);
 
-CREATE POLICY "photos_storage_select" ON storage.objects
-  FOR SELECT USING (bucket_id = 'progress-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
-CREATE POLICY "photos_storage_insert" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id = 'progress-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
-CREATE POLICY "photos_storage_delete" ON storage.objects
-  FOR DELETE USING (bucket_id = 'progress-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+-- owner_id es TEXT en esta versión de Supabase → cast de auth.uid()
+CREATE POLICY "progress_photos_storage_select_own" ON storage.objects
+  FOR SELECT USING (bucket_id = 'progress-photos' AND auth.uid()::text = owner_id);
+CREATE POLICY "progress_photos_storage_insert_own" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'progress-photos' AND auth.uid()::text = owner_id);
+CREATE POLICY "progress_photos_storage_update_own" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'progress-photos' AND auth.uid()::text = owner_id) WITH CHECK (bucket_id = 'progress-photos' AND auth.uid()::text = owner_id);
+CREATE POLICY "progress_photos_storage_delete_own" ON storage.objects
+  FOR DELETE USING (bucket_id = 'progress-photos' AND auth.uid()::text = owner_id);
 ```
