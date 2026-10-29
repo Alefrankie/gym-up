@@ -84,6 +84,16 @@ For each profile: adopt the template matching `routine_type` (`hombre` → "Male
 - RLS: `routines`, `routine_days`, `routine_exercises` get `insert/update/delete_own` policies via `routines.owner_id = auth.uid()`. Templates (`owner_id IS NULL`) are not writable by any client.
 - Template seeds: [database-schema.md → Program Templates Seed](../database-schema.md#program-templates-seed).
 
+## Implementation notes (2026-10-29)
+
+Implemented in `apps/api` (context `routines`, endpoints `/programs`, `/workouts/today`) and `apps/app` (`/programs`, `/programs/[id]`). Choices made while implementing:
+
+- `routines.type` stays NOT NULL (SQLite cannot relax it): user programs and the three new templates use the value `neutral`; the two legacy templates keep `hombre`/`mujer`, which is how a user without a program gets a starting template.
+- A user without an active program gets the template matching their profile type adopted lazily the first time `/workouts/today` is requested.
+- `/workouts/today` returns the next routine in the active program's rotation (the one after the last completed workout, wrapping around). A workout already started or finished today pins the card to its routine. The `rest_day` response is no longer produced.
+- Saving a program is `PUT /programs/:id` with the whole structure: routines and exercises are upserted by id and the rest are deleted, as separate idempotent statements (D1 has no interactive transactions). A routine that already has workouts cannot be removed (`400`); archive the program instead.
+- Seeded templates: the two legacy 5-day routines plus Full Body 3-Day, Upper / Lower 4-Day and Push / Pull / Legs. Superset groups, RPE targets, `equipment_profile` and `focus` columns are not implemented yet.
+
 ## Referenced by
 
 - [routines PRD](../../prd/features/routines.md)
