@@ -32,7 +32,12 @@
 </script>
 
 <main>
-  <h1>Crear cuenta</h1>
+  <header class="brand">
+    <svg class="mark" viewBox="0 0 48 48" width="56" height="56" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 26v-8M11 29V15M37 29V15M42 26v-8M11 22h26"/><path d="M24 40V28M19 33l5-5 5 5"/></svg>
+    <h1>Gym Up</h1>
+    <p>Crea tu cuenta y empieza hoy.</p>
+  </header>
+  <section class="card hero">
   <form onsubmit={submit}>
     <label>Nombre<input bind:value={displayName} autocomplete="name" required /></label>
     <label>Email<input type="email" bind:value={email} autocomplete="email" required /></label>
@@ -57,5 +62,38 @@
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <button class="primary" type="submit" disabled={busy}>{busy ? 'Creando…' : 'Crear cuenta'}</button>
   </form>
-  <p class="muted">¿Ya tienes cuenta? <a href="/login">Entrar</a></p>
+  </section>
+  <p class="muted alt">¿Ya tienes cuenta? <a href="/login">Entrar</a></p>
 </main>
+
+<style>
+  .brand {
+    display: grid;
+    justify-items: center;
+    gap: 0.25rem;
+    text-align: center;
+    padding-top: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .mark {
+    color: var(--accent);
+    filter: drop-shadow(0 6px 14px rgb(255 106 43 / 0.45));
+  }
+  .brand h1 {
+    margin: 0.4rem 0 0;
+    font-size: 3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .brand p {
+    margin: 0;
+    color: var(--muted);
+  }
+  .card form {
+    gap: 1rem;
+  }
+  .alt {
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+</style>

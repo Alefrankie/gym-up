@@ -37,6 +37,20 @@ describe('Outbox', () => {
     expect(r).toMatchObject({ sent: 3, failed: 0, remaining: 0, stoppedBy: null });
   });
 
+  it('cancelling a workout drops its commands; the start tells whether the server ever heard of it', async () => {
+    const outbox = new Outbox(async () => {}, now);
+    await outbox.enqueue({ type: 'start-workout', id: W1, routineDayId: 'd1' });
+    await outbox.enqueue(upsert(W1, 'a'));
+    await outbox.enqueue(upsert(W2, 'b'));
+    expect(await outbox.dropWorkout(W1)).toBe(true);
+    expect((await outbox.items()).map((i) => i.command)).toEqual([upsert(W2, 'b')]);
+
+    // start already delivered earlier: only sets and finish are queued, so a delete must be sent
+    await outbox.enqueue(finish(W2));
+    expect(await outbox.dropWorkout(W2)).toBe(false);
+    expect(await outbox.pendingCount()).toBe(0);
+  });
+
   it('keeps everything, in order, while offline and resumes after the backoff', async () => {
     let online = false;
     const sent: string[] = [];

@@ -15,7 +15,7 @@ export class GetExerciseListUseCase {
     private readonly exerciseQueryRepository: ExerciseQueryRepository,
   ) {}
 
-  async execute(input: GetExerciseListInput): Promise<Exercise[]> {
+  async execute(input: GetExerciseListInput): Promise<Array<Pick<Exercise, "id" | "name" | "muscleGroup">>> {
     return this.exerciseQueryRepository.getLoggedExercises(input.userId);
   }
 }

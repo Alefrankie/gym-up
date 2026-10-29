@@ -17,6 +17,7 @@
   import AppNav from '#lib/components/AppNav.svelte';
   import ProgressChart from '#lib/components/ProgressChart.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
+  import Icon from '#lib/components/Icon.svelte';
 
   const KG_TO_LBS = 2.20462;
   const RANGES: Array<{ value: DateRange; label: string }> = [
@@ -90,13 +91,21 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if streak}
-    <section class="card stats">
-      <div><strong>{streak.current}</strong><span class="muted">días seguidos</span></div>
-      <div><strong>{streak.total}</strong><span class="muted">entrenamientos</span></div>
+    <section class="card hero stats">
+      <div>
+        <span class="flame"><Icon name="flame" size={22} /></span>
+        <strong class="big-number">{streak.current}</strong>
+        <span class="muted">días seguidos</span>
+      </div>
+      <div>
+        <span class="flame"><Icon name="dumbbell" size={22} /></span>
+        <strong class="big-number">{streak.total}</strong>
+        <span class="muted">entrenamientos</span>
+      </div>
     </section>
 
     <section class="card">
-      <h2>Últimos 28 días</h2>
+      <h2 class="first">Últimos 28 días</h2>
       <div class="calendar" aria-label="Calendario de entrenamientos">
         {#each calendar as day (day.date)}
           <span class="day" class:on={day.hasWorkout} title={day.date}></span>
@@ -105,9 +114,9 @@
     </section>
 
     <section class="card">
-      <h2>Evolución por ejercicio</h2>
+      <h2 class="first">Evolución por ejercicio</h2>
       {#if exercises.length === 0}
-        <p class="muted">Registra tu primer entrenamiento para ver tu evolución.</p>
+        <p class="muted">Registra tu primer entrenamiento y aquí verás tu evolución.</p>
       {:else}
         <label>
           Ejercicio
@@ -141,6 +150,9 @@
 <AppNav />
 
 <style>
+  .first {
+    margin-top: 0;
+  }
   .stats {
     display: flex;
     justify-content: space-around;
@@ -148,10 +160,15 @@
   }
   .stats div {
     display: grid;
+    justify-items: center;
+    gap: 0.2rem;
   }
-  .stats strong {
-    font-size: 1.75rem;
-    color: var(--accent);
+  .stats .big-number {
+    font-size: 3rem;
+    color: var(--text);
+  }
+  .flame {
+    color: var(--ember);
   }
   .calendar {
     display: grid;
@@ -161,11 +178,13 @@
   }
   .day {
     aspect-ratio: 1;
-    border-radius: 0.35rem;
-    background: #0f172a;
+    border-radius: 0.4rem;
+    background: var(--bg);
+    box-shadow: 0 2px 3px rgb(0 0 0 / 0.4) inset;
   }
   .day.on {
-    background: var(--accent);
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    box-shadow: 0 4px 10px -4px rgb(255 106 43 / 0.7);
   }
   .tabs {
     display: flex;
@@ -174,10 +193,15 @@
   }
   .tabs button {
     flex: 1;
+    min-height: 44px;
     padding: 0.5rem;
+    background: var(--bg);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 0.35) inset;
+    color: var(--muted);
   }
   .tabs button.active {
-    border-color: var(--accent);
-    color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+    color: var(--accent-hi);
   }
 </style>

@@ -18,8 +18,10 @@ export class GetAllMembersUseCase {
     private readonly statsUseCase: CalculateMemberStatsUseCase,
   ) {}
 
-  async execute(): Promise<MemberCard[]> {
-    const profiles = await this.profileRepo.getAll();
+  /** `onlyIds` restricts the list to those members (a group's roster). */
+  async execute(onlyIds?: readonly string[]): Promise<MemberCard[]> {
+    const all = await this.profileRepo.getAll();
+    const profiles = onlyIds ? all.filter((p) => onlyIds.includes(p.id)) : all;
 
     const memberCards = await Promise.all(
       profiles.map(async (profile) => {

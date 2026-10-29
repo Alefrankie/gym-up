@@ -118,10 +118,11 @@ export class StartWorkoutUseCase {
 
     // Start path with idempotency (AC-2.2-04).
     const now = input.now ?? new Date();
-    const existingToday = await this.workoutRepository.findByUserAndDate(
-      input.userId,
-      now,
+    // One workout per routine per day: starting another routine the same day is a new workout.
+    const sameRoutineToday = (await this.workoutRepository.findAllByUserAndDate(input.userId, now)).find(
+      (w) => w.routineDayId === input.routineDayId,
     );
+    const existingToday = sameRoutineToday;
     if (existingToday) {
       return { kind: 'resumed', workout: existingToday };
     }
@@ -140,9 +141,8 @@ export class StartWorkoutUseCase {
       // findByUserAndDate and our create. Catch the UNIQUE violation and
       // re-query for the winning workout.
       if (isUniqueConstraintError(err)) {
-        const winner = await this.workoutRepository.findByUserAndDate(
-          input.userId,
-          now,
+        const winner = (await this.workoutRepository.findAllByUserAndDate(input.userId, now)).find(
+          (w) => w.routineDayId === input.routineDayId,
         );
         if (winner) {
           return { kind: 'resumed', workout: winner };

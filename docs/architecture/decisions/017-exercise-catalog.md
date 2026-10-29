@@ -87,6 +87,15 @@ Exercises are never hard-deleted while sets reference them. Custom exercises are
 - `workout-tracking` reads exercises through an `ExerciseCatalogPort` implemented by the exercise-library context.
 - RLS: `exercises_select_read_all`, plus `exercises_insert_own` / `exercises_update_own` with `owner_id = auth.uid()`. No delete policy.
 
+## Implementation notes (2026-10-29)
+
+Implemented in `apps/api` (migration `0005_exercise_library_and_programs.sql`, context `exercise-library`, endpoints `/exercises`) and `apps/app` (`/library`). Deviations forced by SQLite/D1, which cannot drop a UNIQUE index or a NOT NULL without rebuilding the table:
+
+- `exercises.name` stays globally unique, so a custom exercise cannot reuse a system name or another user's custom name (case-insensitive check, `409`). The per-owner uniqueness in this ADR is deferred until a table rebuild is worth it.
+- Muscle slugs follow the Hevy list (`quadriceps`, `lats`, `upper_back`, ...); the 32 legacy exercises were remapped in the migration and in `db/catalog.ts` (also the source of the Spanish instructions).
+- Filtering and search run on the device over the whole catalog (it is a few dozen rows and the list is cached for offline use); the endpoint filters too (`q`, `muscle`, `equipment`, `mine`).
+- Editing a custom exercise is API-only for now (`PATCH /exercises/:id`); the app offers create and archive.
+
 ## Referenced by
 
 - [exercise-library PRD](../../prd/features/exercise-library.md)

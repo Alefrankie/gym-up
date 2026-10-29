@@ -29,6 +29,7 @@ const DDL = `
     display_name TEXT NOT NULL,
     routine_type TEXT NOT NULL,
     weight_unit TEXT NOT NULL DEFAULT 'kg',
+    active_program_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   );
   CREATE TABLE sessions (
@@ -40,19 +41,38 @@ const DDL = `
   CREATE TABLE exercises (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
-    muscle_group TEXT NOT NULL
+    muscle_group TEXT NOT NULL,
+    secondary_muscles TEXT NOT NULL DEFAULT '[]',
+    equipment TEXT NOT NULL DEFAULT 'other',
+    exercise_type TEXT NOT NULL DEFAULT 'weight_reps',
+    instructions TEXT,
+    video_url TEXT,
+    owner_id TEXT,
+    is_archived INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0
   );
   CREATE TABLE routines (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    type TEXT NOT NULL
+    type TEXT NOT NULL,
+    owner_id TEXT,
+    source_template_id TEXT,
+    description TEXT,
+    is_template INTEGER NOT NULL DEFAULT 0,
+    level TEXT,
+    goal TEXT,
+    days_per_week INTEGER,
+    is_archived INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL DEFAULT 0
   );
   CREATE TABLE routine_days (
     id TEXT PRIMARY KEY,
     routine_id TEXT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
     day_number INTEGER NOT NULL,
     day_name TEXT NOT NULL,
-    focus TEXT NOT NULL
+    focus TEXT NOT NULL,
+    notes TEXT
   );
   CREATE TABLE routine_exercises (
     id TEXT PRIMARY KEY,
@@ -60,7 +80,12 @@ const DDL = `
     exercise_id TEXT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     target_sets INTEGER NOT NULL DEFAULT 4,
     target_reps INTEGER NOT NULL DEFAULT 10,
-    exercise_order INTEGER NOT NULL
+    exercise_order INTEGER NOT NULL,
+    target_reps_min INTEGER,
+    target_reps_max INTEGER,
+    warmup_sets INTEGER NOT NULL DEFAULT 0,
+    rest_seconds INTEGER,
+    notes TEXT
   );
   CREATE TABLE workouts (
     id TEXT PRIMARY KEY,

@@ -16,6 +16,7 @@
 // `npm run db:seed`.
 
 import type { Db } from '../src/lib/db/client';
+import { EXERCISE_CATALOG } from './catalog';
 import {
   exercises,
   routines,
@@ -27,55 +28,21 @@ import {
   type NewRoutineExercise,
 } from './schema';
 
-// 32 exercises grouped by muscle (matches database-schema.md § Exercises).
-const EXERCISES: NewExercise[] = [
-  // chest (7)
-  { name: 'Bench Press', muscleGroup: 'chest' },
-  { name: 'Incline Press', muscleGroup: 'chest' },
-  { name: 'Incline Bench Press', muscleGroup: 'chest' },
-  { name: 'Chest Press Machine', muscleGroup: 'chest' },
-  { name: 'Chest Press', muscleGroup: 'chest' },
-  { name: 'Pec Deck', muscleGroup: 'chest' },
-  { name: 'Cable Crossover', muscleGroup: 'chest' },
-  // shoulders (2)
-  { name: 'Shoulder Press', muscleGroup: 'shoulders' },
-  { name: 'Lateral Raises', muscleGroup: 'shoulders' },
-  // triceps (3)
-  { name: 'Tricep Pulldown', muscleGroup: 'triceps' },
-  { name: 'Overhead Tricep Extension', muscleGroup: 'triceps' },
-  { name: 'Tricep Extension', muscleGroup: 'triceps' },
-  // back (4)
-  { name: 'Lat Pulldown', muscleGroup: 'back' },
-  { name: 'Row', muscleGroup: 'back' },
-  { name: 'Pullover', muscleGroup: 'back' },
-  { name: 'Seated Row', muscleGroup: 'back' },
-  // biceps (3)
-  { name: 'Barbell Bicep Curl', muscleGroup: 'biceps' },
-  { name: 'Hammer Curl', muscleGroup: 'biceps' },
-  { name: 'Bicep Curl', muscleGroup: 'biceps' },
-  // core (1)
-  { name: 'Crunches', muscleGroup: 'core' },
-  // quads (4)
-  { name: 'Squat', muscleGroup: 'quads' },
-  { name: 'Leg Press', muscleGroup: 'quads' },
-  { name: 'Leg Extension', muscleGroup: 'quads' },
-  { name: 'Bulgarian Squat', muscleGroup: 'quads' },
-  // legs (3)
-  { name: 'Adductors', muscleGroup: 'legs' },
-  { name: 'Abductors', muscleGroup: 'legs' },
-  { name: 'Calves', muscleGroup: 'legs' },
-  { name: 'Lunges', muscleGroup: 'legs' },
-  // hamstrings (2)
-  { name: 'Romanian Deadlift', muscleGroup: 'hamstrings' },
-  { name: 'Leg Curl', muscleGroup: 'hamstrings' },
-  // glutes (2)
-  { name: 'Hip Thrust', muscleGroup: 'glutes' },
-  { name: 'Cable Kickback', muscleGroup: 'glutes' },
-];
+// 32 system exercises (catalog in db/catalog.ts, ADR-017).
+const EXERCISES: NewExercise[] = EXERCISE_CATALOG.map((e) => ({
+  name: e.name,
+  muscleGroup: e.primary,
+  secondaryMuscles: JSON.stringify(e.secondary),
+  equipment: e.equipment,
+  exerciseType: e.type,
+  instructions: e.instructions,
+}));
+
+const TEMPLATE_BASE = { isTemplate: true, createdAt: 0, updatedAt: 0 } as const;
 
 const ROUTINES: NewRoutine[] = [
-  { name: 'Male Routine', type: 'hombre' },
-  { name: 'Female Routine', type: 'mujer' },
+  { ...TEMPLATE_BASE, name: 'Male 5-Day Split', type: 'hombre', level: 'intermediate', goal: 'hypertrophy', daysPerWeek: 5, description: 'Cinco días: pecho y hombros, espalda, brazos, piernas y glúteos.' },
+  { ...TEMPLATE_BASE, name: 'Female Glute Focus 5-Day', type: 'mujer', level: 'intermediate', goal: 'hypertrophy', daysPerWeek: 5, description: 'Cinco días con énfasis en glúteos y piernas.' },
 ];
 
 const ROUTINE_DAYS_HOMBRE: Omit<NewRoutineDay, 'routineId'>[] = [
@@ -269,12 +236,131 @@ async function seedRoutineExercises(
         exerciseId,
         targetSets: 4,
         targetReps: 10,
+        targetRepsMin: 10,
+        targetRepsMax: 10,
         exerciseOrder: order,
       });
     }
   }
   if (inserts.length === 0) return;
   await db.insert(routineExercises).values(inserts);
+}
+
+/** `[name, reps, note]` pins the target reps and adds a note (e.g. the load someone used); a bare name uses 3 x 10. */
+type ExtraSlot = string | readonly [name: string, reps: number, note?: string];
+type ExtraDay = readonly [dayName: string, focus: string, exercises: readonly ExtraSlot[]];
+interface ExtraTemplate {
+  name: string;
+  description: string;
+  level: string;
+  goal: string;
+  days: readonly ExtraDay[];
+}
+
+const EXTRA_TEMPLATES: readonly ExtraTemplate[] = [
+  {
+    name: 'Lower Body (Gravl)',
+    description: 'Pierna del jueves: isquios, glúteos y cuádriceps. Cargas orientativas en las notas.',
+    level: 'intermediate',
+    goal: 'hypertrophy',
+    days: [
+      [
+        'Lower Body',
+        'Isquios + Glúteos + Cuádriceps',
+        [
+          ['Dumbbell Romanian Deadlift', 12, 'Gravl: 17.5 kg'],
+          ['Plate-Loaded Hip Thrust (Belt)', 12, 'Gravl: 80 kg'],
+          ['Seated Leg Curl', 10, 'Gravl: 47.7 kg'],
+          ['Bulgarian Squat', 10, 'Gravl: 10 kg (mancuerna)'],
+          ['Abductors', 10, 'Gravl: 56.8 kg'],
+        ],
+      ],
+    ],
+  },
+  {
+    name: 'Full Body 3-Day',
+    description: 'Tres días de cuerpo completo, ideal para empezar.',
+    level: 'beginner',
+    goal: 'general',
+    days: [
+      ['Full Body A', 'Pecho + Espalda + Piernas', ['Squat', 'Bench Press', 'Lat Pulldown', 'Shoulder Press', 'Crunches']],
+      ['Full Body B', 'Piernas + Hombros + Brazos', ['Romanian Deadlift', 'Incline Press', 'Seated Row', 'Lateral Raises', 'Bicep Curl', 'Tricep Pulldown']],
+      ['Full Body C', 'Piernas + Pecho + Espalda', ['Leg Press', 'Chest Press', 'Row', 'Hip Thrust', 'Hammer Curl', 'Crunches']],
+    ],
+  },
+  {
+    name: 'Upper / Lower 4-Day',
+    description: 'Cuatro días alternando tren superior e inferior.',
+    level: 'intermediate',
+    goal: 'strength',
+    days: [
+      ['Upper A', 'Pecho + Espalda + Hombros', ['Bench Press', 'Row', 'Shoulder Press', 'Lat Pulldown', 'Tricep Pulldown', 'Barbell Bicep Curl']],
+      ['Lower A', 'Cuádriceps + Femorales', ['Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calves']],
+      ['Upper B', 'Pecho + Espalda + Brazos', ['Incline Bench Press', 'Seated Row', 'Lateral Raises', 'Pullover', 'Overhead Tricep Extension', 'Hammer Curl']],
+      ['Lower B', 'Glúteos + Cuádriceps', ['Hip Thrust', 'Bulgarian Squat', 'Leg Extension', 'Lunges', 'Calves', 'Crunches']],
+    ],
+  },
+  {
+    name: 'Push / Pull / Legs',
+    description: 'Tres días: empuje, tirón y piernas. Repítelos para una semana de seis.',
+    level: 'intermediate',
+    goal: 'hypertrophy',
+    days: [
+      ['Push', 'Pecho + Hombros + Tríceps', ['Bench Press', 'Incline Press', 'Pec Deck', 'Shoulder Press', 'Lateral Raises', 'Tricep Pulldown']],
+      ['Pull', 'Espalda + Bíceps', ['Lat Pulldown', 'Row', 'Seated Row', 'Pullover', 'Barbell Bicep Curl', 'Hammer Curl']],
+      ['Legs', 'Piernas + Glúteos', ['Squat', 'Leg Press', 'Romanian Deadlift', 'Leg Curl', 'Hip Thrust', 'Calves']],
+    ],
+  },
+];
+
+async function seedExtraTemplates(
+  db: Db,
+  exerciseIdByName: ReadonlyMap<string, string>,
+): Promise<void> {
+  for (const t of EXTRA_TEMPLATES) {
+    const [routine] = await db
+      .insert(routines)
+      .values({
+        ...TEMPLATE_BASE,
+        name: t.name,
+        type: 'neutral',
+        description: t.description,
+        level: t.level,
+        goal: t.goal,
+        daysPerWeek: t.days.length,
+      })
+      .returning();
+    const days = await db
+      .insert(routineDays)
+      .values(
+        t.days.map(([dayName, focus], i) => ({
+          routineId: routine!.id,
+          dayNumber: i + 1,
+          dayName,
+          focus,
+        })),
+      )
+      .returning();
+    const slots: NewRoutineExercise[] = [];
+    t.days.forEach(([, , names], i) => {
+      names.forEach((slot, order) => {
+        const [name, reps, note] = typeof slot === 'string' ? [slot, 10, undefined] : slot;
+        const exerciseId = exerciseIdByName.get(name);
+        if (!exerciseId) throw new Error(`Missing exercise "${name}" in template ${t.name}`);
+        slots.push({
+          routineDayId: days[i]!.id,
+          exerciseId,
+          targetSets: 3,
+          targetReps: reps,
+          targetRepsMin: reps,
+          targetRepsMax: reps,
+          notes: note ?? null,
+          exerciseOrder: order + 1,
+        });
+      });
+    });
+    await db.insert(routineExercises).values(slots);
+  }
 }
 
 /**
@@ -340,6 +426,9 @@ export async function seedReferenceData(db: Db): Promise<void> {
     0,
   );
   console.log(`  ✓ ${mujerCount} routine_exercises`);
+
+  await seedExtraTemplates(db, exerciseIdByName);
+  console.log(`  ✓ ${EXTRA_TEMPLATES.length} extra templates`);
 
   console.log('Done.');
 }

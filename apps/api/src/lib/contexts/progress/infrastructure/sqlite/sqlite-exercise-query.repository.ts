@@ -17,7 +17,7 @@ import { ExerciseQueryRepository } from '../../domain/ports/ExerciseQueryReposit
 export class SqliteExerciseQueryRepository implements ExerciseQueryRepository {
   constructor(private readonly db: Db) {}
 
-  async getLoggedExercises(userId: string): Promise<Exercise[]> {
+  async getLoggedExercises(userId: string): Promise<Array<Pick<Exercise, "id" | "name" | "muscleGroup">>> {
     return this.db
       .selectDistinct({
         id: exercises.id,

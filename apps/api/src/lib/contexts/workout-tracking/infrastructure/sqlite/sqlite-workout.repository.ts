@@ -43,6 +43,18 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
     return rows[0];
   }
 
+  async findAllByUserAndDate(userId: string, date: Date): Promise<Workout[]> {
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+    return this.db
+      .select()
+      .from(workouts)
+      .where(and(eq(workouts.userId, userId), gte(workouts.workoutDate, startOfDay), lt(workouts.workoutDate, endOfDay)))
+      .orderBy(desc(workouts.workoutDate));
+  }
+
   async findByUserAndDate(
     userId: string,
     date: Date,

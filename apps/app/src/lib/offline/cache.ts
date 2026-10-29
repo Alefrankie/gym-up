@@ -38,6 +38,12 @@ export async function cachedGet<T>(path: string, schema: ZodType<T>): Promise<Ca
   }
 }
 
+/** Rewrites a cached read in place (e.g. after a local change that the server has not confirmed yet). */
+export async function updateCached<T>(path: string, change: (data: T) => T): Promise<void> {
+  const hit = await kv.get<CacheEntry>(key(path));
+  if (hit) await kv.set(key(path), { ...hit, data: change(hit.data as T) } satisfies CacheEntry);
+}
+
 /** Drops cached reads so the next load refetches (after a sync changed server data). */
 export async function invalidateCache(prefixes: string[]): Promise<void> {
   for (const p of prefixes) for (const k of await kv.keys(key(p))) await kv.delete(k);

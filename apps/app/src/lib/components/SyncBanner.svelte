@@ -1,13 +1,17 @@
 <script lang="ts">
   import { sync } from '#lib/offline/sync.svelte';
+  import Icon from '#lib/components/Icon.svelte';
 </script>
 
 {#if sync.pending > 0 || sync.failed.length > 0}
   <div class="banner" class:warn={sync.offline} role="status">
     {#if sync.pending > 0}
-      <span>
-        {sync.offline ? 'Sin conexión' : sync.syncing ? 'Sincronizando' : 'Pendiente'}:
-        {sync.pending} {sync.pending === 1 ? 'cambio' : 'cambios'} por enviar
+      <span class="msg">
+        <Icon name="cloud" size={20} />
+        <span>
+          {sync.offline ? 'Sin conexión' : sync.syncing ? 'Sincronizando' : 'Pendiente'}:
+          {sync.pending} {sync.pending === 1 ? 'cambio' : 'cambios'} por enviar
+        </span>
       </span>
       {#if !sync.syncing}
         <button type="button" onclick={() => sync.kick(true)}>Reintentar</button>
@@ -16,10 +20,13 @@
   </div>
   {#each sync.failed as item (item.seq)}
     <div class="banner err" role="alert">
-      <span>No se pudo guardar un cambio ({item.error}).</span>
+      <span class="msg">
+        <Icon name="x" size={20} />
+        <span>No se pudo guardar un cambio ({item.error}).</span>
+      </span>
       <span class="actions">
         <button type="button" onclick={() => sync.retry(item.seq)}>Reintentar</button>
-        <button type="button" onclick={() => sync.discard(item.seq)}>Descartar</button>
+        <button type="button" class="ghost" onclick={() => sync.discard(item.seq)}>Descartar</button>
       </span>
     </div>
   {/each}
@@ -32,22 +39,34 @@
     align-items: center;
     gap: 0.75rem;
     margin: 0.5rem 0;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    background: #1e3a8a;
-    font-size: 0.9rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    box-shadow: var(--shadow-card);
+    font-size: 0.92rem;
+    color: var(--text);
   }
-  .banner.warn {
-    background: #78350f;
+  .msg {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ember);
   }
-  .banner.err {
-    background: #7f1d1d;
+  .msg span {
+    color: var(--text);
+  }
+  .banner.warn .msg {
+    color: var(--muted);
+  }
+  .banner.err .msg {
+    color: var(--danger);
   }
   .actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.25rem;
   }
   button {
-    padding: 0.35rem 0.6rem;
+    min-height: 44px;
+    padding: 0.35rem 0.8rem;
   }
 </style>

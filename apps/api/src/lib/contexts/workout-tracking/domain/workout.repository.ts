@@ -91,6 +91,9 @@ export abstract class WorkoutRepository {
     date: Date,
   ): Promise<Workout | undefined>;
 
+  /** Every workout of a user on a calendar day: a day may hold several, one per routine. */
+  abstract findAllByUserAndDate(userId: string, date: Date): Promise<Workout[]>;
+
   /**
    * Find any in-progress workout for a user (used for "resume"
    * functionality on the dashboard).

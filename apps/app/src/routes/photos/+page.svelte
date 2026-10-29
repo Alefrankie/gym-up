@@ -7,6 +7,7 @@
   import { compressImage } from '#lib/image';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
+  import Icon from '#lib/components/Icon.svelte';
 
   let photos = $state<PhotoDto[] | null>(null);
   let urls = $state<Record<string, string>>({});
@@ -82,16 +83,19 @@
 </script>
 
 <main>
+  <p><a class="back" href="/more"><Icon name="left" size={18} /> Más</a></p>
   <h1>Fotos de progreso</h1>
-  <p class="muted">Solo tú puedes verlas. No aparecen en la vista de familia.</p>
+  <p class="privacy muted"><Icon name="key" size={18} /> Solo tú las ves. No aparecen en la vista de familia.</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <div class="actions">
-    <label class="button">
+    <label class="cta" class:disabled={busy}>
+      <Icon name="camera" size={20} />
       {busy ? 'Subiendo…' : 'Tomar foto'}
       <input type="file" accept="image/*" capture="environment" onchange={pick} disabled={busy} hidden />
     </label>
-    <label class="button secondary">
+    <label class="cta secondary" class:disabled={busy}>
+      <Icon name="plus" size={20} />
       Elegir de la galería
       <input type="file" accept="image/*" onchange={pick} disabled={busy} hidden />
     </label>
@@ -100,7 +104,10 @@
   {#if !photos && !error}
     <p class="muted">Cargando…</p>
   {:else if photos && photos.length === 0}
-    <p class="muted">Todavía no hay fotos.</p>
+    <section class="card empty">
+      <Icon name="camera" size={28} />
+      <p class="muted">Todavía no hay fotos. Sube la primera para ver tu cambio con el tiempo.</p>
+    </section>
   {:else if photos}
     <div class="grid">
       {#each photos as p (p.id)}
@@ -117,8 +124,8 @@
       {#if urls[viewing.id]}<img src={urls[viewing.id]} alt={viewing.caption ?? 'Foto de progreso'} />{/if}
       <p>{fmt(viewing.photoDate)}{viewing.caption ? ` · ${viewing.caption}` : ''}</p>
       <div class="actions">
-        <button type="button" onclick={() => (viewing = null)}>Cerrar</button>
-        <button type="button" class="danger" onclick={() => viewing && remove(viewing)}>Borrar</button>
+        <button type="button" onclick={() => (viewing = null)}><Icon name="x" size={18} /> Cerrar</button>
+        <button type="button" class="danger" onclick={() => viewing && remove(viewing)}><Icon name="trash" size={18} /> Borrar</button>
       </div>
     </div>
   {/if}
@@ -127,48 +134,85 @@
 <AppNav />
 
 <style>
+  .privacy {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
   .actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.6rem;
     margin: 1rem 0;
   }
-  .button {
+  .actions > * {
     flex: 1;
+  }
+  .cta {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    box-shadow: var(--shadow-accent);
+    color: var(--accent-ink);
+    font-size: 1rem;
+    font-weight: 700;
     text-align: center;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    background: var(--accent);
-    color: #052e16;
+    cursor: pointer;
+  }
+  .cta.secondary {
+    background: linear-gradient(180deg, var(--raised), var(--surface-hi));
+    box-shadow: var(--shadow-card);
+    color: var(--text);
     font-weight: 600;
   }
-  .button.secondary {
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid #334155;
+  .cta.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .empty {
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--accent-hi);
+  }
+  .empty p {
+    margin: 0;
   }
   .grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
+    gap: 0.6rem;
   }
   .thumb {
     position: relative;
     aspect-ratio: 3 / 4;
+    min-height: 44px;
     padding: 0;
     overflow: hidden;
-    background: var(--surface);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    box-shadow: var(--shadow-card);
   }
   .thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
   }
   .date {
     position: absolute;
     inset: auto 0 0 0;
-    padding: 0.2rem;
-    font-size: 0.7rem;
-    background: #000a;
+    padding: 1rem 0.3rem 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: linear-gradient(180deg, transparent, rgb(0 0 0 / 0.75));
   }
   .overlay {
     position: fixed;
@@ -178,17 +222,17 @@
     align-content: center;
     gap: 0.75rem;
     padding: 1rem;
-    background: #020617f2;
+    background: rgb(20 17 14 / 0.96);
     text-align: center;
   }
   .overlay img {
     max-width: 100%;
     max-height: 70vh;
     margin: 0 auto;
-    border-radius: 0.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
   }
-  .danger {
-    border-color: var(--danger);
-    color: var(--danger);
+  button :global(svg) {
+    vertical-align: -4px;
   }
 </style>

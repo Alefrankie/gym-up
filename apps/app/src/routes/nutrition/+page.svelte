@@ -16,6 +16,7 @@
   import { blobToBase64, compressImage } from '#lib/image';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
+  import Icon from '#lib/components/Icon.svelte';
 
   interface Draft extends MealAnalysisDto {
     id: string;
@@ -145,27 +146,55 @@
     }
   }
 
+  const todayMacros = $derived.by(() => {
+    const day = new Date().toDateString();
+    const t = { p: 0, c: 0, g: 0 };
+    for (const e of entries) {
+      if (new Date(e.loggedAt).toDateString() !== day) continue;
+      t.p += e.totalProtein;
+      t.c += e.totalCarbs;
+      t.g += e.totalFat;
+    }
+    return t;
+  });
   const time = (iso: string) => new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 </script>
 
 <main>
+  <p><a class="back" href="/more"><Icon name="left" size={18} /> Más</a></p>
   <h1>Alimentación</h1>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if notice}<p class="ok" role="status">{notice}</p>{/if}
 
   {#if summary}
-    <section class="card">
-      <h2>Hoy</h2>
-      <p class="big"><strong>{summary.consumed}</strong> kcal</p>
-      {#if summary.goal}
-        <progress max={summary.goal} value={Math.min(summary.consumed, summary.goal)}></progress>
-        <p class="muted">Meta {summary.goal} kcal · {summary.remaining !== null && summary.remaining >= 0 ? `faltan ${summary.remaining}` : `te pasaste ${Math.abs(summary.remaining ?? 0)}`}</p>
+    {@const goal = summary.goal}
+    {@const over = goal !== null && summary.consumed > goal}
+    <section class="card hero">
+      <p class="eyebrow">Hoy</p>
+      <p class="total">
+        <span class="big-number kcal" class:over>{Math.round(summary.consumed)}</span>
+        <span class="muted">{goal ? `/ ${goal} kcal` : 'kcal'}</span>
+      </p>
+      {#if goal}
+        <div class="track" role="progressbar" aria-valuemin="0" aria-valuemax={goal} aria-valuenow={Math.min(summary.consumed, goal)}>
+          <div class="fill" class:over style="width: {Math.min(100, (summary.consumed / goal) * 100)}%"></div>
+        </div>
+        <p class="muted left">{summary.remaining !== null && summary.remaining >= 0 ? `Faltan ${summary.remaining} kcal` : `Te pasaste ${Math.abs(summary.remaining ?? 0)} kcal`}</p>
+      {:else}
+        <p class="muted left">Sin meta todavía. Define una abajo para ver tu progreso.</p>
       {/if}
+      <div class="macros">
+        <div><span class="big-number">{Math.round(todayMacros.p)}</span><span class="muted">Proteína g</span></div>
+        <div><span class="big-number">{Math.round(todayMacros.c)}</span><span class="muted">Carbos g</span></div>
+        <div><span class="big-number">{Math.round(todayMacros.g)}</span><span class="muted">Grasa g</span></div>
+      </div>
       <form class="goal" onsubmit={saveGoal}>
         <label>Meta diaria (kcal)<input inputmode="numeric" bind:value={goalInput} placeholder="Sin meta" /></label>
         <button type="submit">Guardar</button>
       </form>
     </section>
+  {:else if !error}
+    <section class="card hero"><p class="muted">Cargando tu día…</p></section>
   {/if}
 
   {#if draft}
@@ -187,27 +216,31 @@
     </section>
   {:else}
     <div class="row">
-      <label class="button">
+      <label class="cta" class:disabled={busy}>
+        <Icon name="camera" size={20} />
         {busy ? 'Analizando…' : 'Foto de la comida'}
         <input type="file" accept="image/*" capture="environment" onchange={analyze} disabled={busy} hidden />
       </label>
-      <button type="button" onclick={manual}>Agregar a mano</button>
+      <button type="button" onclick={manual}><Icon name="plus" size={18} /> Agregar a mano</button>
     </div>
   {/if}
 
   <h2>Últimas comidas</h2>
   {#if entries.length === 0}
-    <p class="muted">Todavía no registraste comidas.</p>
+    <p class="muted">Todavía no registraste comidas. Saca una foto o agrégala a mano.</p>
   {:else}
     <ul class="list">
       {#each entries as e (e.id)}
-        <li class="entry">
-          <span>
-            <strong>{Math.round(e.totalCalories)} kcal</strong>
-            <span class="muted"> · P {Math.round(e.totalProtein)} · C {Math.round(e.totalCarbs)} · G {Math.round(e.totalFat)}</span>
-            <br /><span class="muted">{e.foodItems.map((f) => f.name).join(', ') || 'Comida'} · {time(e.loggedAt)}</span>
-          </span>
-          <button type="button" onclick={() => removeEntry(e)} aria-label="Borrar comida">✕</button>
+        <li>
+          <div class="row-body">
+            <Icon name="utensils" size={22} />
+            <span class="grow">
+              <strong>{Math.round(e.totalCalories)} kcal</strong>
+              <span class="muted">P {Math.round(e.totalProtein)} · C {Math.round(e.totalCarbs)} · G {Math.round(e.totalFat)}</span>
+              <span class="muted">{e.foodItems.map((f) => f.name).join(', ') || 'Comida'} · {time(e.loggedAt)}</span>
+            </span>
+          </div>
+          <button type="button" class="icon ghost" onclick={() => removeEntry(e)} aria-label="Borrar comida"><Icon name="trash" size={20} /></button>
         </li>
       {/each}
     </ul>
@@ -217,19 +250,68 @@
 <AppNav />
 
 <style>
-  .big {
-    font-size: 1.5rem;
-    margin: 0.25rem 0;
+  .eyebrow {
+    margin: 0 0 0.25rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.8rem;
   }
-  progress {
-    width: 100%;
-    accent-color: var(--accent);
+  .total {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+  }
+  .kcal {
+    font-size: 3.6rem;
+    color: var(--text);
+  }
+  .kcal.over {
+    color: var(--ember);
+  }
+  .track {
+    height: 14px;
+    border-radius: 999px;
+    background: var(--bg);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 0.5) inset;
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-hi));
+    box-shadow: 0 0 12px rgb(255 106 43 / 0.5);
+    transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .fill.over {
+    background: linear-gradient(90deg, var(--accent-hi), var(--ember));
+  }
+  .left {
+    margin: 0.6rem 0 0;
+  }
+  .macros {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+  }
+  .macros div {
+    display: grid;
+    gap: 0.2rem;
+  }
+  .macros .big-number {
+    font-size: 1.9rem;
+  }
+  .macros .muted {
+    font-size: 0.8rem;
   }
   .goal {
     display: flex;
     align-items: end;
     gap: 0.5rem;
-    margin-top: 0.75rem;
+    margin-top: 1rem;
   }
   .goal label {
     flex: 1;
@@ -242,24 +324,43 @@
   }
   .row {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.6rem;
     margin: 1rem 0;
   }
   .row > * {
     flex: 1;
   }
-  .button {
-    text-align: center;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    background: var(--accent);
-    color: #052e16;
-    font-weight: 600;
+  button :global(svg) {
+    vertical-align: -4px;
   }
-  .entry {
-    background: var(--surface);
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
+  .cta {
+    display: inline-flex;
+    flex-direction: row;
     align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0.7rem 1.1rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    box-shadow: var(--shadow-accent);
+    color: var(--accent-ink);
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .cta.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .list li {
+    align-items: center;
+  }
+  .list .grow span:first-child {
+    display: block;
+  }
+  .row-body :global(svg) {
+    flex: none;
+    color: var(--accent-hi);
   }
 </style>

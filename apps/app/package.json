@@ -27,6 +27,8 @@
     "wrangler": "^4.154.0"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
     "@gym-up/contracts": "workspace:*",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-notification": "~2.8.0",
@@ -36,6 +38,8 @@
   "imports": {
     "#lib/session": "./src/lib/session.svelte.ts",
     "#lib/offline/sync.svelte": "./src/lib/offline/sync.svelte.ts",
+    "#lib/offline/rest.svelte": "./src/lib/offline/rest.svelte.ts",
+    "#lib/offline/workout-view.svelte": "./src/lib/offline/workout-view.svelte.ts",
     "#lib/*.svelte": "./src/lib/*.svelte",
     "#lib/*": "./src/lib/*.ts"
   }

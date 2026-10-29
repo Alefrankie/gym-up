@@ -4,10 +4,14 @@
   import { todayWorkoutResponseSchema, type TodayWorkoutResponse } from '@gym-up/contracts';
   import { ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet } from '#lib/offline/cache';
-  import { getActiveWorkoutId, saveSnapshot, setActiveWorkoutId } from '#lib/offline/workout-session';
-  import { sync } from '#lib/offline/sync.svelte';
+  import { getActiveWorkoutId } from '#lib/offline/workout-session';
+  import { beginWorkout } from '#lib/offline/start-workout';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
+  import { muscleLoad } from '#lib/muscle-load';
+  import ExerciseRow from '#lib/components/ExerciseRow.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
 
   let today = $state<TodayWorkoutResponse | null>(null);
@@ -33,30 +37,13 @@
     }
   });
 
-  /**
-   * Starts locally first: the workout exists on this device immediately (id generated here, exercises from
-   * the last copy of today's routine), and the `start-workout` command reaches the server whenever there is signal.
-   */
   async function start(t: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>) {
     busy = true;
     error = null;
     try {
-      const id = t.existingWorkoutId ?? activeWorkoutId ?? crypto.randomUUID();
-      if (!t.existingWorkoutId && !activeWorkoutId) {
-        await saveSnapshot({
-          workoutId: id,
-          routineDayId: t.routineDay.id,
-          dayName: t.routineDay.dayName,
-          exercises: t.exercises,
-          rows: {},
-          status: 'in_progress',
-          unit: t.weightUnit,
-          startedAt: Date.now(),
-        });
-        await sync.enqueue({ type: 'start-workout', id, routineDayId: t.routineDay.id });
-      }
-      await setActiveWorkoutId(id);
-      await goto(`/workout/${id}`);
+      const id = await beginWorkout(t);
+      const first = t.exercises[0]?.exerciseId;
+      await goto(first ? `/workout/${id}/${first}` : `/workout/${id}`);
     } catch {
       error = 'No se pudo iniciar el entrenamiento';
       busy = false;
@@ -65,7 +52,6 @@
 </script>
 
 <main>
-  <h1>Hola{session.user ? `, ${session.user.displayName}` : ''}</h1>
   <SyncBanner />
   {#if stale}
     <p class="muted">Sin conexión: mostrando tu última rutina descargada.</p>
@@ -73,40 +59,121 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if !today && !error}
-    <p class="muted">Cargando…</p>
+    <p class="hello">Hola{session.user ? `, ${session.user.displayName}` : ''}</p>
+    <section class="card hero skeleton" aria-busy="true"><span class="muted">Cargando tu rutina…</span></section>
   {:else if today?.kind === 'no_routine'}
-    <p>Aún no tienes una rutina asignada.</p>
+    <p class="hello">Hola{session.user ? `, ${session.user.displayName}` : ''}</p>
+    <section class="card hero">
+      <h2>Aún no tienes un programa</h2>
+      <p class="muted">Elige una plantilla o crea el tuyo y aquí verás qué toca hoy.</p>
+      <a class="cta-link" href="/programs">Ver programas <Icon name="right" size={18} /></a>
+    </section>
   {:else if today?.kind === 'rest_day'}
-    <h2>Hoy es día de descanso</h2>
-    <p class="muted">Tus días de rutina:</p>
-    <ul class="list">
-      {#each today.dayOptions as day}
-        <li><strong>{day.dayName}</strong> <span class="muted">{day.focus}</span></li>
-      {/each}
-    </ul>
-  {:else if today?.kind === 'workout_day'}
-    {@const t = today}
-    <section class="card">
-      <h2>{t.routineDay.dayName}</h2>
-      <p class="muted">{t.routineDay.focus}</p>
+    <p class="hello">Hola{session.user ? `, ${session.user.displayName}` : ''}</p>
+    <section class="card hero">
+      <h2>Hoy es día de descanso</h2>
+      <p class="muted">Tus rutinas:</p>
       <ul class="list">
-        {#each t.exercises as ex}
-          <li>
-            <strong>{ex.exerciseName}</strong>
-            <span class="muted">{ex.targetSets} x {ex.targetReps}</span>
-          </li>
+        {#each today.dayOptions as day}
+          <li><div class="row-body"><span class="grow"><strong>{day.dayName}</strong><span class="muted">{day.focus}</span></span></div></li>
         {/each}
       </ul>
-      {#if t.workoutStatus === 'completed' && !activeWorkoutId}
-        <p class="ok">Entrenamiento completado hoy</p>
+    </section>
+  {:else if today?.kind === 'workout_day'}
+    {@const t = today}
+    {@const done = t.workoutStatus === 'completed' && !activeWorkoutId}
+    <p class="hello">
+      Hola{session.user ? `, ${session.user.displayName}` : ''}
+      {#if t.programName}<span class="badge">{t.programName}</span>{/if}
+    </p>
+    <h1 class="title">{t.routineDay.dayName}</h1>
+    <p class="muted focus">{t.routineDay.focus}</p>
+
+    <TargetMuscles muscles={muscleLoad(t.exercises)} />
+
+    <h2>{t.exercises.length} {t.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</h2>
+    <ul class="rows">
+      {#each t.exercises as ex (ex.id)}
+        <li><ExerciseRow {ex} unit={t.weightUnit} /></li>
+      {/each}
+    </ul>
+
+    <div class="cta">
+      {#if done}
+        <p class="ok done"><Icon name="check" size={20} /> Entrenamiento completado hoy</p>
       {:else}
-        <button class="primary" disabled={busy} onclick={() => start(t)}>
+        <button class="primary go" disabled={busy} onclick={() => start(t)}>
+          <Icon name="bolt" size={22} />
           {t.workoutStatus === 'in_progress' || activeWorkoutId ? 'Continuar entrenamiento' : 'Empezar entrenamiento'}
         </button>
       {/if}
-    </section>
+    </div>
   {/if}
-  <p class="muted"><a href="/history">Ver historial de entrenamientos</a></p>
 </main>
 
 <AppNav />
+
+<style>
+  .hello {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 1rem 0 0;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .title {
+    margin: 0.3rem 0 0.1rem;
+    font-size: 2.6rem;
+  }
+  .focus {
+    margin: 0;
+  }
+  .rows {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+    display: grid;
+    gap: 0.7rem;
+  }
+  .cta {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(4.9rem + env(safe-area-inset-bottom));
+    padding: 1.2rem 1rem 0.5rem;
+    background: linear-gradient(180deg, transparent, var(--bg) 60%);
+    pointer-events: none;
+  }
+  .go {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    max-width: 22rem;
+    margin: 0 auto;
+    min-height: 56px;
+    border-radius: 999px;
+    pointer-events: auto;
+  }
+  .done {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin: 0;
+    pointer-events: auto;
+  }
+  .cta-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 700;
+  }
+  .skeleton {
+    min-height: 12rem;
+    display: grid;
+    place-items: center;
+  }
+</style>

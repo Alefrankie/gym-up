@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -23,8 +24,9 @@ import {
   type WorkoutHistoryResponse,
 } from '@gym-up/contracts';
 import type { User } from '@/lib/contexts/auth/auth.types';
+import { DiscardWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/discard-workout.use-case';
 import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
-import { GetTodayWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/get-today-workout.use-case';
+import { GetNextWorkoutUseCase, type NextWorkoutResult } from '@/lib/contexts/routines/application/get-next-workout.use-case';
 import { GetWorkoutDetailUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-detail.use-case';
 import { GetWorkoutHistoryUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-history.use-case';
 import { LogSetUseCase } from '@/lib/contexts/workout-tracking/application/log-set.use-case';
@@ -34,6 +36,13 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { toWorkoutDto, toWorkoutEntryDto } from '../mappers';
 
 const iso = (d: Date) => d.toISOString();
+const parseMuscles = (json: string): string[] => {
+  try {
+    return JSON.parse(json) as string[];
+  } catch {
+    return [];
+  }
+};
 
 @Controller('workouts')
 @UseGuards(AuthGuard)
@@ -41,8 +50,9 @@ export class WorkoutsController {
   constructor(
     @Inject(StartWorkoutUseCase) private readonly startWorkout: StartWorkoutUseCase,
     @Inject(LogSetUseCase) private readonly logSet: LogSetUseCase,
+    @Inject(DiscardWorkoutUseCase) private readonly discardWorkout: DiscardWorkoutUseCase,
     @Inject(CompleteWorkoutUseCase) private readonly completeWorkout: CompleteWorkoutUseCase,
-    @Inject(GetTodayWorkoutUseCase) private readonly getToday: GetTodayWorkoutUseCase,
+    @Inject(GetNextWorkoutUseCase) private readonly getToday: GetNextWorkoutUseCase,
     @Inject(GetWorkoutDetailUseCase) private readonly getDetail: GetWorkoutDetailUseCase,
     @Inject(GetWorkoutHistoryUseCase) private readonly getHistory: GetWorkoutHistoryUseCase,
   ) {}
@@ -50,19 +60,17 @@ export class WorkoutsController {
   /** What the dashboard shows for today. */
   @Get('today')
   async today(@CurrentUser() user: User): Promise<TodayWorkoutResponse> {
-    const result = await this.getToday.execute({
-      userId: user.id,
-      routineType: user.routineType,
-      weightUnit: user.weightUnit,
-    });
+    return this.toResponse(user, await this.getToday.execute({ userId: user.id, routineType: user.routineType }));
+  }
+
+  /** Any routine of a program the caller can see, to start it on any day. */
+  @Get('routine/:routineDayId')
+  async routine(@CurrentUser() user: User, @Param('routineDayId') routineDayId: string): Promise<TodayWorkoutResponse> {
+    return this.toResponse(user, await this.getToday.forRoutine({ userId: user.id, routineDayId }));
+  }
+
+  private toResponse(user: User, result: NextWorkoutResult): TodayWorkoutResponse {
     if (result.kind === 'no_routine') return { kind: 'no_routine' };
-    if (result.kind === 'rest_day') {
-      return {
-        kind: 'rest_day',
-        dayOptions: result.dayOptions.map((d) => ({ ...d })),
-        weightUnit: result.weightUnit,
-      };
-    }
     return {
       kind: 'workout_day',
       routineDay: {
@@ -76,14 +84,19 @@ export class WorkoutsController {
         exerciseId: e.exerciseId,
         exerciseName: e.exercise.name,
         muscleGroup: e.exercise.muscleGroup,
+        secondaryMuscles: parseMuscles(e.exercise.secondaryMuscles),
         targetSets: e.targetSets,
         targetReps: e.targetReps,
+        last: result.last[e.exerciseId] ?? null,
+        warmupSets: e.warmupSets,
+        restSeconds: e.restSeconds,
         exerciseOrder: e.exerciseOrder,
       })),
       workoutStatus: result.workoutStatus,
       existingWorkoutId: result.existingWorkoutId,
-      weightUnit: result.weightUnit,
+      weightUnit: user.weightUnit,
       dayNumber: result.dayNumber,
+      programName: result.programName,
     };
   }
 
@@ -115,6 +128,13 @@ export class WorkoutsController {
       existingWorkoutId: body.existingWorkoutId,
     });
     return { kind: result.kind, workout: toWorkoutDto(result.workout) };
+  }
+
+  /** Cancels a workout in progress. Idempotent: an already-missing workout is fine. */
+  @Delete(':id')
+  @HttpCode(204)
+  async discard(@CurrentUser() user: User, @Param('id') id: string): Promise<void> {
+    await this.discardWorkout.execute({ userId: user.id, workoutId: id });
   }
 
   @Get(':id')

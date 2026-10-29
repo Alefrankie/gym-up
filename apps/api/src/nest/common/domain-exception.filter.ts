@@ -11,6 +11,7 @@ interface ResponseLike {
  */
 const STATUS_BY_ERROR_NAME: Record<string, number> = {
   WorkoutNotFoundError: 404,
+  WorkoutAlreadyCompletedError: 409,
   WorkoutOwnershipError: 403,
   WorkoutAccessDeniedError: 403,
   NoEntriesError: 400,
@@ -33,6 +34,16 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   DisplayNameTooLongError: 400,
   InvalidRoutineTypeError: 400,
   InvalidWeightUnitError: 400,
+  ExerciseNotFoundError: 404,
+  ExerciseOwnershipError: 403,
+  ExerciseNameTakenError: 409,
+  GroupNotFoundError: 404,
+  GroupFullError: 409,
+  GroupLimitError: 409,
+  ProgramNotFoundError: 404,
+  ProgramOwnershipError: 403,
+  ProgramLimitError: 409,
+  InvalidProgramError: 400,
 };
 
 const ERROR_LABEL: Record<number, string> = {
