@@ -1,0 +1,9 @@
+{
+  "name": "gym-up-web",
+  "compatibility_date": "2026-10-01",
+  // Static SPA build served by Workers static assets; unknown paths fall back to index.html.
+  "assets": {
+    "directory": "./build",
+    "not_found_handling": "single-page-application"
+  }
+}

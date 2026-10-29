@@ -3,6 +3,7 @@
   import { sessionResponseSchema, type LoginRequest } from '@gym-up/contracts';
   import { api, ApiRequestError } from '#lib/api/client';
   import { tokenStore } from '#lib/api/token';
+  import { session } from '#lib/session';
 
   let email = $state('');
   let password = $state('');
@@ -15,8 +16,9 @@
     busy = true;
     try {
       const body: LoginRequest = { email, password };
-      const session = await api('/auth/login', { body, schema: sessionResponseSchema });
-      tokenStore.set(session.token);
+      const res = await api('/auth/login', { body, schema: sessionResponseSchema });
+      tokenStore.set(res.token);
+      session.user = res.user;
       await goto('/dashboard', { replaceState: true });
     } catch (e) {
       error = e instanceof ApiRequestError ? e.message : 'No se pudo conectar con el servidor';
@@ -29,46 +31,13 @@
 <main>
   <h1>Gym Up</h1>
   <form onsubmit={submit}>
-    <label>
-      Email
-      <input type="email" bind:value={email} autocomplete="email" required />
-    </label>
+    <label>Email<input type="email" bind:value={email} autocomplete="email" required /></label>
     <label>
       Contraseña
       <input type="password" bind:value={password} autocomplete="current-password" required />
     </label>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <button type="submit" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+    <button class="primary" type="submit" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
   </form>
+  <p class="muted">¿Primera vez? <a href="/register">Crear cuenta</a></p>
 </main>
-
-<style>
-  form {
-    display: grid;
-    gap: 1rem;
-  }
-  label {
-    display: grid;
-    gap: 0.25rem;
-    color: var(--muted);
-  }
-  input {
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid #334155;
-    background: var(--surface);
-    color: var(--text);
-  }
-  button {
-    padding: 0.75rem;
-    border: 0;
-    border-radius: 0.5rem;
-    background: var(--accent);
-    color: #052e16;
-    font-weight: 600;
-  }
-  .error {
-    color: var(--danger);
-    margin: 0;
-  }
-</style>

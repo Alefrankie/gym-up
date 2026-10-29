@@ -4,6 +4,8 @@
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Browser origins allowed by CORS in addition to the Tauri origins (comma separated).
+  "vars": { "EXTRA_ORIGINS": "https://gym-up-web.gymup-phase0-spike.workers.dev" },
   "d1_databases": [
     {
       "binding": "DB",

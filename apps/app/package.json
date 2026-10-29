@@ -8,25 +8,30 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "deploy:web": "vite build && wrangler deploy"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^4.0.0",
     "@sveltejs/kit": "^3.1.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^26.6.5",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.7",
     "typescript": "^6.0.3",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.154.0"
   },
   "dependencies": {
     "@gym-up/contracts": "workspace:*",
+    "@tauri-apps/api": "^2.12.4",
     "chart.js": "^4.6.1",
     "zod": "^4.6.7"
   },
   "imports": {
+    "#lib/session": "./src/lib/session.svelte.ts",
     "#lib/*.svelte": "./src/lib/*.svelte",
     "#lib/*": "./src/lib/*.ts"
   }
