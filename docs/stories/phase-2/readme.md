@@ -2,6 +2,8 @@
 
 Parent: [../readme.md](../readme.md) · Phase: 2 · Previous: [Phase 1 (MVP)](../phase-1/readme.md)
 
+> **Stack update (2026-10-29).** These stories and the PRD, context and ADR documents they link to (ADR-015 to ADR-026) were written against Astro, React islands, Supabase and a service worker. The app now runs on NestJS (Cloudflare Workers, D1) + SvelteKit + Tauri ([ADR-027](../../architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md)). Product behavior, acceptance criteria and domain rules stand; implementation notes are superseded. See Phase Rules 1, 2 and 4 below for how to read them, and the [mobile migration plan](../../planning/mobile-migration-plan.md) for what is already built.
+
 ## Purpose
 
 Phase 1 shipped the MVP: fixed routines, set logging, charts, family view, photos, nutrition, Supabase. Phase 2 makes gym-up a daily driver that can replace **Hevy** (logging, routines, records, stats, community) and **Gravl** (next workout, progression, deloads, readiness, recovery), without losing what is unique to gym-up (private photos, AI nutrition, family-first).
@@ -14,15 +16,17 @@ Product scope: [prd/overview.md → Phase 2](../../prd/overview.md#phase-2--hevy
 
 ## Phase Rules
 
-### 1. Both backends, always
+### 1. One backend: D1 behind a Nest module (updated 2026-10-29)
 
-Phase 1 Round 6 made Supabase production. Every Phase 2 story that touches persistence MUST deliver, in the same story:
+These stories were written when Supabase was production and every story had to deliver two backends. [ADR-027](../../architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md) replaced that: production is **Cloudflare D1 (SQLite)** behind a **NestJS API**, and there is no Supabase, RLS or `STORAGE_BACKEND` switch. Every Phase 2 story that touches persistence delivers, in the same story:
 
-- the `db/schema.ts` change, plus `drizzle-kit generate` output in `db/migrations/`;
-- the matching `supabase/migrations/0NN_*.sql`, including RLS;
-- an `SqliteXxxRepository` and a `SupabaseXxxRepository` implementing the same abstract port ([ADR-007](../../architecture/decisions/007-repository-pattern.md), [ADR-011](../../architecture/decisions/011-implements-not-extends.md));
-- wiring in the context's composition file, switched by `STORAGE_BACKEND` ([ADR-010](../../architecture/decisions/010-per-context-composition.md));
-- for every owner-only or write-own table, an integration test **as a non-owner** under `tests/supabase/` (pattern: `rls-workout.integration.test.ts`).
+- the `apps/api/db/schema.ts` change, plus `drizzle-kit generate` output in `apps/api/db/migrations/` (hand-written migrations with several statements are fine: they are applied with `wrangler d1 migrations apply`);
+- a `SqliteXxxRepository` implementing the abstract port ([ADR-007](../../architecture/decisions/007-repository-pattern.md), [ADR-011](../../architecture/decisions/011-implements-not-extends.md)); repositories take the `Db` handle as an argument and never touch the filesystem;
+- the use cases (plain classes) and a Nest module with factory providers, a controller using guards and the zod schemas from `packages/contracts` ([system.md → Wiring](../../architecture/system.md#wiring-nest-modules));
+- for every owner-only or write-own table, an **ownership test as a non-owner** in `apps/api/tests/nest/*.e2e.test.ts` (it replaces the RLS integration tests: authorization now lives in the API);
+- an idempotent-by-client-id endpoint when the mutation can be queued offline ([ADR-025](../../architecture/decisions/025-offline-live-workout.md)), and the matching command in the app's outbox.
+
+D1 has no interactive transactions: use `db.batch` or a single conditional statement (ADR-027).
 
 ### 2. Code is the source of truth for conventions
 
@@ -30,11 +34,11 @@ Context readmes were written before implementation. Where they disagree with the
 
 | Doc says | Code does |
 |---|---|
-| Svelte islands | React only (`.tsx`) — [ADR-015](../../architecture/decisions/015-live-workout-react-island.md) |
+| Svelte islands | Svelte 5 components in `apps/app` (client-rendered SPA) — [ADR-027](../../architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md); the stories below say "React" or "island" where they mean a Svelte component |
 | snake_case domain types | Drizzle camelCase types from `@db/schema` |
 | `getById`, `getByUserAndDate` | `findById`, `findEntries`, … (see `src/lib/contexts/*/domain/*.repository.ts`) |
 | `src/test/...` | `tests/<context>/...` |
-| `@/lib/config` | `src/lib/db/client.ts` + per-context `*.composition.ts` |
+| `@/lib/config` | `Db` type in `apps/api/src/lib/db/client.ts`; wiring in Nest modules under `apps/api/src/nest/` (no composition files) |
 | `HealthRules` (system.md) | Does not exist yet. Story 10.2 creates `src/lib/health-safety/health-safety.constants.ts` |
 | ADR-014 `gemini-2.5-flash` | `AIAnalysisRules.DefaultModel` in code. The weekly summary reuses that constant |
 
@@ -42,9 +46,9 @@ Context readmes were written before implementation. Where they disagree with the
 
 Tests use real SQLite repositories and Object Mothers ([ADR-009](../../architecture/decisions/009-object-mothers.md)). Pure domain modules (progression, records, reducer, recovery) get exhaustive table-driven tests.
 
-### 4. Islands
+### 4. UI and API boundary (updated 2026-10-29)
 
-Interactive UI uses React islands only. Static UI uses Astro. Islands never import repositories; they call `src/pages/api/**`, which call use cases from composition roots.
+The UI is Svelte 5 in `apps/app` and never imports domain or repository code. It calls the API through the typed `api()` client with schemas from `packages/contracts`; the API's controllers call use cases from Nest modules. Paths such as `src/pages/api/**` and `src/components/**` in the stories map to `apps/api/src/nest/**` and `apps/app/src/lib/components/**`.
 
 ### 5. Copy and units
 

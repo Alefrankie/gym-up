@@ -12,7 +12,7 @@ Parent: [./readme.md](./readme.md) · Up: [../../README.md](../../README.md)
 
 ## Status
 
-Accepted
+Accepted. **Amended 2026-10-29 by [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md).** The decision stands (one live-workout screen, state in a client store, every mutation as a command) but the implementation is not a React island: the app is a SvelteKit SPA, the screen is `apps/app/src/routes/workout/[id]/+page.svelte`, and its state is a Svelte 5 `$state` snapshot persisted to IndexedDB with an outbox ([ADR-025](./025-offline-live-workout.md)). Mentions below of Astro, `exercise-card.astro`, React islands, `client:load` and the PRG form contract describe the earlier stack. The reducer-style command set and the single-screen model are what carry over.
 
 ## Context
 
