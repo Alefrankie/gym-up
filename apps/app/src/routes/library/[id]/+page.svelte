@@ -70,6 +70,7 @@
       <p><a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">Ver vídeo</a></p>
     {/if}
     {#if mine && !exercise.isArchived}
+      <p><a href={`/library/${id}/edit`}>Editar ejercicio</a></p>
       <button class="danger" disabled={busy} onclick={archive}>Archivar ejercicio</button>
     {/if}
   {:else if !error}

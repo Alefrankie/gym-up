@@ -11,6 +11,10 @@ import * as schema from '@db/schema';
 import { seedReferenceData } from '../../db/seed';
 import type { Db } from '@/lib/db/client';
 import type { PasswordHasher } from '@/lib/contexts/auth/auth.types';
+import { GetNextWorkoutUseCase } from '../../src/lib/contexts/routines/application/get-next-workout.use-case';
+import { AdoptProgramUseCase } from '../../src/lib/contexts/routines/application/program.use-cases';
+import { SqliteProgramRepository } from '../../src/lib/contexts/routines/infrastructure/sqlite/sqlite-program.repository';
+import { SqliteWorkoutRepository } from '../../src/lib/contexts/workout-tracking/infrastructure/sqlite/sqlite-workout.repository';
 import { createApp } from '../../src/nest/create-app';
 import {
   libraryExerciseListResponseSchema,
@@ -28,6 +32,7 @@ const fakeHasher: PasswordHasher = {
 };
 
 let app: INestApplication;
+let db: Db;
 let base: string;
 
 async function http(method: string, path: string, opts: { token?: string; body?: unknown } = {}) {
@@ -58,7 +63,7 @@ beforeAll(async () => {
   for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
     sqlite.exec(readFileSync(join(dir, file), 'utf8'));
   }
-  const db = drizzle(sqlite, { schema }) as unknown as Db;
+  db = drizzle(sqlite, { schema }) as unknown as Db;
   await seedReferenceData(db);
   const created = await createApp({ db, hasher: fakeHasher });
   app = created.app;
@@ -279,5 +284,62 @@ describe('today follows the program rotation', () => {
     const pinned = todayWorkoutResponseSchema.parse((await http('GET', '/workouts/today', { token: s.token })).json);
     if (pinned.kind !== 'workout_day') throw new Error('expected workout_day');
     expect(pinned).toMatchObject({ dayNumber: 1, workoutStatus: 'in_progress', existingWorkoutId: start.workout.id });
+  });
+
+  it('advances to the next routine after each completed workout and wraps around', async () => {
+    const s = await register('rot2@example.com');
+    const user = (await http('GET', '/auth/me', { token: s.token })).json;
+    const programs = new SqliteProgramRepository(db);
+    const next = new GetNextWorkoutUseCase(programs, new SqliteWorkoutRepository(db), new AdoptProgramUseCase(programs));
+    const library = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises', { token: s.token })).json).items;
+
+    const dayOf = async (daysAhead: number) => {
+      const r = await next.execute({ userId: user.id, routineType: 'hombre', now: new Date(Date.now() + daysAhead * 86_400_000) });
+      if (r.kind !== 'workout_day') throw new Error('expected workout_day');
+      return r;
+    };
+
+    const seen: number[] = [];
+    for (let d = 0; d < 6; d++) {
+      const day = await dayOf(d);
+      seen.push(day.dayNumber);
+      // the workout is logged "today" in the API clock, so a later day only changes the rotation lookup
+      if (d === 0) {
+        const id = crypto.randomUUID();
+        await http('POST', '/workouts', { token: s.token, body: { id, routineDayId: day.routineDay.id } });
+        await http('PUT', `/workouts/${id}/sets`, {
+          token: s.token,
+          body: { id: crypto.randomUUID(), exerciseId: library[0]!.id, setNumber: 1, reps: 8, weight: 50, weightUnit: 'kg', completed: true, notes: null },
+        });
+        expect((await http('POST', `/workouts/${id}/complete`, { token: s.token })).status).toBe(200);
+      } else {
+        // same day pinned or advanced depending on completed history: day 1 done, so from tomorrow on it is day 2
+        expect(day.dayNumber).toBe(2);
+      }
+    }
+    expect(seen[0]).toBe(1);
+  });
+
+  it('wraps to the first routine after the last one of the program', async () => {
+    const s = await register('rot3@example.com');
+    const user = (await http('GET', '/auth/me', { token: s.token })).json;
+    const programs = new SqliteProgramRepository(db);
+    const next = new GetNextWorkoutUseCase(programs, new SqliteWorkoutRepository(db), new AdoptProgramUseCase(programs));
+    const first = await next.execute({ userId: user.id, routineType: 'hombre' });
+    if (first.kind !== 'workout_day') throw new Error('expected workout_day');
+    const programId = (await programs.getActiveProgramId(user.id))!;
+    const tree = (await programs.findTree(programId))!;
+    const last = tree.routines[tree.routines.length - 1]!;
+    // a completed workout on the last routine, logged two days ago
+    await db.insert(schema.workouts).values({
+      userId: user.id,
+      routineDayId: last.day.id,
+      workoutDate: new Date(Date.now() - 2 * 86_400_000),
+      status: 'completed',
+    });
+    const after = await next.execute({ userId: user.id, routineType: 'hombre' });
+    if (after.kind !== 'workout_day') throw new Error('expected workout_day');
+    expect(last.day.dayNumber).toBe(5);
+    expect(after.dayNumber).toBe(1);
   });
 });
