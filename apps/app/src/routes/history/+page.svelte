@@ -1,21 +1,31 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { workoutHistoryResponseSchema, type WorkoutHistoryResponse } from '@gym-up/contracts';
-  import { api, ApiRequestError } from '#lib/api/client';
+  import { ApiRequestError, NetworkError } from '#lib/api/client';
+  import { cachedGet } from '#lib/offline/cache';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
+  import SyncBanner from '#lib/components/SyncBanner.svelte';
 
   let history = $state<WorkoutHistoryResponse | null>(null);
   let page = $state(1);
   let error = $state<string | null>(null);
+  let stale = $state(false);
 
   async function load(p: number) {
     error = null;
     try {
-      history = await api(`/workouts?page=${p}`, { schema: workoutHistoryResponseSchema });
+      const res = await cachedGet(`/workouts?page=${p}`, workoutHistoryResponseSchema);
+      history = res.data;
+      stale = res.stale;
       page = p;
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'No se pudo cargar el historial';
+      error =
+        e instanceof NetworkError
+          ? 'Sin conexión y sin historial guardado todavía.'
+          : e instanceof ApiRequestError
+            ? e.message
+            : 'No se pudo cargar el historial';
     }
   }
 
@@ -28,6 +38,8 @@
 
 <main>
   <h1>Historial</h1>
+  <SyncBanner />
+  {#if stale}<p class="muted">Sin conexión: mostrando el último historial descargado.</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !history && !error}
     <p class="muted">Cargando…</p>

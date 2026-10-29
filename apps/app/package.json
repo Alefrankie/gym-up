@@ -17,6 +17,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^26.6.5",
+    "fake-indexeddb": "^6.2.6",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.7",
     "typescript": "^6.0.3",
@@ -32,6 +33,7 @@
   },
   "imports": {
     "#lib/session": "./src/lib/session.svelte.ts",
+    "#lib/offline/sync.svelte": "./src/lib/offline/sync.svelte.ts",
     "#lib/*.svelte": "./src/lib/*.svelte",
     "#lib/*": "./src/lib/*.ts"
   }

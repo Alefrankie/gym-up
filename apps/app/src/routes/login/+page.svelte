@@ -18,7 +18,7 @@
       const body: LoginRequest = { email, password };
       const res = await api('/auth/login', { body, schema: sessionResponseSchema });
       tokenStore.set(res.token);
-      session.user = res.user;
+      await session.set(res.user);
       await goto('/dashboard', { replaceState: true });
     } catch (e) {
       error = e instanceof ApiRequestError ? e.message : 'No se pudo conectar con el servidor';

@@ -1,23 +1,18 @@
 import type { z } from 'zod';
 import { apiErrorSchema } from '@gym-up/contracts';
 import { API_URL } from './config';
+import { ApiRequestError, NetworkError } from './errors';
 import { tokenStore } from './token';
 
-export class ApiRequestError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ApiRequestError';
-  }
-}
+export { ApiRequestError, NetworkError } from './errors';
 
 interface RequestOptions<T> {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** zod schema of the response; the response is validated against the shared contract. */
   schema?: z.ZodType<T>;
+  /** Gym signal is often bad: fail fast instead of hanging. Defaults to 10 s. */
+  timeoutMs?: number;
 }
 
 /**
@@ -26,14 +21,20 @@ interface RequestOptions<T> {
  */
 export async function api<T = void>(path: string, options: RequestOptions<T> = {}): Promise<T> {
   const token = tokenStore.get();
-  const res = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? (options.body === undefined ? 'GET' : 'POST'),
-    headers: {
-      ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: options.method ?? (options.body === undefined ? 'GET' : 'POST'),
+      headers: {
+        ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
+    });
+  } catch {
+    throw new NetworkError();
+  }
 
   if (!res.ok) {
     if (res.status === 401) tokenStore.clear();
