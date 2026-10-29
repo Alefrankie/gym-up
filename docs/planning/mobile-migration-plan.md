@@ -29,7 +29,7 @@ Goal: prove the risky parts before committing.
 - Fetch a request from the app to a stub server (verifies CORS and the Android cleartext/HTTPS rules).
 - Open IndexedDB from the webview and write/read a record.
 - Install the latest versions in the ADR table together; record any peer-dependency conflicts as ADR exceptions.
-- **Cloudflare gate (platform chosen; this validates it).** Done on 2026-10-29: Nest 12 + Express built with SWC, deployed, Drizzle on D1, `db.batch` atomic, startup 58 ms (see ADR-027 spike result). **Still open:** R2 presigned upload, an adequate password hash on Workers (WebCrypto PBKDF2 is capped at 100k iterations), and a spike with a real module (for example `complete-workout`). Fallbacks: Hono on Workers, or Nest on a Node host.
+- **Cloudflare gate (platform chosen; this validates it).** Done on 2026-10-29: Nest 12 + Express built with SWC, deployed, Drizzle on D1, `db.batch` atomic, startup 50–58 ms in two runs, and the real `complete-workout` use case, repository and migrations ran unchanged on D1 (see ADR-027 spike results). **Still open:** R2 presigned upload, an adequate password hash on Workers (WebCrypto PBKDF2 is capped at 100k iterations), and a spike with a real module (for example `complete-workout`). Fallbacks: Hono on Workers, or Nest on a Node host.
 
 Exit: all of the above run on a deployed Worker; version exceptions documented. If the gate fails, switch to the ADR-027 fallback (Hono on Workers keeping the hexagonal domain, or Nest on a Node host) before Phase 1.
 

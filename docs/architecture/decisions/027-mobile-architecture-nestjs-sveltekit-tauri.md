@@ -164,7 +164,7 @@ A throwaway project (outside the repo) ran NestJS 12.3.2 with `@nestjs/platform-
 
 Rules that follow: every constructor parameter uses an explicit `@Inject(Token)`, or the API is compiled with SWC/tsc before Wrangler; an ESLint rule must catch implicit injection. Boot Nest lazily inside the first request, not at module scope.
 
-#### Deployed check (real Cloudflare account, 2026-10-29)
+#### Deployed check, run 1 (real Cloudflare account, 2026-10-29)
 
 Same app, now **transpiled with SWC** (`decoratorMetadata: true`, `legacyDecorator: true`, ES modules out) and bundled by Wrangler from the compiled JavaScript. Deployed with `wrangler deploy`, D1 bound, then deleted (Worker and database removed afterwards).
 
@@ -180,13 +180,36 @@ Same app, now **transpiled with SWC** (`decoratorMetadata: true`, `legacyDecorat
 
 The current code has **no** `.transaction(` calls (searched `src/` and `db/`), so D1's limitation does not block porting today. Multi-statement writes must use `db.batch`; read-then-write logic that needs isolation must be redesigned (for example with conditional updates or a Durable Object).
 
+#### Deployed check, run 2: real code on D1 (2026-10-29)
+
+A second, independent run used the **repository's real code unchanged**: `db/schema.ts`, all five migrations in `db/migrations`, `SqliteWorkoutRepository` and `CompleteWorkoutUseCase`. Only a Nest controller and factory providers were written (the use case is a plain class, so it is bound with `useFactory` and the domain code stays free of Nest decorators). Build: SWC to ES modules with path aliases resolved, Wrangler bundling the output. Deployed to a Worker with a D1 binding in region WEUR (colo LIS), then the Worker was deleted.
+
+| Check | Result |
+|-------|--------|
+| Implicit constructor injection after SWC (`design:paramtypes` emitted) | **Works** |
+| `wrangler d1 migrations apply` with the five existing SQLite migrations | Applied unchanged, local and remote |
+| `SqliteWorkoutRepository` and the use case against D1 | Work with no code changes (the repository was already `async`; only a type-only `Db` import needed an alias) |
+| `POST /workouts/:id/complete` | `201` complete, `201` on repeat (AC-2.6-05 holds), `400` no entries, `403` other user, `404` unknown id: same error mapping as today |
+| Worker startup time reported by Wrangler | 50 ms on the first deploy, 52 ms on a redeploy (limit 1 s) |
+| Bundle | 2.5 MiB, 533 KiB gzip |
+| First request after deploy (lazy Nest boot) | 168 ms from the dev machine, against about 37 ms warm: roughly 130 ms of cold overhead |
+| Warm `complete-workout`, 15 runs, from the dev machine | min 107 ms, median 118 ms, max 153 ms (four sequential D1 queries) |
+| Interactive `db.transaction()` | **Fails** with `D1_ERROR: To execute a transaction, please use the state.storage.transaction() ... APIs instead of the SQL BEGIN TRANSACTION or SAVEPOINT statements` |
+| `db.batch([...])` with one failing statement | **Atomic**: the whole batch rolled back, no partial row |
+| WebCrypto PBKDF2 on the deployed Worker | `100000` iterations ok; `100001`, `210000` and `600000` rejected with "iteration counts above 100000 are not supported" |
+
+Notes:
+- **`wrangler dev --local` does not enforce the PBKDF2 cap** (600 000 iterations ran locally and failed in production). Any check involving Workers limits must run on a deployed Worker.
+- `Date.now()` is frozen inside a Worker until I/O happens, so timing Nest's boot from inside the Worker reads 0 ms. Cold overhead is inferred from first versus later requests instead.
+- Both runs agree on SWC, D1 transactions, `db.batch` and the PBKDF2 cap. Their startup figures differ slightly (58 ms against 50 and 52 ms), which is normal variation.
+
 Still not verified: R2 presigned uploads, a password hash with adequate cost on Workers (PBKDF2 at 100k, scrypt or argon2 in WASM, within Worker CPU limits), the real module set under load, and Tauri against this API.
 
 ## Open questions
 
 These are **not decided** and must be answered before the marked phase starts.
 
-1. ~~Cloudflare versus Supabase~~ **Resolved 2026-10-29: Cloudflare.** Remaining risk is the Phase 0 deploy gate (cold start, D1 transactions, SWC build); fallbacks below.
+1. ~~Cloudflare versus Supabase~~ **Resolved 2026-10-29: Cloudflare.** The deploy gate passed on 2026-10-29 for SWC, startup time, D1 and batch (see the spike results); R2, the password hash and Tauri remain open in Phase 0. The fallbacks above stay available.
 2. **Password hashing on Workers (before Phase 2).** WebCrypto PBKDF2 is capped at 100 000 iterations on Workers. Choose WASM argon2, scrypt or PBKDF2 within that cap and decide whether to rehash existing argon2 hashes on next login. Only relevant if Cloudflare is adopted.
 3. **Token storage in the app (before Phase 3).** Options: OS-backed secure storage via a plugin versus `plugin-store`. Web build needs a separate answer (memory plus refresh cookie versus storage).
 4. ~~Photo storage~~ **Resolved: R2** with presigned URLs.
