@@ -288,7 +288,10 @@
     gap: 0.4rem;
     margin-bottom: 0.5rem;
   }
-  .title {
+  .card > input {
+    width: 100%;
+  }
+  .head .title {
     flex: 1;
     font-weight: 600;
   }
