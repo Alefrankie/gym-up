@@ -107,8 +107,8 @@ export const routineExerciseSchema = z.object({
   targetSets: z.number().int(),
   targetReps: z.number().int(),
   exerciseOrder: z.number().int(),
-  targetRepsMin: z.number().int().optional(),
-  targetRepsMax: z.number().int().optional(),
+  /** Best set of the last session with this exercise (weight in kg); null when there is none yet. */
+  last: z.object({ weight: z.number(), reps: z.number().int(), date: z.string() }).nullable().optional(),
   warmupSets: z.number().int().optional(),
   restSeconds: z.number().int().nullable().optional(),
 });

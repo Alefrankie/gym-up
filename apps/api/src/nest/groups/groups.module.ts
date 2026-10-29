@@ -10,12 +10,28 @@ import { SqlitePublicProfileRepository } from '@/lib/contexts/public-view/infras
 import { SqlitePublicWorkoutRepository } from '@/lib/contexts/public-view/infrastructure/sqlite/sqlite-public-workout.repository';
 import { DB } from '../tokens';
 import { ProgressModule } from '../progress/progress.module';
-import { FamilyController } from './family.controller';
+import { GroupsController } from './groups.controller';
+import {
+  CanViewMemberUseCase,
+  CreateGroupUseCase,
+  GetGroupUseCase,
+  JoinGroupUseCase,
+  LeaveGroupUseCase,
+  ListGroupsUseCase,
+} from '@/lib/contexts/groups/application/group.use-cases';
+import { GroupRepository } from '@/lib/contexts/groups/domain/group.repository';
+import { SqliteGroupRepository } from '@/lib/contexts/groups/infrastructure/sqlite/sqlite-group.repository';
 
 @Module({
   imports: [ProgressModule],
-  controllers: [FamilyController],
+  controllers: [GroupsController],
   providers: [
+    { provide: GroupRepository, useFactory: (db: Db) => new SqliteGroupRepository(db), inject: [DB] },
+    ...[ListGroupsUseCase, CreateGroupUseCase, JoinGroupUseCase, LeaveGroupUseCase, GetGroupUseCase, CanViewMemberUseCase].map((Ctor) => ({
+      provide: Ctor,
+      useFactory: (r: GroupRepository) => new Ctor(r),
+      inject: [GroupRepository],
+    })),
     { provide: PublicProfileRepository, useFactory: (db: Db) => new SqlitePublicProfileRepository(db), inject: [DB] },
     { provide: PublicWorkoutRepository, useFactory: (db: Db) => new SqlitePublicWorkoutRepository(db), inject: [DB] },
     {
@@ -36,4 +52,4 @@ import { FamilyController } from './family.controller';
     },
   ],
 })
-export class FamilyModule {}
+export class GroupsModule {}

@@ -9,7 +9,7 @@ import type { AIAnalysisPort } from '@/lib/contexts/nutrition/domain/ports/ai-an
 import type { PhotoStorage } from '@/lib/contexts/private-photos/domain/photo-storage';
 import { LibraryModule } from './library/library.module';
 import { ProgramsModule } from './programs/programs.module';
-import { FamilyModule } from './family/family.module';
+import { GroupsModule } from './groups/groups.module';
 import { ProgressModule } from './progress/progress.module';
 import { WorkoutsModule } from './workouts/workouts.module';
 
@@ -39,7 +39,7 @@ export class AppModule {
     return {
       module: AppModule,
       global: true,
-      imports: [AuthModule, WorkoutsModule, ProgressModule, FamilyModule, PhotosModule, NutritionModule, LibraryModule, ProgramsModule],
+      imports: [AuthModule, WorkoutsModule, ProgressModule, GroupsModule, PhotosModule, NutritionModule, LibraryModule, ProgramsModule],
       providers: [
         { provide: DB, useValue: deps.db },
         { provide: PASSWORD_HASHER, useValue: deps.hasher },

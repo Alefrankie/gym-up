@@ -1,6 +1,6 @@
 import type { Exercise, RoutineDay, RoutineExercise } from '@db/schema';
 import type { WorkoutRepository } from '@/lib/contexts/workout-tracking/domain/workout.repository';
-import type { ProgramRepository } from '../domain/program.repository';
+import type { LastPerformance, ProgramRepository } from '../domain/program.repository';
 import type { AdoptProgramUseCase } from './program.use-cases';
 
 export type NextWorkoutResult =
@@ -13,6 +13,8 @@ export type NextWorkoutResult =
       workoutStatus: 'not_started' | 'in_progress' | 'completed';
       existingWorkoutId: string | null;
       dayNumber: number;
+      /** Last session's best set per exercise id. */
+      last: Record<string, LastPerformance>;
     };
 
 /**
@@ -53,6 +55,10 @@ export class GetNextWorkoutUseCase {
       chosen = tree.routines[index === -1 ? 0 : index]!;
     }
 
+    const startOfToday = new Date(input.now ?? new Date());
+    startOfToday.setHours(0, 0, 0, 0);
+    const last = await this.programs.lastPerformance(input.userId, chosen.slots.map((s) => s.exerciseId), startOfToday);
+
     return {
       kind: 'workout_day',
       programName: tree.program.name,
@@ -61,6 +67,7 @@ export class GetNextWorkoutUseCase {
       workoutStatus: todays && today ? (today.status === 'completed' ? 'completed' : 'in_progress') : 'not_started',
       existingWorkoutId: todays && today ? today.id : null,
       dayNumber: chosen.day.dayNumber,
+      last: Object.fromEntries(last),
     };
   }
 }

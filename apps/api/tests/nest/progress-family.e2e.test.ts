@@ -12,12 +12,15 @@ import * as schema from '@db/schema';
 import { seedReferenceData } from '../../db/seed';
 import type { Db } from '@/lib/db/client';
 import type { PasswordHasher } from '@/lib/contexts/auth/auth.types';
+import { SqliteProgramRepository } from '../../src/lib/contexts/routines/infrastructure/sqlite/sqlite-program.repository';
 import { createApp } from '../../src/nest/create-app';
 import {
   calendarResponseSchema,
   exerciseHistoryResponseSchema,
   exerciseListResponseSchema,
-  familyResponseSchema,
+  groupDetailSchema,
+  groupListResponseSchema,
+  groupSummarySchema,
   memberProfileSchema,
   sessionResponseSchema,
   streakSchema,
@@ -132,34 +135,82 @@ describe('progress', () => {
   });
 });
 
-describe('family', () => {
+describe('groups', () => {
+  const create = async (token: string, name: string) => {
+    const r = await http('POST', '/groups', { token, body: { name } });
+    expect(r.status).toBe(200);
+    return groupSummarySchema.parse(r.json);
+  };
+
   it('requires authentication', async () => {
-    expect((await http('GET', '/family')).status).toBe(401);
+    expect((await http('GET', '/groups')).status).toBe(401);
+    expect((await http('GET', '/family')).status).toBe(404);
   });
 
-  it('lets any signed-in user read every member\'s summary (ADR-004: read all)', async () => {
-    const a = await userWithOneWorkout('fam-a@example.com', 'Ana');
-    const b = await register('fam-b@example.com', 'Beto');
+  it('creates a group with an invite code and lets others join with it', async () => {
+    const a = await userWithOneWorkout('grp-a@example.com', 'Ana');
+    const b = await register('grp-b@example.com', 'Beto');
+    const group = await create(a.session.token, 'Los del gym');
+    expect(group).toMatchObject({ name: 'Los del gym', memberCount: 1, isOwner: true });
+    expect(group.code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
 
-    const list = familyResponseSchema.parse((await http('GET', '/family', { token: b.token })).json);
-    const ana = list.find((m) => m.id === a.session.user.id);
-    expect(ana).toMatchObject({ displayName: 'Ana', totalWorkouts: 1 });
-    expect(list.find((m) => m.id === b.user.id)).toMatchObject({ displayName: 'Beto', totalWorkouts: 0, lastWorkout: null });
+    const joined = groupSummarySchema.parse(
+      (await http('POST', '/groups/join', { token: b.token, body: { code: group.code.toLowerCase() } })).json,
+    );
+    expect(joined).toMatchObject({ id: group.id, memberCount: 2, isOwner: false });
+    // joining twice is harmless
+    expect(groupSummarySchema.parse((await http('POST', '/groups/join', { token: b.token, body: { code: group.code } })).json).memberCount).toBe(2);
 
-    const detail = memberProfileSchema.parse((await http('GET', `/family/${a.session.user.id}`, { token: b.token })).json);
-    expect(detail.workouts).toHaveLength(1);
-    expect(detail.stats.totalWorkouts).toBe(1);
+    const detail = groupDetailSchema.parse((await http('GET', `/groups/${group.id}`, { token: b.token })).json);
+    expect(detail.members.find((m) => m.id === a.session.user.id)).toMatchObject({ displayName: 'Ana', totalWorkouts: 1 });
+    expect(detail.members.find((m) => m.id === b.user.id)).toMatchObject({ displayName: 'Beto', totalWorkouts: 0, lastWorkout: null });
+
+    const member = memberProfileSchema.parse((await http('GET', `/groups/members/${a.session.user.id}`, { token: b.token })).json);
+    expect(member.workouts).toHaveLength(1);
+    expect(groupListResponseSchema.parse((await http('GET', '/groups', { token: b.token })).json).items).toHaveLength(1);
   });
 
-  it('never exposes the email or password hash of a member', async () => {
-    const s = await register('fam-privacy@example.com', 'Privado');
-    const raw = JSON.stringify((await http('GET', '/family', { token: s.token })).json);
+  it('hides groups and members from people outside them', async () => {
+    const a = await userWithOneWorkout('grp-c@example.com', 'Carla');
+    const outsider = await register('grp-d@example.com', 'Dani');
+    const group = await create(a.session.token, 'Privado');
+    expect((await http('GET', `/groups/${group.id}`, { token: outsider.token })).status).toBe(404);
+    expect((await http('GET', `/groups/members/${a.session.user.id}`, { token: outsider.token })).status).toBe(404);
+    expect((await http('POST', '/groups/join', { token: outsider.token, body: { code: 'ZZZZZZ' } })).status).toBe(404);
+    expect(groupListResponseSchema.parse((await http('GET', '/groups', { token: outsider.token })).json).items).toEqual([]);
+  });
+
+  it('lets a member leave, and never exposes email or password hash', async () => {
+    const a = await register('grp-e@example.com', 'Eva');
+    const b = await register('grp-f@example.com', 'Fer');
+    const group = await create(a.token, 'Salida');
+    await http('POST', '/groups/join', { token: b.token, body: { code: group.code } });
+    const raw = JSON.stringify((await http('GET', `/groups/${group.id}`, { token: a.token })).json);
     expect(raw).not.toContain('@example.com');
     expect(raw).not.toContain('fake$');
+    expect((await http('DELETE', `/groups/${group.id}/members/me`, { token: b.token })).status).toBe(204);
+    expect((await http('GET', `/groups/${group.id}`, { token: b.token })).status).toBe(404);
+    expect((await http('DELETE', `/groups/${group.id}/members/me`, { token: b.token })).status).toBe(404);
   });
 
-  it('returns 404 for an unknown member', async () => {
-    const s = await register('fam-404@example.com', 'X');
-    expect((await http('GET', `/family/${crypto.randomUUID()}`, { token: s.token })).status).toBe(404);
+  it('replays an offline create by id without a second group', async () => {
+    const a = await register('grp-g@example.com', 'Gus');
+    const id = crypto.randomUUID();
+    const first = groupSummarySchema.parse((await http('POST', '/groups', { token: a.token, body: { id, name: 'Una vez' } })).json);
+    const again = groupSummarySchema.parse((await http('POST', '/groups', { token: a.token, body: { id, name: 'Una vez' } })).json);
+    expect(again.code).toBe(first.code);
+    expect(groupListResponseSchema.parse((await http('GET', '/groups', { token: a.token })).json).items).toHaveLength(1);
+  });
+});
+
+describe('last session load', () => {
+  it('reports the best set of the last earlier session per exercise', async () => {
+    const { session, exercise } = await userWithOneWorkout('last-a@example.com', 'Lola');
+    const repo = new SqliteProgramRepository(db);
+    // finished today: not "last session" yet
+    expect((await repo.lastPerformance(session.user.id, [exercise.id], new Date(new Date().setHours(0, 0, 0, 0)))).size).toBe(0);
+    await db.update(schema.workouts).set({ workoutDate: new Date(Date.now() - 7 * 86_400_000) });
+    const last = (await repo.lastPerformance(session.user.id, [exercise.id], new Date())).get(exercise.id);
+    expect(last).toMatchObject({ weight: 70, reps: 8 });
   });
 });

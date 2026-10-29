@@ -22,7 +22,7 @@
 // =============================================================
 
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 
 /**
  * User profile. Created on registration (Round 1: in LocalAuthService
@@ -309,3 +309,31 @@ export const nutritionGoals = sqliteTable('nutrition_goals', {
 
 export type NutritionGoal = typeof nutritionGoals.$inferSelect;
 export type NewNutritionGoal = typeof nutritionGoals.$inferInsert;
+
+/** A group of friends: members see each other's workout summaries, nobody else does. */
+export const groups = sqliteTable('groups', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(),
+  /** Invite code shared out of band; unique. */
+  code: text('code').notNull().unique(),
+  ownerId: text('owner_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at').notNull().default(0),
+});
+
+export const groupMembers = sqliteTable(
+  'group_members',
+  {
+    groupId: text('group_id')
+      .notNull()
+      .references(() => groups.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    joinedAt: integer('joined_at').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.userId] })],
+);
+
+export type Group = typeof groups.$inferSelect;

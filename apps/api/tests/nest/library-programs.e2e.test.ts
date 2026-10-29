@@ -204,13 +204,13 @@ describe('programs', () => {
       name: 'Mi plan v2',
       description: 'Dos días',
       routines: [
-        { id: dayA, name: 'A', focus: 'Pecho', exercises: [{ exerciseId: idOf('Bench Press'), targetSets: 4, targetRepsMin: 6, targetRepsMax: 8, warmupSets: 1, restSeconds: 120 }] },
-        { id: dayB, name: 'B', focus: 'Pierna', exercises: [{ exerciseId: idOf('Squat'), targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, warmupSets: 0 }] },
+        { id: dayA, name: 'A', focus: 'Pecho', exercises: [{ exerciseId: idOf('Bench Press'), targetSets: 4, targetReps: 8, warmupSets: 1, restSeconds: 120 }] },
+        { id: dayB, name: 'B', focus: 'Pierna', exercises: [{ exerciseId: idOf('Squat'), targetSets: 5, targetReps: 5, warmupSets: 0 }] },
       ],
     };
     const saved = programDetailDtoSchema.parse((await http('PUT', `/programs/${id}`, { token: s.token, body })).json);
     expect(saved).toMatchObject({ name: 'Mi plan v2', routineCount: 2, daysPerWeek: 2 });
-    expect(saved.routines[0]!.exercises[0]).toMatchObject({ exerciseName: 'Bench Press', targetRepsMin: 6, targetRepsMax: 8, warmupSets: 1, restSeconds: 120 });
+    expect(saved.routines[0]!.exercises[0]).toMatchObject({ exerciseName: 'Bench Press', targetReps: 8, warmupSets: 1, restSeconds: 120 });
 
     // replaying the same save changes nothing (ids are kept)
     const again = programDetailDtoSchema.parse((await http('PUT', `/programs/${id}`, { token: s.token, body })).json);
@@ -231,12 +231,12 @@ describe('programs', () => {
     // validation
     const badReps = await http('PUT', `/programs/${id}`, {
       token: s.token,
-      body: { name: 'x', routines: [{ name: 'A', exercises: [{ exerciseId: idOf('Squat'), targetSets: 3, targetRepsMin: 12, targetRepsMax: 8 }] }] },
+      body: { name: 'x', routines: [{ name: 'A', exercises: [{ exerciseId: idOf('Squat'), targetSets: 3, targetReps: 0 }] }] },
     });
     expect(badReps.status).toBe(400);
     const unknown = await http('PUT', `/programs/${id}`, {
       token: s.token,
-      body: { name: 'x', routines: [{ name: 'A', exercises: [{ exerciseId: 'ghost', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12 }] }] },
+      body: { name: 'x', routines: [{ name: 'A', exercises: [{ exerciseId: 'ghost', targetSets: 3, targetReps: 10 }] }] },
     });
     expect(unknown.status).toBe(400);
   });

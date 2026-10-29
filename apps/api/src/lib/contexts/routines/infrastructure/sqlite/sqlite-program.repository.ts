@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lt, notInArray, sql } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
 import {
   exercises,
@@ -6,12 +6,14 @@ import {
   routineDays,
   routineExercises,
   routines,
+  workoutEntries,
   workouts,
   type Routine,
 } from '@db/schema';
 import {
   InvalidProgramError,
   ProgramRepository,
+  type LastPerformance,
   type NewProgram,
   type NewProgramRoutine,
   type ProgramTree,
@@ -176,9 +178,9 @@ export class SqliteProgramRepository implements ProgramRepository {
           routineDayId: r.id,
           exerciseId: s.exerciseId,
           targetSets: s.targetSets,
-          targetReps: s.targetRepsMax,
-          targetRepsMin: s.targetRepsMin,
-          targetRepsMax: s.targetRepsMax,
+          targetReps: s.targetReps,
+          targetRepsMin: s.targetReps,
+          targetRepsMax: s.targetReps,
           warmupSets: s.warmupSets,
           restSeconds: s.restSeconds,
           notes: s.notes,
@@ -207,6 +209,42 @@ export class SqliteProgramRepository implements ProgramRepository {
 
   async setActiveProgram(userId: string, programId: string | null): Promise<void> {
     await this.db.update(profiles).set({ activeProgramId: programId }).where(eq(profiles.id, userId));
+  }
+
+  async lastPerformance(userId: string, exerciseIds: string[], before: Date): Promise<Map<string, LastPerformance>> {
+    const result = new Map<string, LastPerformance>();
+    if (exerciseIds.length === 0) return result;
+    const rows = await this.db
+      .select({
+        exerciseId: workoutEntries.exerciseId,
+        weight: workoutEntries.weight,
+        reps: workoutEntries.reps,
+        workoutId: workouts.id,
+        date: workouts.workoutDate,
+      })
+      .from(workoutEntries)
+      .innerJoin(workouts, eq(workoutEntries.workoutId, workouts.id))
+      .where(
+        and(
+          eq(workouts.userId, userId),
+          eq(workoutEntries.completed, true),
+          inArray(workoutEntries.exerciseId, exerciseIds),
+          lt(workouts.workoutDate, before),
+        ),
+      )
+      .orderBy(desc(workouts.workoutDate));
+    // Rows are newest first: the first workout seen for an exercise is its last session.
+    const sessionOf = new Map<string, string>();
+    for (const r of rows) {
+      const seen = sessionOf.get(r.exerciseId);
+      if (seen && seen !== r.workoutId) continue;
+      sessionOf.set(r.exerciseId, r.workoutId);
+      const best = result.get(r.exerciseId);
+      if (!best || r.weight > best.weight || (r.weight === best.weight && r.reps > best.reps)) {
+        result.set(r.exerciseId, { weight: r.weight, reps: r.reps, date: r.date.toISOString() });
+      }
+    }
+    return result;
   }
 
   async lastWorkoutDayNumber(userId: string, programId: string): Promise<number | null> {

@@ -1,5 +1,12 @@
 import type { Exercise, Routine, RoutineDay, RoutineExercise } from '@db/schema';
 
+export interface LastPerformance {
+  weight: number;
+  reps: number;
+  /** ISO date of that session. */
+  date: string;
+}
+
 export type ProgramSlot = RoutineExercise & { exercise: Exercise };
 export interface ProgramRoutine {
   day: RoutineDay;
@@ -14,8 +21,7 @@ export interface NewProgramSlot {
   id: string;
   exerciseId: string;
   targetSets: number;
-  targetRepsMin: number;
-  targetRepsMax: number;
+  targetReps: number;
   warmupSets: number;
   restSeconds: number | null;
   notes: string | null;
@@ -88,6 +94,8 @@ export abstract class ProgramRepository {
 
   abstract getActiveProgramId(userId: string): Promise<string | null>;
   abstract setActiveProgram(userId: string, programId: string | null): Promise<void>;
+  /** Best completed set of each exercise in the user's most recent earlier session with it (weight in kg). */
+  abstract lastPerformance(userId: string, exerciseIds: string[], before: Date): Promise<Map<string, LastPerformance>>;
   /** 1-based rotation position of the user's most recent workout done in `programId`, if any. */
   abstract lastWorkoutDayNumber(userId: string, programId: string): Promise<number | null>;
 }

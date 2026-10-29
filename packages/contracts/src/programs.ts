@@ -10,8 +10,7 @@ export const programExerciseDtoSchema = z.object({
   exerciseName: z.string(),
   muscleGroup: z.string(),
   targetSets: z.number().int(),
-  targetRepsMin: z.number().int(),
-  targetRepsMax: z.number().int(),
+  targetReps: z.number().int(),
   warmupSets: z.number().int(),
   restSeconds: z.number().int().nullable(),
   notes: z.string().nullable(),
@@ -56,18 +55,15 @@ export type ProgramListResponse = z.infer<typeof programListResponseSchema>;
 
 const repsSchema = z.number().int().min(1).max(PROGRAM_LIMITS.maxReps);
 
-export const programExerciseInputSchema = z
-  .object({
+export const programExerciseInputSchema = z.object({
     id: idSchema.optional(),
     exerciseId: z.string().min(1),
     targetSets: z.number().int().min(1).max(PROGRAM_LIMITS.maxSets),
-    targetRepsMin: repsSchema,
-    targetRepsMax: repsSchema,
+    targetReps: repsSchema,
     warmupSets: z.number().int().min(0).max(PROGRAM_LIMITS.maxSets).default(0),
     restSeconds: z.number().int().min(0).max(600).nullish(),
     notes: z.string().trim().max(500).nullish(),
-  })
-  .refine((v) => v.targetRepsMin <= v.targetRepsMax, { message: 'targetRepsMin must be <= targetRepsMax' });
+});
 export type ProgramExerciseInput = z.infer<typeof programExerciseInputSchema>;
 
 export const programRoutineInputSchema = z.object({

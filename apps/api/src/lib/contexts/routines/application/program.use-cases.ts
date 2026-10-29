@@ -15,8 +15,7 @@ export interface ProgramSlotInput {
   id?: string;
   exerciseId: string;
   targetSets: number;
-  targetRepsMin: number;
-  targetRepsMax: number;
+  targetReps: number;
   warmupSets: number;
   restSeconds?: number | null;
   notes?: string | null;
@@ -109,8 +108,7 @@ export class AdoptProgramUseCase {
         id: crypto.randomUUID(),
         exerciseId: s.exerciseId,
         targetSets: s.targetSets,
-        targetRepsMin: s.targetRepsMin ?? s.targetReps,
-        targetRepsMax: s.targetRepsMax ?? s.targetReps,
+        targetReps: s.targetReps,
         warmupSets: s.warmupSets,
         restSeconds: s.restSeconds,
         notes: s.notes,
@@ -177,8 +175,7 @@ export class SaveProgramUseCase {
         id: e.id ?? crypto.randomUUID(),
         exerciseId: e.exerciseId,
         targetSets: e.targetSets,
-        targetRepsMin: e.targetRepsMin,
-        targetRepsMax: e.targetRepsMax,
+        targetReps: e.targetReps,
         warmupSets: e.warmupSets,
         restSeconds: e.restSeconds ?? null,
         notes: e.notes ?? null,
