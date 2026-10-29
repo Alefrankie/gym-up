@@ -27,6 +27,7 @@
     bolt: 'M13 3 5.5 13.5H12L11 21l7.5-10.5H12L13 3Z',
     copy: 'M9 9h10v11H9V9ZM15 9V4H5v11h4',
     key: 'M14.5 9.5a4 4 0 1 1-1 2.6L4 20v-3h3v-2.5h2.5L12 12',
+    swap: 'M7 7h11M15 4l3 3-3 3M17 17H6M9 14l-3 3 3 3',
     cloud: 'M7 18a4.5 4.5 0 0 1-.4-9 6 6 0 0 1 11.6 1.5A3.8 3.8 0 0 1 17.5 18H7Z',
   } as const;
   export type IconName = keyof typeof PATHS;

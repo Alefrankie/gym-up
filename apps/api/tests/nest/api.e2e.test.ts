@@ -172,6 +172,36 @@ describe('workouts', () => {
     todayWorkoutResponseSchema.parse(r.json);
   });
 
+  it('cancels a workout in progress, idempotently, and protects finished and foreign ones', async () => {
+    const owner = await register('cancel-a@example.com');
+    const other = await register('cancel-b@example.com');
+    const dayId = await firstRoutineDayId();
+    const exercise = (await db.select().from(schema.exercises).limit(1))[0]!;
+
+    const id = crypto.randomUUID();
+    await http('POST', '/workouts', { token: owner.token, body: { id, routineDayId: dayId } });
+    await http('PUT', `/workouts/${id}/sets`, {
+      token: owner.token,
+      body: { id: crypto.randomUUID(), exerciseId: exercise.id, setNumber: 1, reps: 10, weight: 40, weightUnit: 'kg', completed: true, notes: null },
+    });
+
+    expect((await http('DELETE', `/workouts/${id}`, { token: other.token })).status).toBe(403);
+    expect((await http('DELETE', `/workouts/${id}`)).status).toBe(401);
+    expect((await http('DELETE', `/workouts/${id}`, { token: owner.token })).status).toBe(204);
+    expect((await http('GET', `/workouts/${id}`, { token: owner.token })).status).toBe(404);
+    // replaying the queued command after it already worked
+    expect((await http('DELETE', `/workouts/${id}`, { token: owner.token })).status).toBe(204);
+
+    const done = crypto.randomUUID();
+    await http('POST', '/workouts', { token: owner.token, body: { id: done, routineDayId: dayId } });
+    await http('PUT', `/workouts/${done}/sets`, {
+      token: owner.token,
+      body: { id: crypto.randomUUID(), exerciseId: exercise.id, setNumber: 1, reps: 8, weight: 50, weightUnit: 'kg', completed: true, notes: null },
+    });
+    expect((await http('POST', `/workouts/${done}/complete`, { token: owner.token })).status).toBe(200);
+    expect((await http('DELETE', `/workouts/${done}`, { token: owner.token })).status).toBe(409);
+  });
+
   it('runs the full flow: start, log sets idempotently, detail, complete, history', async () => {
     const s = await register('flow@example.com');
     const dayId = await firstRoutineDayId();

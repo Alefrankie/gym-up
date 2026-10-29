@@ -17,6 +17,9 @@ export const sendCommand: Sender = async (command: Command) => {
     case 'upsert-set':
       await api(`/workouts/${command.workoutId}/sets`, { method: 'PUT', body: command.set });
       return;
+    case 'discard-workout':
+      await api(`/workouts/${command.workoutId}`, { method: 'DELETE' });
+      return;
     case 'finish-workout':
       await api(`/workouts/${command.workoutId}/complete`, { method: 'POST' });
       return;

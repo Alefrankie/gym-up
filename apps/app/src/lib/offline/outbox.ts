@@ -17,7 +17,8 @@ import { idb } from './idb';
 export type Command =
   | { type: 'start-workout'; id: string; routineDayId: string }
   | { type: 'upsert-set'; workoutId: string; set: UpsertSetRequest }
-  | { type: 'finish-workout'; workoutId: string };
+  | { type: 'finish-workout'; workoutId: string }
+  | { type: 'discard-workout'; workoutId: string };
 
 export interface OutboxItem {
   seq?: number;
@@ -66,6 +67,7 @@ function retargeted(c: Command, remap: Remap): Command {
     case 'upsert-set':
       return c.workoutId === remap.from ? { ...c, workoutId: remap.to } : c;
     case 'finish-workout':
+    case 'discard-workout':
       return c.workoutId === remap.from ? { ...c, workoutId: remap.to } : c;
   }
 }
@@ -93,6 +95,22 @@ export class Outbox {
       }
     }
     await idb.add('outbox', { command, createdAt: this.now(), attempts: 0, nextAttemptAt: 0 } satisfies OutboxItem);
+  }
+
+  /**
+   * Removes every queued command of a workout (its sets, its finish) because the workout is being cancelled.
+   * Returns true when its `start-workout` was still waiting: the server never heard of it, so there is nothing to cancel there.
+   */
+  async dropWorkout(workoutId: string): Promise<boolean> {
+    let startNeverSent = false;
+    for (const i of await this.items()) {
+      const c = i.command;
+      const mine = c.type === 'start-workout' ? c.id === workoutId : c.workoutId === workoutId;
+      if (!mine) continue;
+      if (c.type === 'start-workout') startNeverSent = true;
+      await idb.delete('outbox', i.seq!);
+    }
+    return startNeverSent;
   }
 
   async items(): Promise<OutboxItem[]> {

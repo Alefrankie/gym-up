@@ -23,6 +23,14 @@ import type { ProgramTree } from '@/lib/contexts/routines/domain/program.reposit
 import { AuthGuard, CurrentUser } from '../common/auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
+const parseMuscles = (json: string): string[] => {
+  try {
+    return JSON.parse(json) as string[];
+  } catch {
+    return [];
+  }
+};
+
 const summary = (p: Routine, routineCount: number): ProgramSummaryDto => ({
   id: p.id,
   name: p.name,
@@ -49,6 +57,7 @@ export function toProgramDetailDto(tree: ProgramTree): ProgramDetailDto {
         exerciseId: s.exerciseId,
         exerciseName: s.exercise.name,
         muscleGroup: s.exercise.muscleGroup,
+        secondaryMuscles: parseMuscles(s.exercise.secondaryMuscles),
         targetSets: s.targetSets,
         targetReps: s.targetReps,
         warmupSets: s.warmupSets,

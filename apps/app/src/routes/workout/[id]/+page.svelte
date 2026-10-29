@@ -9,6 +9,11 @@
   const view = useWorkoutView();
   const id = $derived(page.params.id ?? '');
   const exercises = $derived(view.snap?.exercises ?? []);
+
+  async function cancel() {
+    if (!confirm('¿Cancelar este entrenamiento? Se borra todo lo que hayas registrado en él.')) return;
+    await view.cancel();
+  }
 </script>
 
 <header class="bar">
@@ -33,6 +38,9 @@
 {#if view.isCompleted}
   <p class="ok"><Icon name="check" size={18} /> Entrenamiento completado</p>
 {:else}
+  <button class="danger cancel" disabled={view.cancelling || view.finishing} onclick={cancel}>
+    <Icon name="trash" size={18} /> Cancelar entrenamiento
+  </button>
   <div class="cta">
     <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => view.finish()}>
       {view.finishing ? 'Finalizando…' : 'Finalizar entrenamiento'}
@@ -82,6 +90,14 @@
     padding: 0;
     display: grid;
     gap: 0.7rem;
+  }
+  .cancel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    margin-bottom: 1rem;
   }
   .ok {
     display: flex;

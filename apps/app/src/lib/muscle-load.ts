@@ -1,10 +1,14 @@
-import type { RoutineExerciseDto } from '@gym-up/contracts';
-
 /**
  * Share of a session each muscle takes: a set counts fully for the primary muscle and half for each secondary,
  * normalised so the most worked muscle reads 100 %.
  */
-export function muscleLoad(exercises: readonly RoutineExerciseDto[], max = 6): Array<{ muscle: string; pct: number }> {
+export interface LoadSource {
+  muscleGroup: string;
+  secondaryMuscles?: readonly string[];
+  targetSets: number;
+}
+
+export function muscleLoad(exercises: readonly LoadSource[], max = 6): Array<{ muscle: string; pct: number }> {
   const load = new Map<string, number>();
   for (const e of exercises) {
     const sets = Math.max(e.targetSets, 1);

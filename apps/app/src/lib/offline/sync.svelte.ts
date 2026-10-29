@@ -40,6 +40,13 @@ class SyncState {
     return () => this.remapListeners.delete(listener);
   }
 
+  /** Cancels a workout: its queued commands are dropped and, if the server already knows it, a delete is queued. */
+  async cancelWorkout(workoutId: string): Promise<void> {
+    const neverSent = await this.outbox.dropWorkout(workoutId);
+    if (neverSent) await this.refresh();
+    else await this.enqueue({ type: 'discard-workout', workoutId });
+  }
+
   async enqueue(command: Command): Promise<void> {
     await this.outbox.enqueue(command);
     await this.refresh();

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { Db } from '@/lib/db/client';
+import { DiscardWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/discard-workout.use-case';
 import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
 import { GetWorkoutDetailUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-detail.use-case';
 import { GetWorkoutHistoryUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-history.use-case';
@@ -28,6 +29,7 @@ import { WorkoutsController } from './workouts.controller';
       useFactory: (routines: RoutineRepository, workouts: WorkoutRepository) => new StartWorkoutUseCase(routines, workouts),
       inject: [RoutineRepository, WorkoutRepository],
     },
+    { provide: DiscardWorkoutUseCase, useFactory: (w: WorkoutRepository) => new DiscardWorkoutUseCase(w), inject: [WorkoutRepository] },
     { provide: LogSetUseCase, useFactory: (w: WorkoutRepository) => new LogSetUseCase(w), inject: [WorkoutRepository] },
     { provide: CompleteWorkoutUseCase, useFactory: (w: WorkoutRepository) => new CompleteWorkoutUseCase(w), inject: [WorkoutRepository] },
     { provide: GetWorkoutDetailUseCase, useFactory: (w: WorkoutRepository) => new GetWorkoutDetailUseCase(w), inject: [WorkoutRepository] },

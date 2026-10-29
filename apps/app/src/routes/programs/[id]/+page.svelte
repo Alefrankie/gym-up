@@ -2,66 +2,28 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import {
-    PROGRAM_LIMITS,
-    libraryExerciseListResponseSchema,
-    programDetailDtoSchema,
-    type LibraryExerciseDto,
-    type ProgramDetailDto,
-  } from '@gym-up/contracts';
+  import { PROGRAM_LIMITS, programDetailDtoSchema, type ProgramDetailDto } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
-  import { equipment as eqLabel, muscle } from '#lib/labels';
+  import { saveBody } from '#lib/programs';
   import { session } from '#lib/session';
   import Icon from '#lib/components/Icon.svelte';
-  import MuscleFigure from '#lib/components/MuscleFigure.svelte';
+  import SortableRows from '#lib/components/SortableRows.svelte';
+  import UndoToast from '#lib/components/UndoToast.svelte';
+
+  type RoutineDto = ProgramDetailDto['routines'][number];
 
   const id = $derived(page.params.id ?? '');
-
-  interface DraftExercise {
-    key: string;
-    id?: string;
-    exerciseId: string;
-    exerciseName: string;
-    muscleGroup: string;
-    targetSets: number;
-    targetReps: number;
-    warmupSets: number;
-    restSeconds: number | null;
-    notes: string | null;
-  }
-  interface DraftRoutine {
-    key: string;
-    id?: string;
-    name: string;
-    focus: string;
-    notes: string | null;
-    exercises: DraftExercise[];
-  }
-
   let program = $state<ProgramDetailDto | null>(null);
-  let draft = $state<DraftRoutine[]>([]);
   let name = $state('');
-  let library = $state<LibraryExerciseDto[]>([]);
-  let pickerFor = $state<number | null>(null);
-  let pickerQuery = $state('');
+  let routines = $state<RoutineDto[]>([]);
   let error = $state<string | null>(null);
-  let saved = $state(false);
   let busy = $state(false);
   let dirty = $state(false);
+  let saved = $state(false);
+  let removed = $state<{ item: RoutineDto; index: number } | null>(null);
 
   const editable = $derived(!!program && !program.isTemplate);
-
-  function toDraft(p: ProgramDetailDto): DraftRoutine[] {
-    return p.routines.map((r) => ({
-      key: r.id,
-      id: r.id,
-      name: r.name,
-      focus: r.focus,
-      notes: r.notes,
-      exercises: r.exercises.map((e) => ({ ...e, key: e.id })),
-    }));
-  }
 
   onMount(async () => {
     if (!(await session.require())) return;
@@ -69,10 +31,7 @@
       const res = await cachedGet(`/programs/${id}`, programDetailDtoSchema);
       program = res.data;
       name = program.name;
-      draft = toDraft(program);
-      if (!program.isTemplate) {
-        library = (await cachedGet('/exercises', libraryExerciseListResponseSchema)).data.items;
-      }
+      routines = [...program.routines];
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -88,74 +47,37 @@
     saved = false;
   };
 
-  function addRoutine() {
-    if (draft.length >= PROGRAM_LIMITS.routines) return;
-    draft.push({ key: crypto.randomUUID(), name: `Rutina ${draft.length + 1}`, focus: '', notes: null, exercises: [] });
+  function remove(item: RoutineDto) {
+    const index = routines.findIndex((r) => r.id === item.id);
+    if (index < 0) return;
+    routines.splice(index, 1);
+    removed = { item, index };
     touch();
   }
 
-  function removeRoutine(i: number) {
-    if (!confirm(`¿Quitar "${draft[i]!.name}" del programa?`)) return;
-    draft.splice(i, 1);
+  function undo() {
+    if (!removed) return;
+    routines.splice(removed.index, 0, removed.item);
+    removed = null;
     touch();
   }
 
-  function move<T>(list: T[], i: number, delta: number) {
-    const j = i + delta;
-    if (j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j]!, list[i]!];
-    touch();
-  }
-
-  function pick(ri: number, ex: LibraryExerciseDto) {
-    const r = draft[ri]!;
-    if (r.exercises.length >= PROGRAM_LIMITS.exercises) return;
-    r.exercises.push({
-      key: crypto.randomUUID(),
-      exerciseId: ex.id,
-      exerciseName: ex.name,
-      muscleGroup: ex.primaryMuscle,
-      targetSets: 3,
-      targetReps: 10,
-      warmupSets: 0,
-      restSeconds: null,
-      notes: null,
-    });
-    pickerFor = null;
-    pickerQuery = '';
-    touch();
-  }
-
-  const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  const matches = $derived(library.filter((e) => !pickerQuery || norm(e.name).includes(norm(pickerQuery))).slice(0, 30));
-
-  async function save() {
+  async function persist(): Promise<boolean> {
+    if (!program) return false;
     busy = true;
     error = null;
     try {
-      const body = {
-        name,
-        routines: draft.map((r) => ({
-          id: r.id,
-          name: r.name,
-          focus: r.focus,
-          notes: r.notes,
-          exercises: r.exercises.map((e) => ({
-            id: e.id,
-            exerciseId: e.exerciseId,
-            targetSets: e.targetSets,
-            targetReps: e.targetReps,
-            warmupSets: e.warmupSets,
-            restSeconds: e.restSeconds,
-            notes: e.notes,
-          })),
-        })),
-      };
-      program = await api(`/programs/${id}`, { method: 'PUT', body, schema: programDetailDtoSchema });
-      draft = toDraft(program);
+      program = await api(`/programs/${id}`, {
+        method: 'PUT',
+        body: saveBody(program, { name: name.trim() || program.name, routines }),
+        schema: programDetailDtoSchema,
+      });
+      routines = [...program.routines];
       await invalidateCache(['/programs', '/workouts/today']);
       dirty = false;
       saved = true;
+      busy = false;
+      return true;
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -163,8 +85,25 @@
           : e instanceof ApiRequestError
             ? e.message
             : 'No se pudo guardar';
+      busy = false;
+      return false;
     }
-    busy = false;
+  }
+
+  /** A new routine is saved right away so its editor can load it from the server. */
+  async function addRoutine() {
+    if (!program || routines.length >= PROGRAM_LIMITS.routines) return;
+    const fresh: RoutineDto = {
+      id: crypto.randomUUID(),
+      dayNumber: routines.length + 1,
+      name: `Rutina ${routines.length + 1}`,
+      focus: '',
+      notes: null,
+      exercises: [],
+    };
+    routines.push(fresh);
+    if (await persist()) await goto(`/programs/${id}/${fresh.id}`);
+    else routines.pop();
   }
 
   async function adopt() {
@@ -200,248 +139,161 @@
     <p class="muted">Cargando…</p>
   {:else if program}
     {#if editable}
-      <label class="pname">
-        Nombre del programa
-        <input maxlength="60" bind:value={name} oninput={touch} />
-      </label>
+      <input class="title" maxlength="60" aria-label="Nombre del programa" placeholder="Nombre del programa" bind:value={name} oninput={touch} />
     {:else}
       <h1>{program.name}</h1>
       {#if program.description}<p class="muted">{program.description}</p>{/if}
-      <button class="primary" disabled={busy} onclick={adopt}>Usar este programa</button>
+      <button class="primary use" disabled={busy} onclick={adopt}>Usar este programa</button>
     {/if}
 
-    {#each draft as r, ri (r.key)}
-      <section class="card routine">
-        <header>
-          <span class="num">{ri + 1}</span>
-          {#if editable}
-            <div class="titles">
-              <input class="title" maxlength="60" aria-label="Nombre de la rutina" bind:value={r.name} oninput={touch} />
-              <input class="focus" placeholder="Enfoque (ej. Pecho y tríceps)" maxlength="80" aria-label="Enfoque" bind:value={r.focus} oninput={touch} />
-            </div>
-            <div class="tools">
-              <button class="icon ghost" aria-label="Subir rutina" disabled={ri === 0} onclick={() => move(draft, ri, -1)}><Icon name="up" size={20} /></button>
-              <button class="icon ghost" aria-label="Bajar rutina" disabled={ri === draft.length - 1} onclick={() => move(draft, ri, 1)}><Icon name="down" size={20} /></button>
-              <button class="icon ghost" aria-label="Quitar rutina" onclick={() => removeRoutine(ri)}><Icon name="trash" size={20} /></button>
-            </div>
-          {:else}
-            <div class="titles">
-              <h2>{r.name}</h2>
-              <span class="muted">{r.focus}</span>
-            </div>
-          {/if}
-        </header>
+    <div class="head">
+      <h2>{routines.length} {routines.length === 1 ? 'rutina' : 'rutinas'}</h2>
+      {#if editable}
+        <button class="icon add" onclick={addRoutine} disabled={busy || routines.length >= PROGRAM_LIMITS.routines} aria-label="Añadir rutina">
+          <Icon name="plus" size={22} />
+        </button>
+      {/if}
+    </div>
 
-        <ul class="exlist">
-          {#each r.exercises as e, ei (e.key)}
-            <li>
-              <MuscleFigure primary={e.muscleGroup} size={24} />
-              <div class="body">
-                <strong>{e.exerciseName}</strong>
-                {#if editable}
-                  <div class="targets">
-                    <label>
-                      Series
-                      <input type="number" inputmode="numeric" min="1" max={PROGRAM_LIMITS.maxSets} bind:value={e.targetSets} oninput={touch} />
-                    </label>
-                    <label>
-                      Reps
-                      <input type="number" inputmode="numeric" min="1" max={PROGRAM_LIMITS.maxReps} bind:value={e.targetReps} oninput={touch} />
-                    </label>
-                  </div>
-                {:else}
-                  <span class="muted">{e.targetSets} × {e.targetReps}</span>
-                {/if}
-              </div>
-              {#if editable}
-                <div class="mini">
-                  <button class="icon ghost" aria-label="Subir ejercicio" disabled={ei === 0} onclick={() => move(r.exercises, ei, -1)}><Icon name="up" size={18} /></button>
-                  <button class="icon ghost" aria-label="Bajar ejercicio" disabled={ei === r.exercises.length - 1} onclick={() => move(r.exercises, ei, 1)}><Icon name="down" size={18} /></button>
-                  <button class="icon ghost" aria-label="Quitar ejercicio" onclick={() => { r.exercises.splice(ei, 1); touch(); }}><Icon name="x" size={18} /></button>
-                </div>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-
-        {#if editable}
-          {#if pickerFor === ri}
-            <div class="picker">
-              <div class="search">
-                <Icon name="search" size={20} />
-                <input placeholder="Buscar ejercicio" aria-label="Buscar ejercicio" bind:value={pickerQuery} />
-              </div>
-              <ul class="list">
-                {#each matches as ex (ex.id)}
-                  <li>
-                    <button class="pick" onclick={() => pick(ri, ex)}>
-                      <MuscleFigure primary={ex.primaryMuscle} secondary={ex.secondaryMuscles} size={22} />
-                      <span class="grow"><strong>{ex.name}</strong><span class="muted">{muscle(ex.primaryMuscle)} · {eqLabel(ex.equipment)}</span></span>
-                      <Icon name="plus" size={20} />
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-              <button class="ghost" onclick={() => (pickerFor = null)}>Cancelar</button>
-            </div>
-          {:else}
-            <button class="add" disabled={r.exercises.length >= PROGRAM_LIMITS.exercises} onclick={() => (pickerFor = ri)}>
-              <Icon name="plus" size={18} /> Añadir ejercicio
-            </button>
-          {/if}
-        {/if}
+    {#if routines.length === 0}
+      <section class="card empty">
+        <p>Este programa aún no tiene rutinas.</p>
+        {#if editable}<button class="primary" onclick={addRoutine}>Crear la primera rutina</button>{/if}
       </section>
-    {/each}
+    {:else}
+      <SortableRows
+        items={routines}
+        key={(r) => r.id}
+        disabled={!editable}
+        onreorder={(next) => {
+          routines = next;
+          touch();
+        }}
+        onremove={editable ? remove : undefined}
+      >
+        {#snippet row(r, i)}
+          <a class="routine" href={`/programs/${id}/${r.id}`}>
+            <span class="num">{i + 1}</span>
+            <span class="grow">
+              <strong>{r.name}</strong>
+              <span class="muted">{r.focus || 'Sin enfoque'} · {r.exercises.length} {r.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</span>
+            </span>
+            <Icon name="right" size={20} />
+          </a>
+        {/snippet}
+      </SortableRows>
+      {#if editable}
+        <p class="hint muted">Mantén pulsada una rutina para moverla · desliza a la derecha para eliminarla</p>
+      {/if}
+    {/if}
 
     {#if editable}
-      <button class="add" disabled={draft.length >= PROGRAM_LIMITS.routines} onclick={addRoutine}><Icon name="plus" size={18} /> Añadir rutina</button>
-      {#if dirty || saved}
-        <div class="savebar">
-          {#if saved}<span class="ok"><Icon name="check" size={18} /> Guardado</span>{/if}
-          {#if dirty}<button class="primary" disabled={busy || !name.trim()} onclick={save}>Guardar cambios</button>{/if}
-        </div>
-      {/if}
-      <p><button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={18} /> Archivar programa</button></p>
+      <p class="archive"><button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={18} /> Archivar programa</button></p>
+    {/if}
+
+    {#if editable && (dirty || saved)}
+      <div class="savebar">
+        {#if saved}<span class="ok"><Icon name="check" size={18} /> Guardado</span>{/if}
+        {#if dirty}<button class="primary" disabled={busy || !name.trim()} onclick={persist}>Guardar cambios</button>{/if}
+      </div>
     {/if}
   {/if}
 </main>
 
+{#if removed}
+  <UndoToast message={`${removed.item.name} eliminada`} onundo={undo} ondismiss={() => (removed = null)} />
+{/if}
+
 <style>
-  .pname {
-    margin: 0.5rem 0 1rem;
+  .title {
+    width: 100%;
+    margin-top: 0.4rem;
+    min-height: 56px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.7rem;
   }
-  .routine header {
+  .use {
+    margin-bottom: 0.5rem;
+  }
+  .head {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0.7rem;
-    margin-bottom: 0.8rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .head h2 {
+    margin: 1.4rem 0 0.6rem;
+  }
+  .add {
+    border-radius: 50%;
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    box-shadow: var(--shadow-accent);
+    color: var(--accent-ink);
+  }
+  .routine {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.8rem 0.9rem;
+    min-height: 4.4rem;
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    box-shadow: var(--shadow-card);
+    color: var(--text);
+    text-decoration: none;
   }
   .num {
     flex: none;
     display: grid;
     place-items: center;
-    width: 2.2rem;
-    height: 2.2rem;
+    width: 2.4rem;
+    height: 2.4rem;
     border-radius: 50%;
     background: linear-gradient(180deg, var(--accent-hi), var(--accent));
     color: var(--accent-ink);
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
   }
-  .titles {
-    flex: 1 1 10rem;
-    min-width: 0;
-    display: grid;
-    gap: 0.4rem;
-  }
-  .titles h2 {
-    margin: 0;
-  }
-  .title {
-    font-weight: 700;
-  }
-  .focus {
-    min-height: 40px;
-    font-size: 0.92rem;
-  }
-  .tools {
-    flex: 1 0 100%;
-    display: flex;
-    justify-content: flex-end;
-    margin-top: -0.2rem;
-  }
-  .exlist {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 0.8rem;
-    display: grid;
-    gap: 0.5rem;
-  }
-  .exlist li {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.6rem 0.7rem;
-    border-radius: var(--radius-sm);
-    background: var(--bg);
-    box-shadow: 0 2px 5px rgb(0 0 0 / 0.35) inset;
-  }
-  .body {
+  .grow {
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 0.3rem;
+    gap: 0.2rem;
   }
-  .targets {
-    display: flex;
-    gap: 0.6rem;
+  .grow strong {
+    font-size: 1.15rem;
+    font-weight: 600;
   }
-  .targets label {
-    flex: 1;
-    font-size: 0.78rem;
-  }
-  .targets input {
-    min-height: 44px;
+  .hint {
+    margin: 0.8rem 0 0;
+    font-size: 0.85rem;
     text-align: center;
-    font-weight: 700;
-    font-size: 1.1rem;
   }
-  .mini {
-    display: grid;
+  .empty {
+    text-align: center;
   }
-  .mini .icon {
-    min-height: 36px;
-    height: 36px;
-  }
-  .add {
-    width: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    margin-bottom: 1rem;
-    color: var(--accent-hi);
-  }
-  .picker {
-    display: grid;
-    gap: 0.5rem;
-  }
-  .search {
-    position: relative;
-    display: flex;
-    align-items: center;
-    color: var(--muted);
-  }
-  .search :global(svg) {
-    position: absolute;
-    left: 0.8rem;
-    pointer-events: none;
-  }
-  .search input {
-    flex: 1;
-    padding-left: 2.6rem;
-  }
-  .pick {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    text-align: left;
-  }
-  .pick .grow {
-    flex: 1;
-    display: grid;
+  .archive {
+    margin-top: 2rem;
   }
   .savebar {
-    position: sticky;
-    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 1.4rem 1rem calc(1rem + env(safe-area-inset-bottom));
     display: grid;
     gap: 0.4rem;
     justify-items: center;
+    background: linear-gradient(180deg, transparent, var(--bg) 55%);
+    pointer-events: none;
+  }
+  .savebar > * {
+    pointer-events: auto;
   }
   .savebar .primary {
+    max-width: 22rem;
     margin-top: 0;
+    border-radius: 999px;
   }
 </style>

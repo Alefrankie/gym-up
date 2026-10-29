@@ -11,6 +11,7 @@ interface ResponseLike {
  */
 const STATUS_BY_ERROR_NAME: Record<string, number> = {
   WorkoutNotFoundError: 404,
+  WorkoutAlreadyCompletedError: 409,
   WorkoutOwnershipError: 403,
   WorkoutAccessDeniedError: 403,
   NoEntriesError: 400,

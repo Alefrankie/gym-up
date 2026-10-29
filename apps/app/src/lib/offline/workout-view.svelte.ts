@@ -1,10 +1,15 @@
 import { goto } from '$app/navigation';
-import { todayWorkoutResponseSchema, workoutDetailSchema, type RoutineExerciseDto } from '@gym-up/contracts';
+import {
+  todayWorkoutResponseSchema,
+  workoutDetailSchema,
+  type RoutineExerciseDto,
+  type TodayWorkoutResponse,
+} from '@gym-up/contracts';
 import { api, ApiRequestError } from '#lib/api/client';
-import { cachedGet } from './cache';
+import { cachedGet, updateCached } from './cache';
 import { restTimer } from './rest.svelte';
 import { sync } from './sync.svelte';
-import { loadSnapshot, rowKey, saveSnapshot, setActiveWorkoutId, type WorkoutSnapshot } from './workout-session';
+import { deleteSnapshot, loadSnapshot, rowKey, saveSnapshot, setActiveWorkoutId, type WorkoutSnapshot } from './workout-session';
 import { session } from '#lib/session';
 
 const KG_TO_LBS = 2.20462;
@@ -18,6 +23,7 @@ export class WorkoutView {
   snap = $state<WorkoutSnapshot | null>(null);
   error = $state<string | null>(null);
   finishing = $state(false);
+  cancelling = $state(false);
   now = $state(Date.now());
 
   #id: string;
@@ -237,6 +243,22 @@ export class WorkoutView {
       completed: false,
     };
     await saveSnapshot(snap);
+  }
+
+  /** Cancels the workout in progress: nothing of it is kept, here or on the server. Works with no signal. */
+  async cancel(): Promise<void> {
+    const snap = this.snap;
+    if (!snap || this.isCompleted) return;
+    this.cancelling = true;
+    await sync.cancelWorkout(this.#id);
+    await deleteSnapshot(this.#id);
+    await setActiveWorkoutId(null);
+    restTimer.skip();
+    // The cached copy of today's routine still says "in progress": fix it so Inicio offers to start again.
+    await updateCached<TodayWorkoutResponse>('/workouts/today', (d) =>
+      d.kind === 'workout_day' ? { ...d, workoutStatus: 'not_started', existingWorkoutId: null } : d,
+    );
+    await goto('/dashboard', { replaceState: true });
   }
 
   async finish(): Promise<boolean> {

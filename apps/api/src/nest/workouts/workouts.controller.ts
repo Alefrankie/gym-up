@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -23,6 +24,7 @@ import {
   type WorkoutHistoryResponse,
 } from '@gym-up/contracts';
 import type { User } from '@/lib/contexts/auth/auth.types';
+import { DiscardWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/discard-workout.use-case';
 import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
 import { GetNextWorkoutUseCase } from '@/lib/contexts/routines/application/get-next-workout.use-case';
 import { GetWorkoutDetailUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-detail.use-case';
@@ -48,6 +50,7 @@ export class WorkoutsController {
   constructor(
     @Inject(StartWorkoutUseCase) private readonly startWorkout: StartWorkoutUseCase,
     @Inject(LogSetUseCase) private readonly logSet: LogSetUseCase,
+    @Inject(DiscardWorkoutUseCase) private readonly discardWorkout: DiscardWorkoutUseCase,
     @Inject(CompleteWorkoutUseCase) private readonly completeWorkout: CompleteWorkoutUseCase,
     @Inject(GetNextWorkoutUseCase) private readonly getToday: GetNextWorkoutUseCase,
     @Inject(GetWorkoutDetailUseCase) private readonly getDetail: GetWorkoutDetailUseCase,
@@ -116,6 +119,13 @@ export class WorkoutsController {
       existingWorkoutId: body.existingWorkoutId,
     });
     return { kind: result.kind, workout: toWorkoutDto(result.workout) };
+  }
+
+  /** Cancels a workout in progress. Idempotent: an already-missing workout is fine. */
+  @Delete(':id')
+  @HttpCode(204)
+  async discard(@CurrentUser() user: User, @Param('id') id: string): Promise<void> {
+    await this.discardWorkout.execute({ userId: user.id, workoutId: id });
   }
 
   @Get(':id')

@@ -9,6 +9,7 @@ export const programExerciseDtoSchema = z.object({
   exerciseId: z.string(),
   exerciseName: z.string(),
   muscleGroup: z.string(),
+  secondaryMuscles: z.array(z.string()).optional(),
   targetSets: z.number().int(),
   targetReps: z.number().int(),
   warmupSets: z.number().int(),
