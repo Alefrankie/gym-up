@@ -3,8 +3,6 @@
 // AC-1.2-05: SqlitePhotoRepository enforces owner-only access per ADR-005.
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, existsSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   SqlitePhotoRepository,
@@ -21,13 +19,10 @@ let repo: PhotoRepository;
 let ownerId: string;
 let otherId: string;
 let photoId: string;
-let uploadsDir: string;
 
 beforeAll(async () => {
   handle = createTestDb();
-  uploadsDir = mkdtempSync(join(tmpdir(), 'gym-up-photos-'));
-  const uploadsPhotosDir = join(uploadsDir, 'uploads', 'photos');
-  repo = new SqlitePhotoRepository(handle.db, { uploadsRoot: uploadsPhotosDir });
+  repo = new SqlitePhotoRepository(handle.db);
 
   const [owner] = await handle.db
     .insert(profiles)
@@ -61,26 +56,15 @@ beforeAll(async () => {
 
 afterAll(() => {
   handle.close();
-  if (existsSync(uploadsDir)) {
-    rmSync(uploadsDir, { recursive: true, force: true });
-  }
 });
 
 describe('SqlitePhotoRepository — happy path', () => {
-  it('create() persists a row and creates the file on disk', async () => {
+  it('create() persists a row with the object key (no filesystem involved)', async () => {
     const found = await repo.findById(photoId, ownerId);
     expect(found).toBeDefined();
     expect(found?.userId).toBe(ownerId);
-    // Storage path is derived from the user + timestamp; the file
-    // should exist at uploads/photos/{userId}/{timestamp}.jpg
-    const expected = join(
-      uploadsDir,
-      'uploads',
-      'photos',
-      ownerId,
-      '1700000000000.jpg',
-    );
-    expect(existsSync(expected)).toBe(true);
+    // The object key is derived from the user + timestamp: photos/{userId}/{timestamp}.jpg
+    expect(found?.storagePath).toBe(`photos/${ownerId}/1700000000000.jpg`);
   });
 
   it('findByUser() returns only the owner\'s photos, newest first', async () => {
@@ -111,7 +95,7 @@ describe('SqlitePhotoRepository — owner-only (ADR-005)', () => {
     expect(found).toBeUndefined();
   });
 
-  it('delete() by the owner removes the row and the file', async () => {
+  it('delete() by the owner removes the row', async () => {
     // First create a fresh photo to delete (don't delete the one
     // other tests use for findById).
     const fresh = await repo.create(
@@ -121,14 +105,6 @@ describe('SqlitePhotoRepository — owner-only (ADR-005)', () => {
     await repo.delete(fresh.id, ownerId);
     const after = await repo.findById(fresh.id, ownerId);
     expect(after).toBeUndefined();
-    const expected = join(
-      uploadsDir,
-      'uploads',
-      'photos',
-      ownerId,
-      '1710000000000.jpg',
-    );
-    expect(existsSync(expected)).toBe(false);
   });
 
   it('delete() throws PhotoOwnershipError for a non-owner', async () => {

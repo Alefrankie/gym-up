@@ -1,12 +1,12 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { session } from '#lib/session';
 
   const links = [
     { href: '/dashboard', label: 'Inicio' },
     { href: '/history', label: 'Historial' },
     { href: '/progress', label: 'Progreso' },
     { href: '/family', label: 'Familia' },
+    { href: '/settings', label: 'Ajustes' },
   ];
 </script>
 
@@ -14,7 +14,6 @@
   {#each links as link}
     <a href={link.href} class:active={page.url.pathname.startsWith(link.href)}>{link.label}</a>
   {/each}
-  <button type="button" onclick={() => session.signOut()}>Salir</button>
 </nav>
 
 <style>
@@ -27,8 +26,7 @@
     background: var(--surface);
     border-top: 1px solid #334155;
   }
-  a,
-  button {
+  a {
     flex: 1;
     text-align: center;
     padding: 0.75rem 0;

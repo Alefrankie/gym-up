@@ -12,7 +12,7 @@
     "db:seed": "tsx db/seed-cli.ts",
     "db:studio": "drizzle-kit studio",
     "build:worker": "node scripts/make-swcrc.mjs && swc src -d build --strip-leading-paths --config-file .swcrc --ignore \"**/*.d.ts\" && node scripts/copy-wasm-json.mjs",
-    "dev:worker": "pnpm build:worker && wrangler dev --local --ip 0.0.0.0 --port 8787",
+    "dev:worker": "pnpm build:worker && wrangler dev --local --config wrangler.local.jsonc --ip 0.0.0.0 --port 8787",
     "deploy": "pnpm build:worker && wrangler deploy",
     "db:seed-sql": "tsx scripts/gen-seed-sql.ts",
     "d1:migrate:local": "wrangler d1 migrations apply gym-up --local",

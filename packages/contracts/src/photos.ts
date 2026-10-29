@@ -1,32 +1,20 @@
 import { z } from 'zod';
 import { idSchema, isoDateSchema } from './common';
 
+export const photoContentTypeSchema = z.enum(['image/jpeg', 'image/png', 'image/webp']);
+export type PhotoContentType = z.infer<typeof photoContentTypeSchema>;
+
+/** Largest accepted upload. The app compresses photos on the device first, so real uploads are far smaller. */
+export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+export const MAX_CAPTION_LENGTH = 200;
+
+/** Metadata of a private progress photo (ADR-005). The bytes come from `GET /photos/:id/file`, owner only. */
 export const photoSchema = z.object({
   id: idSchema,
-  workoutId: idSchema.nullable(),
-  contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
-  createdAt: isoDateSchema,
+  photoDate: isoDateSchema,
+  caption: z.string().nullable(),
+  contentType: photoContentTypeSchema,
 });
 export type PhotoDto = z.infer<typeof photoSchema>;
 
-/** Step 1 of an upload: ask for a presigned R2 URL (owner-only, ADR-005). */
-export const createPhotoUploadRequestSchema = z.object({
-  id: idSchema,
-  workoutId: idSchema.nullable().default(null),
-  contentType: photoSchema.shape.contentType,
-  sizeBytes: z.number().int().min(1).max(10 * 1024 * 1024),
-});
-export type CreatePhotoUploadRequest = z.infer<typeof createPhotoUploadRequestSchema>;
-
-export const createPhotoUploadResponseSchema = z.object({
-  photo: photoSchema,
-  uploadUrl: z.string().url(),
-  expiresAt: isoDateSchema,
-});
-export type CreatePhotoUploadResponse = z.infer<typeof createPhotoUploadResponseSchema>;
-
-export const photoUrlResponseSchema = z.object({
-  url: z.string().url(),
-  expiresAt: isoDateSchema,
-});
-export type PhotoUrlResponse = z.infer<typeof photoUrlResponseSchema>;
+export const photoListResponseSchema = z.array(photoSchema);

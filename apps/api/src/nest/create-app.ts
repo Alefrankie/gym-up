@@ -26,6 +26,9 @@ export async function createApp(deps: AppDeps, extraOrigins: string[] = []): Pro
     logger: ['error', 'warn'],
   });
 
+  // Photos arrive as raw image bytes (the app compresses them first); everything else is JSON.
+  expressApp.use(express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '6mb' }));
+
   const origins = new Set([...ALLOWED_ORIGINS, ...extraOrigins]);
   app.enableCors({
     origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) =>

@@ -1,4 +1,4 @@
-import type { Workout, WorkoutEntry } from '@db/schema';
+import type { Profile, Workout, WorkoutEntry } from '@db/schema';
 import type { User } from '@/lib/contexts/auth/auth.types';
 import type {
   UserDto,
@@ -16,6 +16,17 @@ export function toUserDto(u: User): UserDto {
     routineType: u.routineType,
     weightUnit: u.weightUnit,
     createdAt: iso(u.createdAt),
+  };
+}
+
+export function profileToUserDto(p: Profile): UserDto {
+  return {
+    id: p.id,
+    email: p.email,
+    displayName: p.displayName,
+    routineType: p.routineType,
+    weightUnit: p.weightUnit,
+    createdAt: iso(p.createdAt),
   };
 }
 

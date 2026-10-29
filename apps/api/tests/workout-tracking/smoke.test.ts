@@ -8,8 +8,6 @@
 // `SqliteXxxRepository` classes) to prove the contract end-to-end.
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, existsSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
 import {
@@ -28,25 +26,20 @@ import { createTestDb, type TestDbHandle } from './test-db';
 import { profiles, exercises, routineDays, routineExercises } from '@db/schema';
 
 let handle: TestDbHandle;
-let uploadsDir: string;
 let profileId: string;
 let routineDayId: string;
 let exerciseId: string;
 let workoutId: string;
 let photoId: string;
-let fileOnDisk: string;
+let storagePath: string;
 
 beforeAll(async () => {
   handle = createTestDb();
-  uploadsDir = mkdtempSync(join(tmpdir(), 'gym-up-smoke-'));
-  const uploadsPhotosDir = join(uploadsDir, 'uploads', 'photos');
 
   const profileRepo = new SqliteProfileRepository(handle.db);
   const routineRepo = new SqliteRoutineRepository(handle.db);
   const workoutRepo = new SqliteWorkoutRepository(handle.db);
-  const photoRepo = new SqlitePhotoRepository(handle.db, {
-    uploadsRoot: uploadsPhotosDir,
-  });
+  const photoRepo = new SqlitePhotoRepository(handle.db);
 
   // 1. Profile
   const profile = await profileRepo.create({
@@ -129,11 +122,7 @@ beforeAll(async () => {
     profileId,
   );
   photoId = photo.id;
-  fileOnDisk = join(
-    uploadsPhotosDir,
-    profileId,
-    '1700000000000.jpg',
-  );
+  storagePath = photo.storagePath;
 
   // 7. Complete the workout (update)
   const completed = await workoutRepo.update(
@@ -146,9 +135,6 @@ beforeAll(async () => {
 
 afterAll(() => {
   handle.close();
-  if (existsSync(uploadsDir)) {
-    rmSync(uploadsDir, { recursive: true, force: true });
-  }
 });
 
 describe('smoke — end-to-end create → read through repos', () => {
@@ -185,10 +171,11 @@ describe('smoke — end-to-end create → read through repos', () => {
     expect(entries[0].weight).toBe(60);
   });
 
-  it('photo row exists and the file lives on the local filesystem', async () => {
+  it('photo row exists with its object key', async () => {
     const photoRepo = new SqlitePhotoRepository(handle.db);
     const found = await photoRepo.findById(photoId, profileId);
     expect(found?.userId).toBe(profileId);
-    expect(existsSync(fileOnDisk)).toBe(true);
+    expect(found?.storagePath).toBe(storagePath);
+    expect(storagePath).toBe(`photos/${profileId}/1700000000000.jpg`);
   });
 });

@@ -7,13 +7,11 @@
 // Per ADR-007 + ADR-012: consumes the Drizzle `db` instance.
 // Per ADR-011: `implements`, not `extends`.
 //
-// Storage (Round 1): local filesystem at `./uploads/photos/{user_id}/{timestamp}.jpg`.
-// The repo's `create` and `delete` manage the file alongside the DB row.
-// Round 6 swaps to Supabase Storage; the abstract contract stays the same.
+// Metadata only (ADR-027): this repository stores the row (owner, date, caption and the object key in
+// `storagePath`). The bytes live in the object store (`PhotoStorage`: R2 in production), so nothing here
+// touches a filesystem and the class runs unchanged inside a Cloudflare Worker.
 
 import { desc, eq } from 'drizzle-orm';
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
 import type { Db } from '@/lib/db/client';
 import {
   progressPhotos,
@@ -25,31 +23,12 @@ import {
   PhotoRepository,
 } from '@/lib/contexts/workout-tracking/domain/photo.repository';
 
-const DEFAULT_UPLOADS_ROOT = resolve(process.cwd(), 'uploads', 'photos');
-
-function buildStoragePath(
-  userId: string,
-  timestamp: number,
-  extension: string = 'jpg',
-): string {
-  // Use the timestamp embedded in the file name so the on-disk name
-  // matches the row's `photoDate` to the millisecond.
-  return join(userId, `${timestamp}.${extension}`);
+function buildStoragePath(userId: string, timestamp: number, extension: string = 'jpg'): string {
+  return `photos/${userId}/${timestamp}.${extension}`;
 }
 
 export class SqlitePhotoRepository implements PhotoRepository {
-  private readonly uploadsRoot: string;
-
-  constructor(
-    private readonly db: Db,
-    options: { uploadsRoot?: string } = {},
-  ) {
-    this.uploadsRoot = options.uploadsRoot ?? DEFAULT_UPLOADS_ROOT;
-  }
-
-  private absolutePathFor(storagePath: string): string {
-    return join(this.uploadsRoot, storagePath);
-  }
+  constructor(private readonly db: Db) {}
 
   async findById(
     id: string,
@@ -102,15 +81,6 @@ export class SqlitePhotoRepository implements PhotoRepository {
         ? input.storagePath
         : buildStoragePath(currentUserId, photoDateMs);
 
-    // Write a placeholder file on disk so the smoke test can verify
-    // the filesystem side of the contract. Production upload flows
-    // (story 2.5+) will pass real bytes through this same code path.
-    const absolutePath = this.absolutePathFor(storagePath);
-    mkdirSync(dirname(absolutePath), { recursive: true });
-    if (!existsSync(absolutePath)) {
-      writeFileSync(absolutePath, '');
-    }
-
     const rows = await this.db
       .insert(progressPhotos)
       .values({
@@ -142,17 +112,6 @@ export class SqlitePhotoRepository implements PhotoRepository {
     }
 
     await this.db.delete(progressPhotos).where(eq(progressPhotos.id, id));
-
-    // Best-effort filesystem cleanup. Failure to unlink must not roll
-    // back the DB delete (the row is the source of truth per ADR-005);
-    // just leave the orphan for ops to clean up.
-    const absolutePath = this.absolutePathFor(row.storagePath);
-    try {
-      if (existsSync(absolutePath)) {
-        unlinkSync(absolutePath);
-      }
-    } catch {
-      // Swallow filesystem errors; the DB row is the authority.
-    }
+    // The object itself is removed by the caller through PhotoStorage (RemovePhotoUseCase).
   }
 }

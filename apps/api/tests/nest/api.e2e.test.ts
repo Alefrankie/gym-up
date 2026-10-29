@@ -140,6 +140,24 @@ describe('auth', () => {
   });
 });
 
+describe('settings (PATCH /auth/me)', () => {
+  it('updates the display name, weight unit and routine type', async () => {
+    const s = await register('settings@example.com');
+    const r = await http('PATCH', '/auth/me', { token: s.token, body: { displayName: '  Nuevo Nombre ', weightUnit: 'lbs', routineType: 'mujer' } });
+    expect(r.status).toBe(200);
+    expect(userSchema.parse(r.json)).toMatchObject({ displayName: 'Nuevo Nombre', weightUnit: 'lbs', routineType: 'mujer' });
+    const me = await http('GET', '/auth/me', { token: s.token });
+    expect(me.json).toMatchObject({ displayName: 'Nuevo Nombre', weightUnit: 'lbs', routineType: 'mujer' });
+  });
+
+  it('rejects an empty update, an invalid unit and a missing token', async () => {
+    const s = await register('settings2@example.com');
+    expect((await http('PATCH', '/auth/me', { token: s.token, body: {} })).status).toBe(400);
+    expect((await http('PATCH', '/auth/me', { token: s.token, body: { weightUnit: 'stone' } })).status).toBe(400);
+    expect((await http('PATCH', '/auth/me', { body: { displayName: 'X' } })).status).toBe(401);
+  });
+});
+
 describe('workouts', () => {
   async function firstRoutineDayId(): Promise<string> {
     const day = await db.select().from(schema.routineDays).limit(1);
