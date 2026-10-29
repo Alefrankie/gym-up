@@ -1,0 +1,26 @@
+{
+  "name": "gym-up-api",
+  "main": "build/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gym-up",
+      // Replace with the id printed by `wrangler d1 create gym-up`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "db/migrations"
+    }
+  ],
+  "alias": {
+    // Nest lazily imports optional packages that are not installed; stub them for the bundler.
+    "@nestjs/microservices": "./stubs/stub.js",
+    "@nestjs/microservices/microservices-module.js": "./stubs/stub.js",
+    "@nestjs/websockets/socket-module.js": "./stubs/stub.js",
+    "class-validator": "./stubs/stub.js",
+    "class-transformer": "./stubs/stub.js",
+    // The schema lives outside src/, so SWC leaves this import alone and the bundler resolves it.
+    "@db/schema": "./db/schema.ts"
+  }
+}

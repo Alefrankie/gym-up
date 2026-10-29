@@ -23,6 +23,11 @@ import type { RoutineRepository } from '../domain/routine.repository';
 
 export interface StartWorkoutInput {
   userId: string;
+  /**
+   * Client-generated id (ADR-025). When set, replaying the same command returns
+   * the workout that already has this id instead of creating another one.
+   */
+  id?: string;
   routineDayId: string;
   /**
    * If provided, the call is treated as "Continue" — the use case verifies
@@ -100,6 +105,17 @@ export class StartWorkoutUseCase {
       return { kind: 'resumed', workout: existing };
     }
 
+    // Replay of a client-generated id (ADR-025): return what already exists.
+    if (input.id) {
+      const byId = await this.workoutRepository.findById(input.id);
+      if (byId) {
+        if (byId.userId !== input.userId) {
+          throw new WorkoutOwnershipError(input.id, input.userId);
+        }
+        return { kind: 'resumed', workout: byId };
+      }
+    }
+
     // Start path with idempotency (AC-2.2-04).
     const now = input.now ?? new Date();
     const existingToday = await this.workoutRepository.findByUserAndDate(
@@ -112,6 +128,7 @@ export class StartWorkoutUseCase {
 
     try {
       const workout = await this.workoutRepository.create({
+        ...(input.id ? { id: input.id } : {}),
         userId: input.userId,
         routineDayId: input.routineDayId,
         workoutDate: now,

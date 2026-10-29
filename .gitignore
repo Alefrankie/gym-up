@@ -59,3 +59,7 @@ build/
 src-tauri-target/
 apps/app/src-tauri/target/
 apps/app/src-tauri/gen/android/.gradle/
+
+# API Worker build
+apps/api/.swcrc
+apps/api/build/

@@ -29,6 +29,8 @@ import type { WorkoutEntry } from '@db/schema';
 
 export interface LogSetInput {
   userId: string;
+  /** Client-generated id of the set (ADR-025). Used only when the set is created. */
+  id?: string;
   workoutId: string;
   exerciseId: string;
   setNumber: number;
@@ -112,6 +114,7 @@ export class LogSetUseCase {
       const created = await this.workoutRepository.addEntry(
         input.workoutId,
         {
+          ...(input.id ? { id: input.id } : {}),
           exerciseId: input.exerciseId,
           setNumber: input.setNumber,
           reps: input.reps,

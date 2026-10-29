@@ -6,6 +6,20 @@
 import { eq } from 'drizzle-orm';
 import { profiles } from '@db/schema';
 import type { Db } from '@/lib/db/client';
+
+export class EmailAlreadyRegisteredError extends Error {
+  constructor() {
+    super('Email already registered');
+    this.name = 'EmailAlreadyRegisteredError';
+  }
+}
+
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super('Invalid email or password');
+    this.name = 'InvalidCredentialsError';
+  }
+}
 import type {
   AuthService,
   RegisterInput,
@@ -56,7 +70,7 @@ export class LocalAuthService implements AuthService {
       .limit(1);
 
     if (existingUser.length > 0) {
-      throw new Error('Email already registered');
+      throw new EmailAlreadyRegisteredError();
     }
 
     // Hash password
@@ -114,7 +128,7 @@ export class LocalAuthService implements AuthService {
       .limit(1);
 
     if (userResult.length === 0) {
-      throw new Error('Invalid email or password');
+      throw new InvalidCredentialsError();
     }
 
     const user = userResult[0];
@@ -126,7 +140,7 @@ export class LocalAuthService implements AuthService {
     );
 
     if (!isValidPassword) {
-      throw new Error('Invalid email or password');
+      throw new InvalidCredentialsError();
     }
 
     // Create session

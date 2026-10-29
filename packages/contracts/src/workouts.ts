@@ -53,8 +53,24 @@ export const upsertSetRequestSchema = z.object({
 });
 export type UpsertSetRequest = z.infer<typeof upsertSetRequestSchema>;
 
-export const workoutDetailSchema = workoutSchema.extend({
-  entries: z.array(workoutEntrySchema),
+/** One set joined with its exercise, as shown on the workout screen and in history detail. */
+export const workoutDetailEntrySchema = z.object({
+  id: idSchema,
+  exerciseId: z.string(),
+  exerciseName: z.string(),
+  muscleGroup: z.string(),
+  setNumber: z.number().int().min(1),
+  reps: z.number().int(),
+  /** In kg (ADR-006). */
+  weight: z.number(),
+  completed: z.boolean(),
+  notes: z.string().nullable(),
+});
+export type WorkoutDetailEntryDto = z.infer<typeof workoutDetailEntrySchema>;
+
+export const workoutDetailSchema = z.object({
+  workout: workoutSchema,
+  entries: z.array(workoutDetailEntrySchema),
 });
 export type WorkoutDetailDto = z.infer<typeof workoutDetailSchema>;
 
@@ -71,8 +87,51 @@ export type WorkoutHistoryItemDto = z.infer<typeof workoutHistoryItemSchema>;
 
 export const workoutHistoryResponseSchema = z.object({
   items: z.array(workoutHistoryItemSchema),
-  total: z.number().int(),
-  page: z.number().int(),
-  pageSize: z.number().int(),
+  currentPage: z.number().int(),
+  totalPages: z.number().int(),
 });
 export type WorkoutHistoryResponse = z.infer<typeof workoutHistoryResponseSchema>;
+
+/** Result of starting (or resuming) a workout. */
+export const startWorkoutResponseSchema = z.object({
+  kind: z.enum(['started', 'resumed']),
+  workout: workoutSchema,
+});
+export type StartWorkoutResponse = z.infer<typeof startWorkoutResponseSchema>;
+
+export const routineExerciseSchema = z.object({
+  id: z.string(),
+  exerciseId: z.string(),
+  exerciseName: z.string(),
+  muscleGroup: z.string(),
+  targetSets: z.number().int(),
+  targetReps: z.number().int(),
+  exerciseOrder: z.number().int(),
+});
+export type RoutineExerciseDto = z.infer<typeof routineExerciseSchema>;
+
+export const dayOptionSchema = z.object({
+  dayNumber: z.number().int(),
+  dayName: z.string(),
+  focus: z.string(),
+});
+
+/** What the dashboard shows for today (GET /workouts/today). */
+export const todayWorkoutResponseSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('no_routine') }),
+  z.object({
+    kind: z.literal('rest_day'),
+    dayOptions: z.array(dayOptionSchema),
+    weightUnit: weightUnitSchema,
+  }),
+  z.object({
+    kind: z.literal('workout_day'),
+    routineDay: z.object({ id: z.string(), dayNumber: z.number().int(), dayName: z.string(), focus: z.string() }),
+    exercises: z.array(routineExerciseSchema),
+    workoutStatus: z.enum(['not_started', 'in_progress', 'completed']),
+    existingWorkoutId: z.string().nullable(),
+    weightUnit: weightUnitSchema,
+    dayNumber: z.number().int(),
+  }),
+]);
+export type TodayWorkoutResponse = z.infer<typeof todayWorkoutResponseSchema>;
