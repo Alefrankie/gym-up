@@ -29,6 +29,7 @@
   "dependencies": {
     "@gym-up/contracts": "workspace:*",
     "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-notification": "~2.8.0",
     "chart.js": "^4.6.1",
     "zod": "^4.6.7"
   },

@@ -2,17 +2,17 @@
   import { page } from '$app/state';
 
   const links = [
-    { href: '/dashboard', label: 'Inicio' },
-    { href: '/history', label: 'Historial' },
-    { href: '/progress', label: 'Progreso' },
-    { href: '/family', label: 'Familia' },
-    { href: '/settings', label: 'Ajustes' },
+    { href: '/dashboard', label: 'Inicio', match: ['/dashboard', '/workout'] },
+    { href: '/progress', label: 'Progreso', match: ['/progress'] },
+    { href: '/nutrition', label: 'Comida', match: ['/nutrition'] },
+    { href: '/family', label: 'Familia', match: ['/family'] },
+    { href: '/more', label: 'Más', match: ['/more', '/history', '/photos', '/settings'] },
   ];
 </script>
 
 <nav>
   {#each links as link}
-    <a href={link.href} class:active={page.url.pathname.startsWith(link.href)}>{link.label}</a>
+    <a href={link.href} class:active={link.match.some((m) => page.url.pathname.startsWith(m))}>{link.label}</a>
   {/each}
 </nav>
 

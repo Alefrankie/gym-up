@@ -106,6 +106,7 @@
       {/if}
     </section>
   {/if}
+  <p class="muted"><a href="/history">Ver historial de entrenamientos</a></p>
 </main>
 
 <AppNav />

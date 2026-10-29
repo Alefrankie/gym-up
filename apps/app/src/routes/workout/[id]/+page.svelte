@@ -17,6 +17,7 @@
     setActiveWorkoutId,
     type WorkoutSnapshot,
   } from '#lib/offline/workout-session';
+  import { cancelRestEnd, scheduleRestEnd, vibrateRestEnd } from '#lib/notify';
   import { session } from '#lib/session';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
 
@@ -141,9 +142,13 @@
   function startRest() {
     clearInterval(timer);
     rest = REST_SECONDS;
+    void scheduleRestEnd(REST_SECONDS);
     timer = setInterval(() => {
       rest -= 1;
-      if (rest <= 0) clearInterval(timer);
+      if (rest <= 0) {
+        clearInterval(timer);
+        vibrateRestEnd();
+      }
     }, 1000);
   }
 
@@ -200,7 +205,7 @@
   {#if rest > 0}
     <div class="rest" role="timer">
       Descanso {Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}
-      <button type="button" onclick={() => (rest = 0)}>Omitir</button>
+      <button type="button" onclick={() => { rest = 0; clearInterval(timer); void cancelRestEnd(); }}>Omitir</button>
     </div>
   {/if}
 
