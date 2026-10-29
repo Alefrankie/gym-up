@@ -32,8 +32,21 @@
   let error = $state<string | null>(null);
   let finishing = $state(false);
   let rest = $state(0);
+  let now = $state(Date.now());
+  let tick: ReturnType<typeof setInterval> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   let unsubscribe: (() => void) | undefined;
+
+  /** Time since the workout was started on this device; anything past 6 h is a forgotten session, not a clock. */
+  const elapsed = $derived.by(() => {
+    if (!snap || snap.status === 'completed') return null;
+    const secs = Math.floor((now - snap.startedAt) / 1000);
+    if (secs < 0 || secs > 6 * 3600) return null;
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+  });
 
   const unit = $derived(snap?.unit ?? 'kg');
   const isCompleted = $derived(snap?.status === 'completed');
@@ -70,6 +83,7 @@
   }
 
   onMount(async () => {
+    tick = setInterval(() => (now = Date.now()), 1000);
     if (!(await session.require())) return;
     unsubscribe = sync.onRemap((r) => {
       if (r.from === workoutId) void goto(`/workout/${r.to}`, { replaceState: true });
@@ -87,6 +101,7 @@
 
   onDestroy(() => {
     clearInterval(timer);
+    clearInterval(tick);
     unsubscribe?.();
   });
 
@@ -211,7 +226,12 @@
 
 <main>
   <p><a class="back" href="/dashboard"><Icon name="left" size={18} /> Inicio</a></p>
-  <h1>{snap?.dayName ?? 'Entrenamiento'}</h1>
+  <div class="head">
+    <h1>{snap?.dayName ?? 'Entrenamiento'}</h1>
+    {#if elapsed}
+      <span class="elapsed" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={20} />{elapsed}</span>
+    {/if}
+  </div>
   <SyncBanner />
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !snap && !error}<p class="muted">Cargando…</p>{/if}
@@ -287,6 +307,26 @@
 </main>
 
 <style>
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .elapsed {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-hi);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: 0.02em;
+  }
   .rest {
     gap: 0.75rem;
   }
