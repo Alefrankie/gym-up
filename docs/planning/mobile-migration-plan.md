@@ -85,14 +85,16 @@ Exit: all pages except the workout screen work in the browser against the Nest A
 
 ## Phase 4 — Live workout and offline (L)
 
-The riskiest UI work, done after the app shell is proven.
+Status: **done for the core flow** (2026-10-29). Verified in a real browser against the deployed API.
 
-- Svelte rune store with reducer for the live workout ([ADR-015](../architecture/decisions/015-live-workout-react-island.md) behavior preserved), replacing `workout/[id].astro`, `exercise-card.astro` and `rest-timer.tsx`.
-- Outbox in IndexedDB (`outbox`, `outbox_failed`, `sessions`), sync worker (`online`, 15 s interval, `visibilitychange`), exponential backoff, failed-command banner.
-- Offline start from the cached next routine; read-through cache for the exercise and routine reads.
-- Playwright test with `context.setOffline(true)` for log, edit, delete, finish, reload and resync.
+- Local-first workout: the workout and its sets are written to IndexedDB (`session:<id>` snapshot) before anything reaches the server, so a reload, a killed app or a dead signal never loses a set. `apps/app/src/lib/offline/workout-session.ts`.
+- Outbox in IndexedDB (`outbox`, `failed`, `kv`) with an in-order sync engine: exponential backoff (1 s up to 5 min), 5xx and network errors retry, other 4xx move to `failed` with retry and discard in the UI, 401 pauses without losing commands, edits of the same set coalesce, and a server answer with a different workout for `start-workout` remaps the ids of the queued commands. `outbox.ts`, `sync.svelte.ts`.
+- Read-through cache for GETs (today's routine, history, current user) replaces the service worker. `cache.ts`.
+- Offline start from the last downloaded routine, offline sets, rest timer and offline finish; sync banner with pending and failed counts; sign-out warns about unsent changes and clears the local data.
+- Tests: 12 unit tests of the outbox with `fake-indexeddb` (order, backoff, 4xx, 5xx, 401, coalescing, remap, no concurrent drains, retry and discard).
+- Browser check against production: simulated outage, started a workout, logged two sets, finished, reconnected. The outbox held `start, set, set, finish`, drained in order with 0 failures, and the server ended with the workout completed and exactly two sets.
 
-Exit: a full workout can be logged offline, the app reloaded, and data syncs once without duplicates.
+Not done: Playwright test in CI (the check above was manual), tombstones and `updated_at` last-write-wins for edits from two devices (ADR-025 section 5), deleting a set, reordering exercises, and adding or removing exercises mid-workout.
 
 ## Phase 5 — Tauri 2 on Android (M)
 

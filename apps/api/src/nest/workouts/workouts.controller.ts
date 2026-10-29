@@ -1,0 +1,154 @@
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  startWorkoutRequestSchema,
+  upsertSetRequestSchema,
+  type StartWorkoutRequest,
+  type StartWorkoutResponse,
+  type TodayWorkoutResponse,
+  type UpsertSetRequest,
+  type WorkoutDetailDto,
+  type WorkoutDto,
+  type WorkoutEntryDto,
+  type WorkoutHistoryResponse,
+} from '@gym-up/contracts';
+import type { User } from '@/lib/contexts/auth/auth.types';
+import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
+import { GetTodayWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/get-today-workout.use-case';
+import { GetWorkoutDetailUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-detail.use-case';
+import { GetWorkoutHistoryUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-history.use-case';
+import { LogSetUseCase } from '@/lib/contexts/workout-tracking/application/log-set.use-case';
+import { StartWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/start-workout.use-case';
+import { AuthGuard, CurrentUser } from '../common/auth.guard';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { toWorkoutDto, toWorkoutEntryDto } from '../mappers';
+
+const iso = (d: Date) => d.toISOString();
+
+@Controller('workouts')
+@UseGuards(AuthGuard)
+export class WorkoutsController {
+  constructor(
+    @Inject(StartWorkoutUseCase) private readonly startWorkout: StartWorkoutUseCase,
+    @Inject(LogSetUseCase) private readonly logSet: LogSetUseCase,
+    @Inject(CompleteWorkoutUseCase) private readonly completeWorkout: CompleteWorkoutUseCase,
+    @Inject(GetTodayWorkoutUseCase) private readonly getToday: GetTodayWorkoutUseCase,
+    @Inject(GetWorkoutDetailUseCase) private readonly getDetail: GetWorkoutDetailUseCase,
+    @Inject(GetWorkoutHistoryUseCase) private readonly getHistory: GetWorkoutHistoryUseCase,
+  ) {}
+
+  /** What the dashboard shows for today. */
+  @Get('today')
+  async today(@CurrentUser() user: User): Promise<TodayWorkoutResponse> {
+    const result = await this.getToday.execute({
+      userId: user.id,
+      routineType: user.routineType,
+      weightUnit: user.weightUnit,
+    });
+    if (result.kind === 'no_routine') return { kind: 'no_routine' };
+    if (result.kind === 'rest_day') {
+      return {
+        kind: 'rest_day',
+        dayOptions: result.dayOptions.map((d) => ({ ...d })),
+        weightUnit: result.weightUnit,
+      };
+    }
+    return {
+      kind: 'workout_day',
+      routineDay: {
+        id: result.routineDay.id,
+        dayNumber: result.routineDay.dayNumber,
+        dayName: result.routineDay.dayName,
+        focus: result.routineDay.focus,
+      },
+      exercises: result.exercises.map((e) => ({
+        id: e.id,
+        exerciseId: e.exerciseId,
+        exerciseName: e.exercise.name,
+        muscleGroup: e.exercise.muscleGroup,
+        targetSets: e.targetSets,
+        targetReps: e.targetReps,
+        exerciseOrder: e.exerciseOrder,
+      })),
+      workoutStatus: result.workoutStatus,
+      existingWorkoutId: result.existingWorkoutId,
+      weightUnit: result.weightUnit,
+      dayNumber: result.dayNumber,
+    };
+  }
+
+  @Get()
+  async history(@CurrentUser() user: User, @Query('page') page?: string): Promise<WorkoutHistoryResponse> {
+    const parsed = Number.parseInt(page ?? '1', 10);
+    const result = await this.getHistory.execute({
+      userId: user.id,
+      page: Number.isFinite(parsed) ? parsed : 1,
+    });
+    return {
+      items: result.items.map((i) => ({ ...i, workoutDate: iso(i.workoutDate) })),
+      currentPage: result.currentPage,
+      totalPages: result.totalPages,
+    };
+  }
+
+  /** Start (or resume) a workout. Idempotent by the client-generated `id` (ADR-025). */
+  @Post()
+  @HttpCode(200)
+  async start(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(startWorkoutRequestSchema)) body: StartWorkoutRequest,
+  ): Promise<StartWorkoutResponse> {
+    const result = await this.startWorkout.execute({
+      userId: user.id,
+      id: body.id,
+      routineDayId: body.routineDayId,
+      existingWorkoutId: body.existingWorkoutId,
+    });
+    return { kind: result.kind, workout: toWorkoutDto(result.workout) };
+  }
+
+  @Get(':id')
+  async detail(@CurrentUser() user: User, @Param('id') id: string): Promise<WorkoutDetailDto> {
+    const result = await this.getDetail.execute({ userId: user.id, workoutId: id });
+    return { workout: toWorkoutDto(result.workout), entries: result.entries };
+  }
+
+  /** Log or edit one set. Replaying the same command is safe (ADR-025). */
+  @Put(':id/sets')
+  async upsertSet(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(upsertSetRequestSchema)) body: UpsertSetRequest,
+  ): Promise<WorkoutEntryDto> {
+    const result = await this.logSet.execute({
+      userId: user.id,
+      workoutId: id,
+      id: body.id,
+      exerciseId: body.exerciseId,
+      setNumber: body.setNumber,
+      reps: body.reps,
+      weight: body.weight,
+      weightUnit: body.weightUnit,
+      completed: body.completed,
+      notes: body.notes,
+    });
+    return toWorkoutEntryDto(result.entry);
+  }
+
+  @Post(':id/complete')
+  @HttpCode(200)
+  async complete(@CurrentUser() user: User, @Param('id') id: string): Promise<WorkoutDto> {
+    const { workout } = await this.completeWorkout.execute({ userId: user.id, workoutId: id });
+    return toWorkoutDto(workout);
+  }
+}
