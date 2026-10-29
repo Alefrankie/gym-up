@@ -180,11 +180,7 @@
   {#if calendar.length}
     <section class="block card">
       <div class="block-head"><h2>Entrenos por semana</h2><a href="/progress">Progreso</a></div>
-      {#if perWeek.some((w) => w.value > 0)}
-        <ColumnChart values={perWeek.map((w) => w.value)} labels={perWeek.map((w) => w.label)} label="Entrenos por semana, últimas 8 semanas" />
-      {:else}
-        <p class="muted empty-chart">Termina tu primer entrenamiento y aquí verás cuántos haces cada semana.</p>
-      {/if}
+      <ColumnChart values={perWeek.map((w) => w.value)} labels={perWeek.map((w) => w.label)} label="Entrenos por semana, últimas 8 semanas" empty="Termina tu primer entrenamiento y aquí aparecerán tus semanas" />
     </section>
   {/if}
 
@@ -314,10 +310,6 @@
   .block-head a {
     font-weight: 600;
     text-decoration: none;
-  }
-  .empty-chart {
-    margin: 0;
-    font-size: var(--t-sm);
   }
   .recent {
     list-style: none;
