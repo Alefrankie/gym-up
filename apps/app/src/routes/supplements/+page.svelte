@@ -4,7 +4,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
-  import { loadSupplements, localDay, markSupplement } from '#lib/supplements';
+  import { loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
   import DayStrip from '#lib/components/DayStrip.svelte';
   import Icon from '#lib/components/Icon.svelte';
 
@@ -27,7 +27,11 @@
   });
 
   async function toggle(id: string, taken: boolean) {
-    if (list) list = await markSupplement(list, id, taken);
+    if (!list) return;
+    // A plain copy: IndexedDB cannot store Svelte's reactive proxies.
+    const next = withMark($state.snapshot(list), id, taken);
+    list = next;
+    void persistMark(next, id, taken);
   }
 
   async function add(event: SubmitEvent) {

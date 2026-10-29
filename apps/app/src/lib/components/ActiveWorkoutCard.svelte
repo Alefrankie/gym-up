@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { getActiveWorkoutId, loadSnapshot, type WorkoutSnapshot } from '#lib/offline/workout-session';
   import { cancelWorkoutById } from '#lib/offline/start-workout';
+  import { scale } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
 
   /** The workout under way on this device, if any: what it is, how long it has run, and how to continue or drop it. */
@@ -11,6 +12,7 @@
   let snap = $state<WorkoutSnapshot | null>(null);
   let now = $state(Date.now());
   let busy = $state(false);
+  let menu = $state(false);
 
   onMount(() => {
     void (async () => {
@@ -34,6 +36,7 @@
   });
 
   async function cancel() {
+    menu = false;
     if (!snap || !confirm(`¿Cancelar "${snap.dayName}"? Se borra todo lo registrado en él.`)) return;
     busy = true;
     await cancelWorkoutById(snap.workoutId);
@@ -44,38 +47,57 @@
 </script>
 
 {#if snap}
-  <section class="live" aria-label="Entrenamiento en curso">
-    <div class="top">
-      <span class="dot" aria-hidden="true"></span>
-      <span class="label">En curso</span>
-      <span class="time" role="timer"><Icon name="timer" size={14} />{elapsed}</span>
-    </div>
-    <strong class="name">{snap.dayName}</strong>
-    <div class="bar" aria-label={`${done} de ${total} series hechas`}><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></div>
-    <span class="muted meta">{done} de {total} series</span>
-    <div class="actions">
-      <button type="button" class="ghost cancel" disabled={busy} onclick={cancel}>Cancelar</button>
-      <button type="button" class="primary go" disabled={busy} onclick={() => goto(`/workout/${snap!.workoutId}`)}>
-        Continuar <Icon name="right" size={16} />
-      </button>
-    </div>
-  </section>
+  <div class="wrap">
+    <a class="live" href={`/workout/${snap.workoutId}`} aria-label={`Continuar ${snap.dayName}`}>
+      <div class="top">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="label">En curso</span>
+        <span class="time" role="timer"><Icon name="timer" size={14} />{elapsed}</span>
+      </div>
+      <span class="row">
+        <strong class="name">{snap.dayName}</strong>
+        <Icon name="right" size={20} />
+      </span>
+      <span class="bar" aria-hidden="true"><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></span>
+      <span class="muted meta">{done} de {total} series · toca para continuar</span>
+    </a>
+    <button type="button" class="more" aria-label="Más opciones" aria-expanded={menu} onclick={() => (menu = !menu)}>
+      <Icon name="more" size={20} />
+    </button>
+    {#if menu}
+      <div class="menu" role="menu" transition:scale={{ start: 0.95, duration: 150, easing: cubicOut }}>
+        <button type="button" role="menuitem" class="danger-item" disabled={busy} onclick={cancel}>
+          <Icon name="trash" size={18} /> Cancelar entrenamiento
+        </button>
+      </div>
+    {/if}
+  </div>
 {/if}
 
 <style>
+  .wrap {
+    position: relative;
+    margin: 0.5rem 0 1rem;
+  }
   .live {
     display: grid;
-    gap: 0.4rem;
-    margin: 0.5rem 0 1rem;
+    gap: 0.45rem;
     padding: 1rem;
     border-radius: 20px;
     background: var(--surface);
     box-shadow: 0 0 0 1px rgb(255 106 43 / 0.35) inset;
+    color: var(--text);
+    text-decoration: none;
+    transition: background-color 160ms var(--ease);
+  }
+  .live:active {
+    background: var(--surface-hi);
   }
   .top {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    padding-right: 2.5rem;
     font-size: var(--t-sm);
   }
   .dot {
@@ -99,15 +121,24 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    color: var(--text);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .row :global(svg) {
+    color: var(--accent-hi);
   }
   .name {
     font-size: var(--t-lg);
     font-weight: 650;
   }
   .bar {
+    display: block;
     height: 4px;
     border-radius: 2px;
     background: var(--raised);
@@ -122,21 +153,40 @@
   .meta {
     font-size: var(--t-sm);
   }
-  .actions {
+  .more {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: none;
+    box-shadow: none;
+    color: var(--muted);
+  }
+  .menu {
+    position: absolute;
+    z-index: 20;
+    top: 2.9rem;
+    right: 0.45rem;
+    padding: 0.3rem;
+    border-radius: var(--radius);
+    background: var(--surface-hi);
+    box-shadow: var(--shadow-pop);
+    transform-origin: top right;
+  }
+  .danger-item {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.4rem;
-  }
-  .cancel {
-    flex: none;
-    color: var(--danger);
-  }
-  .go {
-    flex: 1;
-    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.3rem;
-    margin: 0;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0 0.75rem;
+    background: none;
+    box-shadow: none;
+    color: var(--danger);
+    white-space: nowrap;
   }
 </style>

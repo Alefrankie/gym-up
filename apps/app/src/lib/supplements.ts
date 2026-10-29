@@ -14,8 +14,8 @@ export function loadSupplements(day: string, onCached: (r: SupplementListRespons
   return cachedGet(supplementsPath(day), supplementListResponseSchema, { onCached: (c) => onCached(c.data) });
 }
 
-/** Ticks or unticks at once on the phone; the server hears about it when there is signal. */
-export async function markSupplement(list: SupplementListResponse, id: string, taken: boolean): Promise<SupplementListResponse> {
+/** The list with one supplement ticked or unticked. Pure, so the screen can paint it before anything is saved. */
+export function withMark(list: SupplementListResponse, id: string, taken: boolean): SupplementListResponse {
   const next: SupplementListResponse = {
     ...list,
     items: list.items.map((i) => {
@@ -26,7 +26,11 @@ export async function markSupplement(list: SupplementListResponse, id: string, t
       return { ...i, taken, days, streak };
     }),
   };
-  await updateCached<SupplementListResponse>(supplementsPath(list.day), () => next);
-  await sync.enqueue({ type: 'mark-supplement', supplementId: id, day: list.day, taken });
   return next;
+}
+
+/** Saves a tick on the phone and queues it for the server; call after painting `withMark`. */
+export async function persistMark(next: SupplementListResponse, id: string, taken: boolean): Promise<void> {
+  await updateCached<SupplementListResponse>(supplementsPath(next.day), () => next);
+  await sync.enqueue({ type: 'mark-supplement', supplementId: id, day: next.day, taken });
 }

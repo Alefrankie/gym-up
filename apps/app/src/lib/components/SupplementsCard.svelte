@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import type { SupplementListResponse } from '@gym-up/contracts';
   import { NetworkError } from '#lib/api/errors';
-  import { loadSupplements, localDay, markSupplement } from '#lib/supplements';
+  import { loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
   import Icon from './Icon.svelte';
 
   /** Today's supplement checklist: one tap to say "taken", so there is no more wondering about the creatine. */
@@ -22,7 +22,11 @@
   async function toggle(id: string, taken: boolean) {
     if (!list) return;
     navigator.vibrate?.(10);
-    list = await markSupplement(list, id, taken);
+    // Paint first: the tick must feel instant, saving happens behind it.
+    // A plain copy: IndexedDB cannot store Svelte's reactive proxies.
+    const next = withMark($state.snapshot(list), id, taken);
+    list = next;
+    void persistMark(next, id, taken);
   }
 </script>
 
