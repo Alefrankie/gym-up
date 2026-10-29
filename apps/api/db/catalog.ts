@@ -313,5 +313,34 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
     "equipment": "cable",
     "type": "weight_reps",
     "instructions": "1. Engancha la tobillera a la polea baja y apóyate en la máquina.\n2. Lleva la pierna hacia atrás extendiéndola y apretando el glúteo.\n3. Vuelve despacio sin arquear la espalda."
+  },
+  {
+    "name": "Dumbbell Romanian Deadlift",
+    "primary": "hamstrings",
+    "secondary": [
+      "glutes",
+      "lower_back"
+    ],
+    "equipment": "dumbbell",
+    "type": "weight_reps",
+    "instructions": "1. De pie, sostén una mancuerna en cada mano frente a los muslos con las rodillas ligeramente flexionadas.\n2. Lleva la cadera hacia atrás bajando las mancuernas pegadas a las piernas, con la espalda recta.\n3. Sube empujando la cadera hacia delante hasta quedar de pie."
+  },
+{
+    "name": "Plate-Loaded Hip Thrust (Belt)",
+    "primary": "glutes",
+    "secondary": [
+      "hamstrings"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Apoya la parte alta de la espalda en el banco y ajusta el cinturón con el disco sobre la cadera.\n2. Empuja con los talones elevando la cadera hasta alinear tronco y muslos.\n3. Aprieta los glúteos arriba y baja de forma controlada."
+  },
+{
+    "name": "Seated Leg Curl",
+    "primary": "hamstrings",
+    "secondary": [],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Siéntate con la espalda apoyada y el rodillo sobre los tobillos.\n2. Flexiona las rodillas llevando los talones hacia abajo y atrás.\n3. Vuelve despacio hasta extender las piernas."
   }
 ];

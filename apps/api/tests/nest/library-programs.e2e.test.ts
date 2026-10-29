@@ -92,7 +92,7 @@ describe('exercise library', () => {
   it('lists the seeded system exercises with the new taxonomy and filters them', async () => {
     const s = await register('lib1@example.com');
     const all = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises', { token: s.token })).json);
-    expect(all.items).toHaveLength(32);
+    expect(all.items).toHaveLength(35);
     const squat = all.items.find((e) => e.name === 'Squat')!;
     expect(squat).toMatchObject({ primaryMuscle: 'quadriceps', equipment: 'barbell', isCustom: false });
     expect(squat.secondaryMuscles).toEqual(['glutes', 'hamstrings']);
@@ -104,7 +104,7 @@ describe('exercise library', () => {
     const search = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=curl&equipment=cable', { token: s.token })).json);
     expect(search.items).toEqual([]);
     const curls = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=curl', { token: s.token })).json);
-    expect(curls.items.map((e) => e.name).sort()).toEqual(['Barbell Bicep Curl', 'Bicep Curl', 'Hammer Curl', 'Leg Curl']);
+    expect(curls.items.map((e) => e.name).sort()).toEqual(['Barbell Bicep Curl', 'Bicep Curl', 'Hammer Curl', 'Leg Curl', 'Seated Leg Curl']);
   });
 
   it('creates custom exercises (idempotent by id), visible to everyone, editable by the owner only', async () => {
@@ -153,12 +153,13 @@ describe('exercise library', () => {
 });
 
 describe('programs', () => {
-  it('lists the five seeded templates', async () => {
+  it('lists the six seeded templates', async () => {
     const s = await register('prog1@example.com');
     const r = programListResponseSchema.parse((await http('GET', '/programs', { token: s.token })).json);
     expect(r.templates.map((t) => t.name).sort()).toEqual([
       'Female Glute Focus 5-Day',
       'Full Body 3-Day',
+      'Lower Body (Gravl)',
       'Male 5-Day Split',
       'Push / Pull / Legs',
       'Upper / Lower 4-Day',

@@ -34,6 +34,13 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { toWorkoutDto, toWorkoutEntryDto } from '../mappers';
 
 const iso = (d: Date) => d.toISOString();
+const parseMuscles = (json: string): string[] => {
+  try {
+    return JSON.parse(json) as string[];
+  } catch {
+    return [];
+  }
+};
 
 @Controller('workouts')
 @UseGuards(AuthGuard)
@@ -65,6 +72,7 @@ export class WorkoutsController {
         exerciseId: e.exerciseId,
         exerciseName: e.exercise.name,
         muscleGroup: e.exercise.muscleGroup,
+        secondaryMuscles: parseMuscles(e.exercise.secondaryMuscles),
         targetSets: e.targetSets,
         targetReps: e.targetReps,
         last: result.last[e.exerciseId] ?? null,

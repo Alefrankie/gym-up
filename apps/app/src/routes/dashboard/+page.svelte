@@ -67,7 +67,22 @@
   }
   const disp = (kg: number, u: 'kg' | 'lbs') => (u === 'lbs' ? Math.round(kg * 2.20462 * 10) / 10 : kg);
   /** Distinct muscles the routine works, in order of appearance. */
-  const muscles = (t: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>) => [...new Set(t.exercises.map((e) => e.muscleGroup))].slice(0, 4);
+  /**
+   * Share of the session each muscle takes: a set counts fully for the primary muscle and half for each secondary,
+   * normalised so the most worked muscle reads 100 %.
+   */
+  const muscles = (t: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>) => {
+    const load = new Map<string, number>();
+    for (const e of t.exercises) {
+      load.set(e.muscleGroup, (load.get(e.muscleGroup) ?? 0) + e.targetSets);
+      for (const m of e.secondaryMuscles ?? []) load.set(m, (load.get(m) ?? 0) + e.targetSets * 0.5);
+    }
+    const top = Math.max(1, ...load.values());
+    return [...load.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([m, v]) => ({ muscle: m, pct: Math.round((v / top) * 100) }));
+  };
 </script>
 
 <main>
@@ -108,7 +123,11 @@
       <p class="muted focus">{t.routineDay.focus}</p>
       <div class="figs">
         {#each muscles(t) as m}
-          <span class="fig"><MuscleFigure primary={m} size={34} /><span>{muscle(m)}</span></span>
+          <span class="fig">
+            <MuscleFigure primary={m.muscle} size={34} />
+            <span>{muscle(m.muscle)}</span>
+            <b class:full={m.pct === 100}>{m.pct}%</b>
+          </span>
         {/each}
       </div>
       {#if done}
@@ -173,6 +192,15 @@
     gap: 0.15rem;
     font-size: 0.72rem;
     color: var(--muted);
+  }
+  .fig b {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--ember);
+  }
+  .fig b.full {
+    color: var(--ok);
   }
   .go {
     display: inline-flex;

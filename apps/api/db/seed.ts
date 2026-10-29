@@ -246,7 +246,9 @@ async function seedRoutineExercises(
   await db.insert(routineExercises).values(inserts);
 }
 
-type ExtraDay = readonly [dayName: string, focus: string, exercises: readonly string[]];
+/** `[name, reps, note]` pins the target reps and adds a note (e.g. the load someone used); a bare name uses 3 x 10. */
+type ExtraSlot = string | readonly [name: string, reps: number, note?: string];
+type ExtraDay = readonly [dayName: string, focus: string, exercises: readonly ExtraSlot[]];
 interface ExtraTemplate {
   name: string;
   description: string;
@@ -256,6 +258,25 @@ interface ExtraTemplate {
 }
 
 const EXTRA_TEMPLATES: readonly ExtraTemplate[] = [
+  {
+    name: 'Lower Body (Gravl)',
+    description: 'Pierna del jueves: isquios, glúteos y cuádriceps. Cargas orientativas en las notas.',
+    level: 'intermediate',
+    goal: 'hypertrophy',
+    days: [
+      [
+        'Lower Body',
+        'Isquios + Glúteos + Cuádriceps',
+        [
+          ['Dumbbell Romanian Deadlift', 12, 'Gravl: 17.5 kg'],
+          ['Plate-Loaded Hip Thrust (Belt)', 12, 'Gravl: 80 kg'],
+          ['Seated Leg Curl', 10, 'Gravl: 47.7 kg'],
+          ['Bulgarian Squat', 10, 'Gravl: 10 kg (mancuerna)'],
+          ['Abductors', 10, 'Gravl: 56.8 kg'],
+        ],
+      ],
+    ],
+  },
   {
     name: 'Full Body 3-Day',
     description: 'Tres días de cuerpo completo, ideal para empezar.',
@@ -322,16 +343,18 @@ async function seedExtraTemplates(
       .returning();
     const slots: NewRoutineExercise[] = [];
     t.days.forEach(([, , names], i) => {
-      names.forEach((name, order) => {
+      names.forEach((slot, order) => {
+        const [name, reps, note] = typeof slot === 'string' ? [slot, 10, undefined] : slot;
         const exerciseId = exerciseIdByName.get(name);
         if (!exerciseId) throw new Error(`Missing exercise "${name}" in template ${t.name}`);
         slots.push({
           routineDayId: days[i]!.id,
           exerciseId,
           targetSets: 3,
-          targetReps: 10,
-          targetRepsMin: 8,
-          targetRepsMax: 12,
+          targetReps: reps,
+          targetRepsMin: reps,
+          targetRepsMax: reps,
+          notes: note ?? null,
           exerciseOrder: order + 1,
         });
       });
