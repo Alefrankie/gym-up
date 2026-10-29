@@ -8,9 +8,10 @@
   import { sync } from '#lib/offline/sync.svelte';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
-  import { muscle } from '#lib/labels';
+  import { muscleLoad } from '#lib/muscle-load';
+  import ExerciseRow from '#lib/components/ExerciseRow.svelte';
   import Icon from '#lib/components/Icon.svelte';
-  import MuscleFigure from '#lib/components/MuscleFigure.svelte';
+  import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
 
   let today = $state<TodayWorkoutResponse | null>(null);
@@ -59,34 +60,16 @@
         await sync.enqueue({ type: 'start-workout', id, routineDayId: t.routineDay.id });
       }
       await setActiveWorkoutId(id);
-      await goto(`/workout/${id}`);
+      const first = t.exercises[0]?.exerciseId;
+      await goto(first ? `/workout/${id}/${first}` : `/workout/${id}`);
     } catch {
       error = 'No se pudo iniciar el entrenamiento';
       busy = false;
     }
   }
-  const disp = (kg: number, u: 'kg' | 'lbs') => (u === 'lbs' ? Math.round(kg * 2.20462 * 10) / 10 : kg);
-  /** Distinct muscles the routine works, in order of appearance. */
-  /**
-   * Share of the session each muscle takes: a set counts fully for the primary muscle and half for each secondary,
-   * normalised so the most worked muscle reads 100 %.
-   */
-  const muscles = (t: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>) => {
-    const load = new Map<string, number>();
-    for (const e of t.exercises) {
-      load.set(e.muscleGroup, (load.get(e.muscleGroup) ?? 0) + e.targetSets);
-      for (const m of e.secondaryMuscles ?? []) load.set(m, (load.get(m) ?? 0) + e.targetSets * 0.5);
-    }
-    const top = Math.max(1, ...load.values());
-    return [...load.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
-      .map(([m, v]) => ({ muscle: m, pct: Math.round((v / top) * 100) }));
-  };
 </script>
 
 <main>
-  <h1>Hola{session.user ? `, ${session.user.displayName}` : ''}</h1>
   <SyncBanner />
   {#if stale}
     <p class="muted">Sin conexión: mostrando tu última rutina descargada.</p>
@@ -94,14 +77,17 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if !today && !error}
+    <p class="hello">Hola{session.user ? `, ${session.user.displayName}` : ''}</p>
     <section class="card hero skeleton" aria-busy="true"><span class="muted">Cargando tu rutina…</span></section>
   {:else if today?.kind === 'no_routine'}
+    <p class="hello">Hola{session.user ? `, ${session.user.displayName}` : ''}</p>
     <section class="card hero">
       <h2>Aún no tienes un programa</h2>
       <p class="muted">Elige una plantilla o crea el tuyo y aquí verás qué toca hoy.</p>
-      <a class="cta" href="/programs">Ver programas <Icon name="right" size={18} /></a>
+      <a class="cta-link" href="/programs">Ver programas <Icon name="right" size={18} /></a>
     </section>
   {:else if today?.kind === 'rest_day'}
+    <p class="hello">Hola{session.user ? `, ${session.user.displayName}` : ''}</p>
     <section class="card hero">
       <h2>Hoy es día de descanso</h2>
       <p class="muted">Tus rutinas:</p>
@@ -114,22 +100,23 @@
   {:else if today?.kind === 'workout_day'}
     {@const t = today}
     {@const done = t.workoutStatus === 'completed' && !activeWorkoutId}
-    <section class="card hero today">
-      <div class="top">
-        {#if t.programName}<span class="badge">{t.programName}</span>{/if}
-        <span class="muted">Rutina {t.dayNumber}</span>
-      </div>
-      <h2 class="name">{t.routineDay.dayName}</h2>
-      <p class="muted focus">{t.routineDay.focus}</p>
-      <div class="figs">
-        {#each muscles(t) as m}
-          <span class="fig">
-            <MuscleFigure primary={m.muscle} size={34} />
-            <span>{muscle(m.muscle)}</span>
-            <b class:full={m.pct === 100}>{m.pct}%</b>
-          </span>
-        {/each}
-      </div>
+    <p class="hello">
+      Hola{session.user ? `, ${session.user.displayName}` : ''}
+      {#if t.programName}<span class="badge">{t.programName}</span>{/if}
+    </p>
+    <h1 class="title">{t.routineDay.dayName}</h1>
+    <p class="muted focus">{t.routineDay.focus}</p>
+
+    <TargetMuscles muscles={muscleLoad(t.exercises)} />
+
+    <h2>{t.exercises.length} {t.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</h2>
+    <ul class="rows">
+      {#each t.exercises as ex (ex.id)}
+        <li><ExerciseRow {ex} unit={t.weightUnit} /></li>
+      {/each}
+    </ul>
+
+    <div class="cta">
       {#if done}
         <p class="ok done"><Icon name="check" size={20} /> Entrenamiento completado hoy</p>
       {:else}
@@ -138,101 +125,65 @@
           {t.workoutStatus === 'in_progress' || activeWorkoutId ? 'Continuar entrenamiento' : 'Empezar entrenamiento'}
         </button>
       {/if}
-    </section>
-
-    <h2>Lo que toca</h2>
-    <ul class="list">
-      {#each t.exercises as ex (ex.id)}
-        <li>
-          <div class="row-body">
-            <MuscleFigure primary={ex.muscleGroup} size={24} />
-            <span class="grow">
-              <strong>{ex.exerciseName}</strong>
-              <span class="muted">
-                {ex.targetSets} × {ex.targetReps}
-              </span>
-            </span>
-            {#if ex.last}
-              <span class="last" title="La última vez">
-                <small>Última vez</small>
-                <b>{disp(ex.last.weight, t.weightUnit)} {t.weightUnit} × {ex.last.reps}</b>
-              </span>
-            {/if}
-          </div>
-        </li>
-      {/each}
-    </ul>
+    </div>
   {/if}
 </main>
 
 <AppNav />
 
 <style>
-  .today .top {
+  .hello {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 1rem 0 0;
+    color: var(--muted);
+    font-weight: 500;
   }
-  .name {
+  .title {
+    margin: 0.3rem 0 0.1rem;
     font-size: 2.6rem;
-    margin: 0.6rem 0 0.1rem;
   }
   .focus {
+    margin: 0;
+  }
+  .rows {
+    list-style: none;
     margin: 0 0 1rem;
-  }
-  .figs {
-    display: flex;
-    gap: 0.9rem;
-    margin-bottom: 1.1rem;
-  }
-  .fig {
+    padding: 0;
     display: grid;
-    justify-items: center;
-    gap: 0.15rem;
-    font-size: 0.72rem;
-    color: var(--muted);
+    gap: 0.7rem;
   }
-  .fig b {
-    font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--ember);
-  }
-  .fig b.full {
-    color: var(--ok);
+  .cta {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(4.9rem + env(safe-area-inset-bottom));
+    padding: 1.2rem 1rem 0.5rem;
+    background: linear-gradient(180deg, transparent, var(--bg) 60%);
+    pointer-events: none;
   }
   .go {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: 0;
+    max-width: 22rem;
+    margin: 0 auto;
     min-height: 56px;
+    border-radius: 999px;
+    pointer-events: auto;
   }
   .done {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
     margin: 0;
+    pointer-events: auto;
   }
-  .last {
-    display: grid;
-    justify-items: end;
-    text-align: right;
-  }
-  .last small {
-    color: var(--muted);
-    font-size: 0.7rem;
-  }
-  .last b {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.1rem;
-    color: var(--ember);
-    white-space: nowrap;
-  }
-  .cta {
+  .cta-link {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
