@@ -47,15 +47,15 @@
     </div>
   </section>
 
-  <div class="pills" role="list">
-    <span class="chip" role="listitem"><Icon name="timer" size={18} />{mmss(ex.restSeconds ?? REST_SECONDS)}</span>
-    <span class="chip" role="listitem">{muscle(ex.muscleGroup)}</span>
+  <div class="pills">
+    <span class="chip"><Icon name="timer" size={18} />{mmss(ex.restSeconds ?? REST_SECONDS)}</span>
+    <span class="chip">{muscle(ex.muscleGroup)}</span>
     {#if ex.last}
-      <span class="chip on" role="listitem"><Icon name="history" size={18} />{ago(ex.last.date)}: {toDisplay(ex.last.weight, view.unit)} {view.unit} × {ex.last.reps}</span>
+      <span class="chip on"><Icon name="history" size={18} />{ago(ex.last.date)}: {toDisplay(ex.last.weight, view.unit)} {view.unit} × {ex.last.reps}</span>
     {:else}
-      <span class="chip" role="listitem">Primera vez</span>
+      <span class="chip">Primera vez</span>
     {/if}
-    <a class="chip link" role="listitem" href={`/library/${ex.exerciseId}`}><Icon name="book" size={18} />Cómo se hace</a>
+    <a class="chip link" href={`/library/${ex.exerciseId}`}><Icon name="book" size={18} />Cómo se hace</a>
   </div>
 
   <h2>Series</h2>
