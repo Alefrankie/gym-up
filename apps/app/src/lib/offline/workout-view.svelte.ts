@@ -93,12 +93,16 @@ export class WorkoutView {
   #ensureRow(s: WorkoutSnapshot, ex: RoutineExerciseDto, n: number) {
     const k = rowKey(ex.exerciseId, n);
     const planned = ex.sets?.[n - 1];
+    const type = planned?.type ?? 'normal';
+    // Working sets start from the same set of the last session with this exercise (in any routine):
+    // the reps and weight to beat are already in the boxes. Warm-ups keep their planned reps.
+    const working = (ex.sets ?? []).slice(0, n).filter((p) => p.type !== 'warmup').length || n;
+    const before = type === 'warmup' ? undefined : (ex.last?.sets?.[working - 1] ?? ex.last?.sets?.at(-1));
     s.rows[k] ??= {
       id: crypto.randomUUID(),
-      reps: planned?.reps ?? ex.targetReps,
-      type: planned?.type ?? 'normal',
-      // Start from what you lifted last time: the number to beat is already in the box.
-      weight: ex.last ? toDisplay(ex.last.weight, s.unit) : 0,
+      reps: before?.reps ?? planned?.reps ?? ex.targetReps,
+      type,
+      weight: before ? toDisplay(before.weight, s.unit) : ex.last ? toDisplay(ex.last.weight, s.unit) : 0,
       completed: false,
     };
   }

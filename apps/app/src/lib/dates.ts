@@ -15,3 +15,9 @@ export function relativeDay(ymd: string, today: string): string {
   if (diff === 1) return 'Ayer';
   return fromDay(ymd).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }).replaceAll('.', '');
 }
+
+/** Today on the phone's own calendar (not UTC): a supplement taken at 23:30 counts for today. */
+export function localDay(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}

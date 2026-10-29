@@ -2,11 +2,7 @@ import { supplementListResponseSchema, type SupplementListResponse } from '@gym-
 import { cachedGet, updateCached } from '#lib/offline/cache';
 import { sync } from '#lib/offline/sync.svelte';
 
-/** Today on the phone's own calendar (not UTC): a supplement taken at 23:30 counts for today. */
-export function localDay(d = new Date()): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
+export { localDay } from '#lib/dates';
 
 export const supplementsPath = (day: string) => `/supplements?day=${day}`;
 

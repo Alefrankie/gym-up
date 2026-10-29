@@ -116,7 +116,18 @@ export const routineExerciseSchema = z.object({
   targetReps: z.number().int(),
   exerciseOrder: z.number().int(),
   /** Best set of the last session with this exercise (weight in kg); null when there is none yet. */
-  last: z.object({ weight: z.number(), reps: z.number().int(), date: z.string() }).nullable().optional(),
+  last: z
+    .object({
+      weight: z.number(),
+      reps: z.number().int(),
+      date: z.string(),
+      /** Working sets of the last session, by set number (weights in kg). */
+      sets: z.array(z.object({ reps: z.number().int(), weight: z.number() })).optional(),
+      /** All-time heaviest working set and the most reps at that weight (kg). */
+      record: z.object({ weight: z.number(), reps: z.number().int(), date: z.string() }).optional(),
+    })
+    .nullable()
+    .optional(),
   warmupSets: z.number().int().optional(),
   restSeconds: z.number().int().nullable().optional(),
   /** Reps and kind of each set; absent means `targetSets` normal sets of `targetReps`. */

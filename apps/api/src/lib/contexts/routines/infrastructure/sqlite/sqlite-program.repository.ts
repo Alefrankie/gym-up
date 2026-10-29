@@ -250,6 +250,8 @@ export class SqliteProgramRepository implements ProgramRepository {
         exerciseId: workoutEntries.exerciseId,
         weight: workoutEntries.weight,
         reps: workoutEntries.reps,
+        setNumber: workoutEntries.setNumber,
+        setType: workoutEntries.setType,
         workoutId: workouts.id,
         date: workouts.workoutDate,
       })
@@ -263,18 +265,32 @@ export class SqliteProgramRepository implements ProgramRepository {
           lt(workouts.workoutDate, before),
         ),
       )
-      .orderBy(desc(workouts.workoutDate));
+      .orderBy(desc(workouts.workoutDate), workoutEntries.setNumber);
     // Rows are newest first: the first workout seen for an exercise is its last session.
+    // Warm-ups say nothing about strength, so they count neither for the last best nor for the record.
     const sessionOf = new Map<string, string>();
+    const records = new Map<string, LastPerformance['record']>();
     for (const r of rows) {
+      if (r.setType === 'warmup') continue;
+      const rec = records.get(r.exerciseId);
+      if (!rec || r.weight > rec.weight || (r.weight === rec.weight && r.reps > rec.reps)) {
+        records.set(r.exerciseId, { weight: r.weight, reps: r.reps, date: r.date.toISOString() });
+      }
       const seen = sessionOf.get(r.exerciseId);
       if (seen && seen !== r.workoutId) continue;
       sessionOf.set(r.exerciseId, r.workoutId);
       const best = result.get(r.exerciseId);
-      if (!best || r.weight > best.weight || (r.weight === best.weight && r.reps > best.reps)) {
-        result.set(r.exerciseId, { weight: r.weight, reps: r.reps, date: r.date.toISOString() });
+      if (!best) {
+        result.set(r.exerciseId, { weight: r.weight, reps: r.reps, date: r.date.toISOString(), sets: [{ reps: r.reps, weight: r.weight }], record: records.get(r.exerciseId)! });
+        continue;
+      }
+      best.sets.push({ reps: r.reps, weight: r.weight });
+      if (r.weight > best.weight || (r.weight === best.weight && r.reps > best.reps)) {
+        best.weight = r.weight;
+        best.reps = r.reps;
       }
     }
+    for (const [id, last] of result) last.record = records.get(id) ?? last.record;
     return result;
   }
 

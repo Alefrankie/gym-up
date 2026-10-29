@@ -12,7 +12,7 @@
   <span class="ico"><Icon name="dumbbell" size={18} /></span>
   <span class="grow">
     <strong>{item.routineDayName} {#if item.status === 'in_progress'}<span class="badge">En curso</span>{/if}</strong>
-    <span class="muted meta">{date} · {item.exerciseCount} ejercicios</span>
+    <span class="muted meta">{date} · {item.exerciseCount} {item.exerciseCount === 1 ? "ejercicio" : "ejercicios"}</span>
     {#if item.warmupSets || item.dropSets || item.failureSets}
       <span class="kinds">
         {#if item.warmupSets}<span class="kind"><SetTypeBadge type="warmup" />{item.warmupSets}</span>{/if}

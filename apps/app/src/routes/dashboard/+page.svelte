@@ -27,7 +27,10 @@
   import SupplementsCard from '#lib/components/SupplementsCard.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
+  import WeekDays from '#lib/components/WeekDays.svelte';
   import WorkoutHistoryRow from '#lib/components/WorkoutHistoryRow.svelte';
+  import { randomQuote } from '#lib/quotes';
+  import { localDay } from '#lib/dates';
 
   let today = $state<TodayWorkoutResponse | null>(null);
   let stale = $state(false);
@@ -38,6 +41,7 @@
   let calendar = $state<CalendarDayDto[]>([]);
   let recent = $state<WorkoutHistoryItemDto[]>([]);
 
+  const quote = randomQuote();
   const dateLabel = longDate().replace(/^./, (c) => c.toUpperCase());
 
   onMount(async () => {
@@ -105,6 +109,7 @@
   <header class="top">
     <p class="date">{dateLabel}</p>
     <h1>Hola{session.user ? `, ${session.user.displayName.split(' ')[0]}` : ''}</h1>
+    <p class="quote">“{quote}”</p>
     {#if today?.kind === 'workout_day' && today.programName}
       <a class="program" href="/programs"><Icon name="dumbbell" size={14} />{today.programName}</a>
     {/if}
@@ -162,15 +167,15 @@
 
   <SupplementsCard />
 
-  {#if today?.kind === 'workout_day' && today.week && today.week.target > 0}
-    {@const w = today.week}
-    <section class="block">
-      <div class="block-head"><h2>Esta semana</h2><span class="muted">{Math.min(w.done, w.target)} de {w.target} entrenos</span></div>
-      <div class="bars">
-        {#each Array.from({ length: w.target }, (_, i) => i) as i (i)}<span class:on={i < w.done}></span>{/each}
-      </div>
-    </section>
-  {/if}
+  <section class="block">
+    <div class="block-head">
+      <h2>Esta semana</h2>
+      {#if today?.kind === 'workout_day' && today.week && today.week.target > 0}
+        <span class="muted">{Math.min(today.week.done, today.week.target)} de {today.week.target} entrenos</span>
+      {/if}
+    </div>
+    <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} today={localDay()} />
+  </section>
 
   {#if calendar.length}
     <section class="block card">
@@ -207,6 +212,13 @@
   }
   .top h1 {
     margin: 0.15rem 0 0.4rem;
+  }
+  .quote {
+    margin: 0 0 0.75rem;
+    color: var(--muted);
+    font-size: var(--t-sm);
+    font-style: italic;
+    line-height: 1.4;
   }
   .program {
     display: inline-flex;
@@ -302,19 +314,6 @@
   .block-head a {
     font-weight: 600;
     text-decoration: none;
-  }
-  .bars {
-    display: flex;
-    gap: 0.35rem;
-  }
-  .bars span {
-    flex: 1;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--raised);
-  }
-  .bars span.on {
-    background: var(--accent);
   }
   .empty-chart {
     margin: 0;

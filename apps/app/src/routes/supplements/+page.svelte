@@ -7,6 +7,7 @@
   import { longDate, relativeDay } from '#lib/dates';
   import { loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
   import DayStrip from '#lib/components/DayStrip.svelte';
+  import SupplementCalendar from '#lib/components/SupplementCalendar.svelte';
   import Icon from '#lib/components/Icon.svelte';
 
   const today = localDay();
@@ -98,8 +99,11 @@
       {/each}
     </ul>
 
+    <h2>Calendario</h2>
+    <SupplementCalendar items={list.items} today={list.day} />
+
     {#if history.length}
-      <h2>Historial</h2>
+      <h2>Día a día</h2>
       <ul class="log">
         {#each history as h (h.day)}
           <li>

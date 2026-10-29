@@ -1,10 +1,15 @@
 import type { Exercise, Routine, RoutineDay, RoutineExercise } from '@db/schema';
 
 export interface LastPerformance {
+  /** Best set of the last session (heaviest, then most reps). */
   weight: number;
   reps: number;
   /** ISO date of that session. */
   date: string;
+  /** Every working set of the last session, by set number: what to start from next time. */
+  sets: { reps: number; weight: number }[];
+  /** All-time heaviest working set, and the most reps ever done at that weight. */
+  record: { weight: number; reps: number; date: string };
 }
 
 export type ProgramSlot = RoutineExercise & { exercise: Exercise };

@@ -54,6 +54,7 @@
     <span class="chip">{muscle(ex.muscleGroup)}</span>
     {#if ex.last}
       <span class="chip on"><Icon name="history" size={14} />{ago(ex.last.date)}: {toDisplay(ex.last.weight, view.unit)} {view.unit} × {ex.last.reps}</span>
+      {#if ex.last.record}<span class="chip record"><Icon name="flame" size={14} />Récord: {toDisplay(ex.last.record.weight, view.unit)} {view.unit} × {ex.last.record.reps}</span>{/if}
     {:else}
       <span class="chip">Primera vez</span>
     {/if}
@@ -292,5 +293,9 @@
     gap: 0.35rem;
     margin-top: 0;
     min-height: 48px;
+  }
+  .record {
+    color: var(--ember);
+    box-shadow: 0 0 0 1px rgb(255 179 71 / 0.4) inset;
   }
 </style>

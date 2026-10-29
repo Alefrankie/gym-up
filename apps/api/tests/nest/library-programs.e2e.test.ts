@@ -268,6 +268,29 @@ describe('programs', () => {
     expect(bad.status).toBe(400);
   });
 
+  it('remembers the last session of an exercise and its all-time record, ignoring warm-ups', async () => {
+    const s = await register('record@example.com');
+    const programs = programListResponseSchema.parse((await http('GET', '/programs', { token: s.token })).json);
+    const mine = programDetailDtoSchema.parse((await http('POST', `/programs/${programs.templates[0]!.id}/adopt`, { token: s.token })).json);
+    const day = mine.routines[0]!;
+    const ex = day.exercises[0]!.exerciseId;
+    const userId = s.user.id;
+    const at = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000);
+    const workout = async (daysAgo: number, sets: { reps: number; weight: number; setType?: 'normal' | 'warmup' }[]) => {
+      const id = crypto.randomUUID();
+      await db.insert(schema.workouts).values({ id, userId, routineDayId: day.id, workoutDate: at(daysAgo), status: 'completed' });
+      for (const [i, set] of sets.entries()) {
+        await db.insert(schema.workoutEntries).values({ workoutId: id, exerciseId: ex, setNumber: i + 1, completed: true, setType: 'normal', ...set });
+      }
+    };
+    await workout(10, [{ reps: 6, weight: 110 }, { reps: 4, weight: 110 }]);
+    await workout(2, [{ reps: 15, weight: 200, setType: 'warmup' }, { reps: 10, weight: 100 }, { reps: 8, weight: 100 }]);
+
+    const last = (await new SqliteProgramRepository(db).lastPerformance(userId, [ex], new Date())).get(ex)!;
+    expect(last).toMatchObject({ weight: 100, reps: 10, sets: [{ reps: 10, weight: 100 }, { reps: 8, weight: 100 }] });
+    expect(last.record).toMatchObject({ weight: 110, reps: 6 });
+  });
+
   it('keeps programs private to their owner and archives them', async () => {
     const a = await register('prog4@example.com');
     const b = await register('prog5@example.com');
