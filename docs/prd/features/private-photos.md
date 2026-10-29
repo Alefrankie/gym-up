@@ -53,6 +53,31 @@ Photos **never** appear in public view, family member cards, or any data accessi
 
 ---
 
+## Phase 2 — Functional Requirements
+
+Stories: [Round 11](../../stories/phase-2/round-11/readme.md). Implements PI-005.
+
+### Compare
+
+#### FR-PP-008
+
+`/photos/compare`: pick two photos (default: oldest vs newest). Two modes:
+
+- **Lado a lado**: two columns with the date under each;
+- **Deslizador**: overlaid photos with a draggable vertical divider.
+
+The header shows "N días entre fotos". *Intercambiar* swaps sides. All photos stay owner-only ([ADR-005](../../architecture/decisions/005-private-photos.md)).
+
+#### FR-PP-009
+
+When a body measurement exists within ±3 days of a photo's date, the compare view shows the body weight under each photo, with the Δ. Owner-only data ([ADR-023](../../architecture/decisions/023-body-metrics-privacy.md)).
+
+#### FR-PP-010
+
+The gallery supports multi-select (long-press) to choose the two photos and open the comparison directly.
+
+---
+
 ## Data
 
 | Table/Storage | Access |
@@ -66,3 +91,4 @@ Photos **never** appear in public view, family member cards, or any data accessi
 |-----------|------|
 | `PhotoGallery` | [components.md](../../architecture/components.md) |
 | `PhotoUpload` | [components.md](../../architecture/components.md) |
+| `PhotoCompare` (React island) | [components.md → Photo Compare](../../architecture/components.md#photo-compare) |

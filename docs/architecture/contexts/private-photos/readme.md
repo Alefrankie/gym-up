@@ -83,17 +83,17 @@ export const StoragePaths = {
 
 ### Invariants
 
-- Photos are PERSONAL body images. Privacy is non-negotiable. Per [`ADR-005`](../decisions/005-private-photos.md).
-- Only the OWNER can view, upload, or delete their photos. No exceptions. Per [`ADR-005`](../decisions/005-private-photos.md).
-- Photos NEVER appear in public view, family cards, or any data accessible to other users. Per [`ADR-005`](../decisions/005-private-photos.md).
-- Max `PhotoRules.MaxPerWorkout` (5) photos per workout. Hard limit. Per [`PRD`](../../prd/features/private-photos.md) FR-PP-003.
-- Max `PhotoRules.MaxSizeBytes` (5MB) per photo. Hard limit. Per [`PRD`](../../prd/features/private-photos.md) FR-PP-001.
-- Accepted formats: jpg, png, webp. Per `PhotoFormats`. Per [`PRD`](../../prd/features/private-photos.md) FR-PP-001.
+- Photos are PERSONAL body images. Privacy is non-negotiable. Per [`ADR-005`](../../decisions/005-private-photos.md).
+- Only the OWNER can view, upload, or delete their photos. No exceptions. Per [`ADR-005`](../../decisions/005-private-photos.md).
+- Photos NEVER appear in public view, family cards, or any data accessible to other users. Per [`ADR-005`](../../decisions/005-private-photos.md).
+- Max `PhotoRules.MaxPerWorkout` (5) photos per workout. Hard limit. Per [`PRD`](../../../prd/features/private-photos.md) FR-PP-003.
+- Max `PhotoRules.MaxSizeBytes` (5MB) per photo. Hard limit. Per [`PRD`](../../../prd/features/private-photos.md) FR-PP-001.
+- Accepted formats: jpg, png, webp. Per `PhotoFormats`. Per [`PRD`](../../../prd/features/private-photos.md) FR-PP-001.
 - `caption` is optional, max `PhotoRules.MaxCaptionLength` (200) characters.
 - `storage_path` follows `StoragePaths.PathPattern`. User ID is first folder for RLS.
 - Signed URLs expire after `PhotoRules.SignedUrlExpiresSeconds` (1 hour). Regenerated on each page load.
 - Deleting a photo removes BOTH the DB record AND the storage file. Atomic.
-- Bucket is `StoragePaths.Bucket` (`progress-photos`), PRIVATE (`public: false`). RLS at storage level. Per [`ADR-005`](../decisions/005-private-photos.md).
+- Bucket is `StoragePaths.Bucket` (`progress-photos`), PRIVATE (`public: false`). RLS at storage level. Per [`ADR-005`](../../decisions/005-private-photos.md).
 
 ### Ports
 
@@ -137,7 +137,7 @@ export const StoragePaths = {
 
 ## Infrastructure
 
-Per [ADR-007](../decisions/007-repository-pattern.md) and [ADR-011](../decisions/011-implements-not-extends.md).
+Per [ADR-007](../../decisions/007-repository-pattern.md) and [ADR-011](../../decisions/011-implements-not-extends.md).
 
 ### Abstract Classes (Contracts)
 
@@ -259,7 +259,7 @@ class LocalPhotoStorageAdapter implements PhotoStorageAdapter {
 
 ### Wiring (Per-Context Composition)
 
-Per [ADR-010](../decisions/010-per-context-composition.md), no central root.
+Per [ADR-010](../../decisions/010-per-context-composition.md), no central root.
 
 `src/lib/contexts/private-photos/private-photos.composition.ts`:
 
@@ -308,7 +308,7 @@ export const deletePhotoUseCase = new DeletePhotoUseCase(photoRepo, photoStorage
 
 ## Testing
 
-Per [ADR-009](../decisions/009-object-mothers.md), tests use **NO MOCKS** — only real implementations.
+Per [ADR-009](../../decisions/009-object-mothers.md), tests use **NO MOCKS** — only real implementations.
 
 `src/test/contexts/private-photos/UploadPhotoUseCase.test.ts`:
 
@@ -341,3 +341,141 @@ describe('UploadPhotoUseCase', () => {
 ## Flows
 
 - [upload-photo.flow.md](./flows/upload-photo.flow.md)
+- [compare-photos.flow.md](./flows/compare-photos.flow.md) (Phase 2, story 11.3)
+
+---
+
+## Phase 2
+
+| Field | Value |
+|-------|-------|
+| Status | planned |
+| Last edited | 2026-10-01 |
+| Phase | 2 |
+| Story | [11.3](../../../stories/phase-2/round-11/story-11.3.md) |
+| Requirements | [FR-PP-008](../../../prd/features/private-photos.md#fr-pp-008), [FR-PP-009](../../../prd/features/private-photos.md#fr-pp-009), [FR-PP-010](../../../prd/features/private-photos.md#fr-pp-010) |
+| Decisions | [ADR-005](../../decisions/005-private-photos.md), [ADR-023](../../decisions/023-body-metrics-privacy.md) |
+
+Phase 2 adds photo **comparison**: two photos side by side or under a slider, with the days between them and, when available, the body weight near each date. No new table, no migration, no new RLS policy: `progress_photos` and `body_measurements` are already owner-only.
+
+### Code reality (as built in Phase 1)
+
+The sections above predate the code. Phase 2 builds on what exists:
+
+| Doc above says | Code does |
+|---|---|
+| `PhotoRepository` in `private-photos/domain/ports/` with `getByUserId` | `src/lib/contexts/workout-tracking/domain/photo.repository.ts`: `findById(id, currentUserId)` (throws `PhotoOwnershipError`), `findByUser(userId)`, `create(input, currentUserId)`, `delete(id, currentUserId)`. `private-photos.composition.ts` reuses `photoRepository` from `workout-tracking.composition.ts` |
+| Signed URLs | Bytes are streamed by the authenticated route `src/pages/photos/file/[id].ts`; `buildPhotoUrl(id)` returns `/photos/file/{id}`. Compare uses the same URLs |
+| Constants in `private-photos.constants.ts` | Constants live in `private-photos/domain/private-photos.types.ts` (`PhotoRules`, `PhotoFormats`) |
+| Svelte gallery island | `src/components/photo-gallery.astro` with an inline client `<script>` (fullscreen modal + `DELETE /api/photos/[id]`) |
+
+### Domain additions
+
+```ts
+// src/lib/contexts/private-photos/domain/private-photos.types.ts (additions)
+
+export const PhotoCompareRules = {
+  MinPhotos: 2,
+  BodyWeightWindowDays: 3,       // FR-PP-009: measurement within ±3 days of the photo date
+  SliderDefaultPercent: 50,
+  SliderKeyboardStepPercent: 5,
+} as const;
+
+export const CompareModes = {
+  SideBySide: 'side-by-side',    // "Lado a lado"
+  Slider: 'slider',              // "Deslizador"
+} as const;
+export type CompareMode = (typeof CompareModes)[keyof typeof CompareModes];
+
+export interface ComparePhotoView extends PhotoViewDTO {
+  bodyWeightKg: number | null;   // nearest measurement within the window, owner-only
+  bodyWeightMeasuredOn: string | null;
+}
+
+export interface PhotoComparison {
+  left: ComparePhotoView;        // `a` in the URL
+  right: ComparePhotoView;       // `b` in the URL
+  daysBetween: number;           // |right.date − left.date| in whole days
+  bodyWeightDeltaKg: number | null; // right − left, only when both weights exist
+  photos: PhotoViewDTO[];        // all of the owner's photos, for the side pickers
+}
+
+export class SamePhotoError extends Error {
+  constructor(public readonly photoId: string) {
+    super(`Cannot compare photo ${photoId} with itself`);
+    this.name = 'SamePhotoError';
+  }
+}
+```
+
+**Invariants**
+
+- Both photos MUST belong to the session user. `PhotoRepository.findById(id, currentUserId)` throws `PhotoOwnershipError` for another user's photo; the page answers 404 for both "missing" and "not yours", so a photo id never reveals that it exists.
+- Default pair (no `a`/`b` in the URL): `a` = oldest, `b` = newest by `photoDate` (ties by `createdAt`).
+- `a` and `b` MUST differ (`SamePhotoError`).
+- Fewer than `PhotoCompareRules.MinPhotos` photos → no comparison; the page shows the empty state.
+- Body weight comes only from the owner's own `body_measurements`, through `BodyWeightPort`, called with the session user id. It is never shown to or computed for another user ([ADR-023 §4](../../decisions/023-body-metrics-privacy.md)).
+- Decision: when two measurements are equally close to a photo date (one before, one after), the earlier one is used (simplest; neither Hevy nor Gravl has the feature).
+- Decision: the server keeps the URL order (`a` left, `b` right). *Intercambiar* is client-only and rewrites the query with `history.replaceState`, so a reload keeps the swap.
+
+### Ports consumed
+
+| Port | Provided by | Method used |
+|---|---|---|
+| `BodyWeightPort` | [body-metrics](../body-metrics/readme.md) ([ADR-023](../../decisions/023-body-metrics-privacy.md)) | `findNearest(userId: string, date: Date, maxDays: number): Promise<{ measuredOn: Date; weightKg: number } \| undefined>` — nearest measurement with `weight_kg IS NOT NULL` within ±`maxDays`. The body-metrics readme is authoritative for the signature |
+
+### Use cases
+
+| Use case | Purpose | Story | Status |
+|----------|---------|-------|--------|
+| `GetPhotoComparisonUseCase` | Resolve the pair (explicit or default), owner check, days between, nearest body weights and Δ | 11.3 | planned |
+
+File: `src/lib/contexts/private-photos/application/get-photo-comparison.use-case.ts`, constructor `(photoRepository: PhotoRepository, bodyWeightPort: BodyWeightPort)`.
+
+**Orchestration** — `execute({ userId, photoAId?, photoBId? }): Promise<PhotoComparison | undefined>`
+
+1. `photos = photoRepository.findByUser(userId)`. Fewer than 2 → return `undefined` (empty state).
+2. If `photoAId`/`photoBId` are given: `findById(id, userId)` for each (missing → `undefined` → page 404; other owner → `PhotoOwnershipError` → page 404). Same id → `SamePhotoError`. Otherwise pick oldest and newest from `photos`.
+3. `bodyWeightPort.findNearest(userId, photoDate, PhotoCompareRules.BodyWeightWindowDays)` for both photos, in parallel.
+4. `daysBetween = round(|right.photoDate − left.photoDate| / 86 400 000)`; `bodyWeightDeltaKg = right − left` when both weights exist.
+5. Map rows with the existing `toPhotoView` (`buildPhotoUrl`).
+
+**Wiring** — `private-photos.composition.ts` adds:
+
+```ts
+import { bodyWeightPort } from '@/lib/contexts/body-metrics/body-metrics.composition'; // story 11.1
+import { GetPhotoComparisonUseCase } from './application/get-photo-comparison.use-case';
+
+export const getPhotoComparisonUseCase = new GetPhotoComparisonUseCase(photoRepository, bodyWeightPort);
+```
+
+### UI
+
+| Item | File | Notes |
+|---|---|---|
+| Page `/photos/compare?a=&b=` | `src/pages/photos/compare.astro` | SSR auth gate (same shape as `photos.astro`), calls `getPhotoComparisonUseCase`, mounts `PhotoCompare` with `client:load`. 404 page for a missing or foreign photo; `SamePhotoError` → redirect to `/photos/compare` (defaults). Empty state: "Necesitas al menos 2 fotos para comparar" + *Subir foto* |
+| `PhotoCompare` island | `src/components/photo-compare.tsx` | Header "N días entre fotos" (singular "1 día"). Mode switch *Lado a lado* / *Deslizador*. *Intercambiar*. Tapping a side's date opens a thumbnail picker of `photos` and navigates with the new `a`/`b` |
+| Lado a lado | inside `photo-compare.tsx` | Two equal columns (3:4, `object-fit: cover`), date under each, body weight under the date ("72,4 kg", viewer's unit) and the Δ between them ("−2,4 kg") |
+| Deslizador | inside `photo-compare.tsx` | Both images stacked in one 3:4 frame; the right image is clipped with `clip-path: inset(0 0 0 X%)`; a vertical divider with a handle is dragged with pointer events (`setPointerCapture`). The handle is `role="slider"` with `aria-valuenow`, arrow keys move it by `SliderKeyboardStepPercent`. Starts at 50 % |
+| Gallery multi-select (FR-PP-010) | `src/components/photo-gallery.astro` | Extends the existing inline script: long-press 500 ms (cancelled by > 10 px movement or early release) enters selection mode; taps then toggle a check; at most 2 (a third tap is ignored with the hint "Elige 2 fotos"); a bottom bar *Comparar (2)* opens `/photos/compare?a=<older>&b=<newer>`; *Cancelar* exits. A *Seleccionar* button enters the same mode without long-press (desktop, accessibility). A *Comparar* header button (≥ 2 photos) opens the default pair |
+| `/photos` header | `src/pages/photos.astro` | Shows *Comparar* when the user has ≥ 2 photos |
+
+> Decision: multi-select extends the gallery's existing client script instead of adding a separate React island. Long-press and the existing tap → fullscreen handler must live in the same event handler; two scripts on the same elements would race. This is the code-reality exception to the React-only island rule ([ADR-015](../../decisions/015-live-workout-react-island.md)); `PhotoCompare` itself is a React island.
+
+No new API endpoint: the comparison is SSR, images use the existing `/photos/file/[id]` route.
+
+### Testing
+
+No mocks ([ADR-009](../../decisions/009-object-mothers.md)). `tests/private-photos/get-photo-comparison.use-case.test.ts` with the real `SqlitePhotoRepository` and the real body-metrics SQLite `BodyWeightPort`:
+
+- default pair = oldest vs newest; explicit pair keeps URL order;
+- another user's photo id → `PhotoOwnershipError`; unknown id → `undefined`;
+- same id twice → `SamePhotoError`; one photo only → `undefined`;
+- weight 3 days away is used, 4 days away is not; equal distance → the earlier measurement; Δ only when both weights exist;
+- `daysBetween` across a DST change still counts whole days.
+
+RLS: no new table or policy. The existing `tests/supabase/rls-photo.integration.test.ts` and the body-metrics owner-only tests (story 11.1) cover the data. Story 11.3 adds an E2E check that `/photos/compare?a=<sibling photo>` returns 404.
+
+### Flows
+
+- [compare-photos.flow.md](./flows/compare-photos.flow.md)

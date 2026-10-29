@@ -7,6 +7,8 @@ Parent: [../readme.md](../readme.md) · Context: [../readme.md](../readme.md)
 | Status | planned |
 | Last edited | 2026-07-21 |
 
+> **Superseded in Phase 2.** `ExerciseCard`, the form auto-save and the 90 s `RestTimer` are replaced by the `LiveWorkout` island and its outbox ([ADR-015](../../../decisions/015-live-workout-react-island.md), [ADR-025](../../../decisions/025-offline-live-workout.md)). Use [live-workout.flow.md](./live-workout.flow.md) for logging and [finish-workout.flow.md](./finish-workout.flow.md) for finishing. This Phase 1 flow is kept for history.
+
 ## Happy Path
 
 ### Step 1 - Exercise Card Display

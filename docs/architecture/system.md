@@ -36,6 +36,33 @@ Everything renders in the browser (`ssr = false`, `adapter-static` with an `inde
 | `/photos` (private progress photos) | Implemented (needs the R2 bucket) |
 | `/settings`, `/more` | Implemented |
 
+### Phase 2 pages (planned)
+
+Navigation v2 tabs: Inicio · Entrenar · Progreso · Perfil ([FR-WT-044](../prd/features/workout-tracking.md#fr-wt-044), [components.md](./components.md)). Every page is a client-rendered Svelte route in `apps/app` (no SSR, [ADR-027](./decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md)); the "Components" column lists the Svelte components the page needs, named as in the Phase 2 component specs. Reads go through the offline cache and writes that must survive no signal go through the outbox ([ADR-025](./decisions/025-offline-live-workout.md)).
+
+| Page | Components | Reason / content | Story |
+|------|------------|------------------|-------|
+| Dashboard v2 (`/dashboard`) | `NextWorkoutCard`, `LikeButton` | Next routine, readiness/recovery, deload card, family feed. Cached for offline start | 8.3, 10.3, 10.4, 12.1 |
+| Train (`/train`) | — | Programs, templates entry, empty workout, library | 8.2 |
+| Templates (`/train/templates`) | — | 7 seeded templates + preview | 8.4 |
+| Routine builder (`/train/routines/[id]/edit`, new) | `RoutineBuilder` | Owner only | 8.2 |
+| Onboarding (`/onboarding`) | `OnboardingWizard` | Questionnaire → recommended template | 8.4 |
+| Exercises (`/exercises`) | `ExercisePicker` (page variant) | Search/filter client-side over the full list; `GET /api/exercises` is served from the read-through cache | 7.3 |
+| Exercise detail (`/exercises/[id]`) | `ProgressChart`/charts, `PlateauSheet` | Tabs: Cómo hacerlo, Historial, Gráficas, Récords | 7.3, 10.1, 11.2 |
+| Live workout (`/workout/[id]`) | `LiveWorkout` | In progress → live island; completed → `WorkoutSummary` v2; `?mode=edit` → island in edit mode. Works offline (local snapshot and outbox) | 9.1–9.3, 12.3 |
+| Workout detail (`/workouts/[id]`) | `LikeButton`, `CommentList`, `ShareImageButton` | Read-only detail for anyone (read-all) | 12.1 |
+| Activity (`/activity`) | — | Likes/comments on my workouts; marks seen | 12.1 |
+| History v2 (`/history`) | — | Name, duration, volume, sets, PRs; filter by program/routine | 9.3 |
+| Progress v2 (`/progress`) | `WeeklyBarsChart`, `MuscleDistributionChart`, `CoachSummaryCard` | Stats, calendar, streaks, AI summary (fetched after load) | 11.2, 11.4 |
+| Profile (`/profile`) | — | Hub: history, measurements, photos, nutrition, tools, export, settings | 9.4 |
+| Measurements (`/profile/measurements`, `/new`) | `MeasurementChart` | Owner-only body metrics | 11.1 |
+| Tools (`/profile/tools`) | `OneRmCalculator` | 1RM calculator | 9.5 |
+| Photo compare (`/photos/compare`) | `PhotoCompare` | Owner-only | 11.3 |
+| Family member (`/family/[user_id]`) | `LikeButton` | Workouts list via feed cards | 12.1 |
+| Settings (`/settings`) | — | Adds *Entrenamiento* (FR-WT-037) and *Cambiar programa* | 9.4 |
+
+Decisions: `/onboarding` is the questionnaire route, and `/profile/tools` hosts the 1RM calculator (PRDs name the screens but not the paths). Implemented today: `/dashboard`, `/workout/[id]`, `/history`, `/progress`, `/family`, `/settings`, `/photos`, `/nutrition`, `/more` (Phase 1 behavior, see [components.md](./components.md)); the Phase 2 versions replace them as their stories land.
+
 ## Tech Stack
 
 | Layer | Choice | Decision |
@@ -273,7 +300,102 @@ export const HealthRules = {
 - `log-set.use-case.ts` checks weight increase vs previous session.
 - `nutrition-entries` POST handler checks junk food ratio (separate from workout).
 
+### Phase 2: HealthRules guide, they never block logging
+
+Phase 2 keeps the `HealthRules` values but changes **where** they apply ([ADR-016 §5](./decisions/016-workout-data-model-v2.md)). A user may always log what they actually lifted. The MUST/CANNOT wording above becomes, for workout data:
+
+| Rule | Phase 2 enforcement point | Effect |
+|---|---|---|
+| `MaxWeightIncreasePerSessionKg` (5 kg), `MaxWeightIncreasePerWeekPercent` (10 %) | progression engine, **suggestions only** ([ADR-021 §4](./decisions/021-progression-engine.md)) | Caps the suggested increase (min one increment step) |
+| `MaxConsecutiveTrainingDays` (4) | progression soft warning "Días seguidos" ([ADR-022 §3](./decisions/022-readiness-and-recovery.md)) | Dismissible dashboard banner |
+| `MaxSetsPerMusclePerWeek` (20) | progression soft warning "Volumen alto" + muscle distribution flag ([FR-PR-015](../prd/features/progress.md#fr-pr-015)) | Warning, never blocks |
+| `MinHoursBetweenSameMuscleGroup` (48 h) | recovery window ([ADR-022 §2](./decisions/022-readiness-and-recovery.md)) | "Músculo fatigado" in the readiness step and routine picker |
+| `MinRestDaysPerWeek` (1) | no screen (rest-day screens removed, [ADR-019](./decisions/019-rotation-scheduling-and-onboarding.md)); covered by the consecutive-days warning | — |
+
+`StartWorkoutUseCase` and the set use cases no longer check any of these (the two Phase 1 enforcement points above are retired in stories 9.1 / 9.2). The only hard session rule left is "≥ 1 completed set to finish".
+
 ---
+
+## Offline
+
+[ADR-025](./decisions/025-offline-live-workout.md), amended by ADR-027 section 5: **no service worker and no PWA manifest**. The app is a static SPA bundled into the Tauri build (the web build is just a convenience), so the shell is always present; only data needs an offline strategy. Status of each piece (2026-10-29):
+
+| Piece | Where | State |
+|---|---|---|
+| Client IDs | every client-created workout, set and meal gets `crypto.randomUUID()`; endpoints are idempotent upserts by id | Done for workouts, sets, meals and photos |
+| Outbox | IndexedDB `gymup` store `outbox` (`seq`, `command`, `attempts`, `nextAttemptAt`); `failed` store for rejected commands | Done: `start-workout`, `upsert-set`, `finish-workout`. Phase 2 commands (`add-exercise`, `update-exercise`, `remove-exercise`, `reorder-exercises`, `delete-set`, `discard-workout`) are added with their stories |
+| Sync loop | `apps/app/src/lib/offline/sync.svelte.ts` | Done: drains in `seq` order, one command at a time, on `online`, on return to the foreground, after every enqueue and every 15 s while something is pending; exponential backoff from 1 s to 5 min |
+| Error handling | `outbox.ts` | Done: network and 5xx retry, 401 pauses without losing commands, other 4xx move to `failed` with Retry and Discard in the UI |
+| Coalescing and remap | `outbox.ts` | Done: repeated edits of one set collapse into one command; a server answer to `start-workout` with another workout (one per user per day) rewrites the queued commands |
+| Session snapshot | IndexedDB `kv`, key `session:<id>` | Done: the open workout is persisted on every action, so a reload restores it without the network |
+| Read-through cache | `offline/cache.ts`, key `cache:<path>` | Done for today's routine, history, progress, family, nutrition and the current user; replaces the service worker's runtime caching |
+| Offline start | dashboard | Done: starts from the last downloaded routine; the plan and previous values are one session old |
+| Conflicts | server | **Deferred.** Last-write-wins by `updated_at` and 30-day tombstones apply to a workout edited on two devices; today one device edits a workout at a time and the natural keys (`exerciseId` + `setNumber`) make replays safe |
+
+## Phase 2 Context Map
+
+Arrows point from the consumer to the provider. Labels are the ports the consumer depends on ([ADR-013](./decisions/013-hexagonal-architecture.md)). Each port is declared and implemented by the **provider** and exported from its composition root ([contexts/readme.md → Cross-context ports](./contexts/readme.md#cross-context-ports-phase-2)). "reads" means the consumer's own repository queries the provider's tables through a read model (Phase 1 pattern of `progress` and `public-view`); no cross-context writes exist.
+
+```mermaid
+graph LR
+  auth[auth]
+  user[user / profiles]
+  wt[workout-tracking]
+  el[exercise-library]
+  rt[routines]
+  pg[progression]
+  pr[progress]
+  bm[body-metrics]
+  pv[public-view]
+  so[social]
+  pp[private-photos]
+  nu[nutrition]
+  gemini[(Gemini API)]
+
+  auth -->|SessionPort / profiles| user
+  wt -->|ExerciseCatalogPort| el
+  wt -->|RoutinePlanPort| rt
+  wt -->|SuggestionPort| pg
+  wt -->|RecordBaselinePort| pr
+  rt -->|ExerciseCatalogPort| el
+  rt -->|next routine: reads workouts| wt
+  pg -->|reads exposures| wt
+  pg -->|e1RM / records| pr
+  pr -->|reads workouts + sets| wt
+  pr -->|BodyWeightPort| bm
+  pr -->|ProgressionInsightsPort| pg
+  pg -->|RoutinePlanPort| rt
+  pg -->|ExerciseCatalogPort| el
+  pr -->|ExerciseCatalogPort| el
+  pr -->|CoachSummaryPort| gemini
+  so -->|reads completed workouts| wt
+  so -->|PrCountPort| pr
+  so -->|RoutineCopyPort| rt
+  rt -->|WorkoutSnapshotPort| wt
+  pv -->|streak, PrCountPort| pr
+  pv -->|feed cards| so
+  pp -->|BodyWeightPort| bm
+  nu -->|AIAnalysisPort| gemini
+  wt -->|training settings| user
+  rt -->|active_program_id| user
+```
+
+| Context | Owns (tables) | Docs |
+|---|---|---|
+| auth | sessions | [contexts/auth](./contexts/auth/readme.md) |
+| user | `profiles` identity fields | [contexts/user](./contexts/user/readme.md) |
+| workout-tracking | `workouts`, `workout_exercises`, `workout_entries`, profile training settings | [contexts/workout-tracking](./contexts/workout-tracking/readme.md#phase-2) |
+| exercise-library | `exercises` | [contexts/exercise-library](./contexts/exercise-library/readme.md), [ADR-017](./decisions/017-exercise-catalog.md) |
+| routines | `routines`, `routine_days`, `routine_exercises`, `profiles.active_program_id` + onboarding answers | [contexts/routines](./contexts/routines/readme.md), [ADR-018](./decisions/018-user-owned-programs.md), [ADR-019](./decisions/019-rotation-scheduling-and-onboarding.md) |
+| progression | `exercise_progression_overrides`, `readiness_checkins`, deload columns | [contexts/progression](./contexts/progression/readme.md), [ADR-021](./decisions/021-progression-engine.md), [ADR-022](./decisions/022-readiness-and-recovery.md) |
+| progress | derived stats and records (no record table), `ai_weekly_summaries` | [contexts/progress](./contexts/progress/readme.md), [ADR-020](./decisions/020-personal-records.md), [ADR-026](./decisions/026-weekly-ai-coach-summary.md) |
+| body-metrics | `body_measurements` (owner-only) | [contexts/body-metrics](./contexts/body-metrics/readme.md), [ADR-023](./decisions/023-body-metrics-privacy.md) |
+| public-view | read models only | [contexts/public-view](./contexts/public-view/readme.md) |
+| social | `workout_likes`, `workout_comments`, `profiles.activity_seen_at` | [contexts/social](./contexts/social/readme.md), [ADR-024](./decisions/024-social-interactions.md) |
+| private-photos | `progress_photos` + storage (owner-only) | [contexts/private-photos](./contexts/private-photos/readme.md) |
+| nutrition | `nutrition_entries`, `nutrition_goals` | [contexts/nutrition](./contexts/nutrition/readme.md) |
+
+Port names not yet fixed by an ADR (the "reads …" edges) are defined in the consumer's context readme. Privacy edges never cross users: body metrics, readiness, overrides, AI summaries, photos and nutrition stay owner-only ([FR-PV-009](../prd/features/public-view.md#fr-pv-009)).
 
 ## Frontend
 

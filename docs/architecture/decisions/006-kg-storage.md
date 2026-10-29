@@ -10,7 +10,7 @@ Users may prefer kg or lbs. How to store and display?
 
 ## Decision
 
-Store all weight in kg internally. `profiles.weight_unit` controls display. Conversion: `lbs = kg * 2.20462`.
+Store all weight in kg internally. `profiles.weight_unit` controls display. Conversion: `lbs = kg / 0.45359237` and `kg = lbs * 0.45359237` (exact definition of the pound; Phase 2 supersedes the `2.20462` approximation used by Phase 1 pages, see [Phase 2 decisions](../../stories/phase-2/readme.md#phase-2-decisions-and-resolved-spec-conflicts)). Values are stored unrounded; display rounds.
 
 ## Rationale
 
