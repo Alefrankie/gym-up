@@ -98,13 +98,11 @@ Not done: Playwright test in CI (the check above was manual), tombstones and `up
 
 ## Phase 5 — Tauri 2 on Android (M)
 
-- Add `src-tauri` to `apps/app`; `tauri android init`; app id, name, icons, splash.
-- `platform` module with web and Tauri implementations: camera or file pick for photos, local notifications for rest timer end, haptics, secure token storage (ADR-027 open question 3).
-- Capabilities and Android permissions (camera, notifications, network).
-- CORS allow-list for `tauri://localhost` and `http://tauri.localhost`; HTTPS API only for release builds.
-- Debug APK on a real device end to end: login, workout offline, photo, nutrition.
-- Release build: keystore, signed AAB, Play Console internal testing track.
-- Remote push is out of scope for this release; only local notifications. If a blocking Tauri gap appears, fall back to Capacitor for the shell only; the Svelte app and the API are unaffected.
+Status: **debug APK running on a physical phone** (2026-10-29: Infinix X6873, Android 16, arm64). Login against the production API works from the Tauri WebView (CORS for `http://tauri.localhost`), and the dashboard shows data from D1.
+
+- `pnpm --filter @gym-up/app android:debug` builds the frontend and the Rust library, runs Gradle and installs the APK on the connected device. It exists because the Tauri CLI cannot create its jniLibs symlink on Windows without Developer Mode; the script lets the CLI compile, copies the library instead of linking it, and runs Gradle with the rust tasks skipped.
+- Done: Tauri project, app id `com.gymup.app` (`.debug` suffix for debug builds), Android project generated, CORS allow-list for the Tauri origins, API URL from `VITE_API_URL`.
+- Not done: local notifications for the rest timer end, camera or file pick for photos (needs the photos module), haptics, secure token storage (ADR-027 open question 3), splash and icons, release keystore, signed AAB and Play Console internal track, HMR dev loop on the device (`tauri android dev`), and checking the offline outbox inside the WebView.
 
 Exit: signed AAB installs from the internal track and passes the manual checklist below.
 

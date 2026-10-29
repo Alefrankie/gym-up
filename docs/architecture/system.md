@@ -281,6 +281,6 @@ Live workouts are **local-first**: the snapshot and every set are written to Ind
 
 - **API:** `pnpm --filter @gym-up/api deploy` builds with SWC and runs `wrangler deploy`. D1: `pnpm --filter @gym-up/api d1:migrate:remote` and `d1:seed:remote`.
 - **Web:** `pnpm --filter @gym-up/app deploy:web` builds the SPA and serves it from Workers static assets (`apps/app/wrangler.jsonc`).
-- **Android:** `pnpm tauri android build` in `apps/app`. Windows needs Developer Mode enabled (symlinks); see the migration plan, Phase 5.
+- **Android:** `pnpm --filter @gym-up/app android:debug` builds and installs a debug APK on the connected phone (it works around the Windows symlink restriction; with Developer Mode on, `pnpm tauri android build --debug --apk --target aarch64` also works). Needs Rust, the Android SDK and NDK, and `ANDROID_HOME`/`NDK_HOME`; see the migration plan, Phase 5.
 - **Local:** `pnpm --filter @gym-up/api dev:worker` runs the API on `localhost:8787` with a local D1 (`d1:migrate:local`, `d1:seed:local`); `pnpm --filter @gym-up/app dev` runs the SPA.
 - **Configuration:** the SPA reads `VITE_API_URL` (`.env.development`, `.env.production`). The API allows CORS for the Tauri origins plus the origins in `EXTRA_ORIGINS`.
