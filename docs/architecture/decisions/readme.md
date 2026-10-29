@@ -18,3 +18,4 @@ Parent: [../readme.md](../readme.md) · Up: [../../README.md](../README.md)
 | [ADR-012](./012-drizzle-orm.md) | Drizzle ORM as SQLite/Postgres Abstraction | ✅ Accepted |
 | [ADR-013](./013-hexagonal-architecture.md) | Hexagonal Architecture (Ports and Adapters) per Context | ✅ Accepted |
 | [ADR-014](./014-ai-nutrition-analysis.md) | AI Nutrition Analysis — Google Gemini Vision Provider | ✅ Accepted |
+| [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) | Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2 | 📝 Proposed |
