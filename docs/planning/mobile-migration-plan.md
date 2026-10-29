@@ -2,7 +2,7 @@
 
 Parent: [./readme.md](./readme.md) · Up: [../README.md](../README.md)
 
-Executes [ADR-027](../architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md): NestJS API, SvelteKit static SPA, Tauri 2 (Android first). Strangler approach: the current Astro app keeps working until the new stack reaches parity and is cut over.
+Executes [ADR-027](../architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md): NestJS API, SvelteKit static SPA, Tauri 2 (Android first). Astro is removed in Phase 1 (everything becomes SvelteKit); there are no production users, so there is no parallel-run period. The `pre-migration` git tag is the behavioral reference.
 
 Effort is relative (S ≤ a few days, M ≈ 1–2 weeks, L ≈ several weeks) and has not been measured.
 
@@ -35,11 +35,13 @@ Exit: all of the above run on a deployed Worker; version exceptions documented. 
 
 ## Phase 1 — Monorepo and contracts (S)
 
-- Convert the existing repo (`Alefrankie/gym-up`) to a pnpm workspace with **Turborepo**: `apps/api`, `apps/app`, `packages/contracts`, and a `turbo.json` task graph (`build`, `dev`, `lint`, `typecheck`, `test`) with caching. Keep the Astro app running in place until Phase 6. Work on branches and PRs; use the `Alefrankie` GitHub account for `gh`.
+- Convert the existing repo (`Alefrankie/gym-up`) to a pnpm workspace with **Turborepo**: `apps/api`, `apps/app`, `packages/contracts`, and a `turbo.json` task graph (`build`, `dev`, `lint`, `typecheck`, `test`) with caching. Work on branches and PRs; use the `Alefrankie` GitHub account for `gh`.
+- **Tag and remove Astro.** Tag the current `main` commit `pre-migration` and push the tag before any change. Then delete `src/pages`, `src/components`, `src/layouts`, `src/styles`, `astro.config.mjs`, `astro`, `@astrojs/*`, the Vercel adapter, `react`, `react-dom` and `react-chartjs-2`. Static assets from `public/` move to `apps/app`.
+- **Move the backend code** into `apps/api`: `src/lib/contexts/*`, `tests/`, `db/schema.ts` and `db/migrations`. Delete the Supabase repositories, `src/lib/supabase`, the `STORAGE_BACKEND` switch and `supabase/`. Rewrite `db/client.ts` and `env.ts` for D1. Decide the test database: keep the in-memory SQLite driver as a test-only dependency, or run tests on D1 through Miniflare.
 - `packages/contracts`: zod schemas and inferred types for the existing endpoints (`/api/workouts`, `/api/workout-entries`, `/api/workouts/:id/complete`, `/api/photos`, `/api/nutrition/*`) plus auth.
-- Shared lint, `tsconfig` base and Vitest config. Move `db/schema.ts` and migrations under `apps/api`.
+- Shared lint, `tsconfig` base and Vitest config.
 
-Exit: workspace installs and builds; contracts compile in both apps.
+Exit: workspace installs and builds; contracts compile in both apps; the moved use-case tests pass in `apps/api`; no Astro code or dependency remains on the branch.
 
 ## Phase 2 — NestJS API, module by module (L)
 
@@ -54,7 +56,7 @@ Port `domain` and `application` code unchanged; write Nest controllers, provider
 | 2.5 | `nutrition` | Gemini adapter ([ADR-014](../architecture/decisions/014-ai-nutrition-analysis.md)); key only in API env. Rate limit. |
 | 2.6 | `public-view` | Family feed and member pages; respects RLS-equivalent rules ([ADR-004](../architecture/decisions/004-rls-visibility.md)). |
 
-Per module: contract tests against `packages/contracts`, OpenAPI published, and a comparison run of old Astro endpoint versus new Nest endpoint on the same fixtures.
+Per module: contract tests against `packages/contracts`, OpenAPI published, and the moved use-case tests of that context passing.
 
 Deploy the API to the chosen platform as soon as 2.1 and 2.2 exist, so the app is always tested against a real server.
 
@@ -66,7 +68,7 @@ Build in the browser first. Tauri is not involved yet.
 
 1. SvelteKit + `adapter-static`, `ssr = false`, app layout, bottom navigation (replaces `navigation.astro`, `app-layout.astro`).
 2. API client: bearer token, one-shot refresh, typed with contracts, IndexedDB read-through cache.
-3. Pages in this order, easiest to hardest. Each page replaces one Astro page or component:
+3. Pages in this order, easiest to hardest. Each page rewrites one Astro page or component, read from the `pre-migration` tag (`git show pre-migration:<path>`):
 
 | Order | Svelte page | Replaces | Size |
 |-------|-------------|----------|------|
@@ -106,9 +108,9 @@ Exit: signed AAB installs from the internal track and passes the manual checklis
 
 ## Phase 6 — Cutover and cleanup (S)
 
-- Data migration of existing SQLite data to the production DB (D1 if Cloudflare is adopted), and resetting the development database (there are no real users; old hashes are not carried over, ADR-027 section 7).
-- Point the web domain at the SvelteKit build on Workers; retire the Astro app, `@astrojs/*`, `@astrojs/vercel`, `@supabase/supabase-js`, `better-sqlite3` and the `supabase/` folder.
-- Remove `src/pages`, `src/components`, `src/layouts`; move or delete `src/lib/contexts` once ported.
+- No data migration: the existing data is development-only. Create the production D1 database from the migrations; old password hashes are not carried over (ADR-027 section 7).
+- Point the web domain at the SvelteKit build on Workers; remove the Vercel project and any leftover Supabase project or credentials.
+- Delete any leftover Supabase scripts (`scripts/*rls*`, `scripts/verify-6.2.sql`) and the `pre-migration` references in docs that are no longer needed.
 - Mark ADR-001, ADR-002, ADR-015 superseded and ADR-025 partially superseded; accept ADR-027; update `docs/architecture/system.md` and `components.md`.
 
 ## Phase 7 — iOS (later)
@@ -136,6 +138,7 @@ Routines, exercise library, progression, body metrics and social exist as docs o
 | Latest majors (Nest 12, Kit 3, Vite 8, TypeScript 7) have ecosystem gaps | Phase 0 installs them together; document exceptions; pin exact versions |
 | Tauri mobile plugin gaps (camera control, deep-link OAuth) | Phase 0 and Phase 5 spikes; Capacitor shell fallback |
 | NestJS on Cloudflare Workers is not a mainstream path; D1 has no interactive transactions | Phase 0 gate on a real deployment; fallback to Hono on Workers or Nest on a Node host |
-| Live workout rewrite regresses behavior | Port ADR-015 reducer tests first; keep Astro version until parity |
+| Live workout rewrite regresses behavior | Port ADR-015 reducer tests first; use the `pre-migration` tag as the behavioral reference |
 | Rust and Android toolchain friction on Windows | Do Phase 0 first; use physical device over USB |
+| No runnable UI between Phase 1 and the first Svelte pages in Phase 3 | Accepted: no production users. Use moved unit tests, contract tests, HTTP calls and the `pre-migration` tag; get a first Svelte page running early in Phase 3 |
 | Feature delivery pauses during migration | Accepted; Phase 2 features built once in the new stack |

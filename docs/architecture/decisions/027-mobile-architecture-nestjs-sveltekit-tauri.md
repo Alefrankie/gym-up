@@ -40,7 +40,15 @@ apps/app        SvelteKit static SPA + src-tauri (Tauri 2) — web build and And
 packages/contracts   zod schemas + inferred types shared by api and app (request/response DTOs)
 ```
 
-The Astro project is retired at the end of the migration (strangler pattern, never a big bang).
+**Astro is removed in Phase 1** (decided 2026-10-29: everything becomes SvelteKit). There are no production users, only development data, so there is no reason to run two apps in parallel and no strangler period. The commit on `main` before the migration is tagged `pre-migration` and is the behavioral reference for the rewrite (`git show pre-migration:src/pages/dashboard.astro`). What moves and what is deleted:
+
+| Part | Fate |
+|------|------|
+| `src/lib/contexts/*` (domain, use cases, repositories), `tests/`, `db/schema.ts`, `db/migrations` | Move to `apps/api` |
+| `src/pages`, `src/components`, `src/layouts`, `src/styles` (Astro pages, Astro and React components) | Deleted; rewritten in SvelteKit from the tag |
+| `src/lib/db/client.ts`, `src/lib/env.ts` | Rewritten for D1 |
+| Supabase repositories, `src/lib/supabase`, `STORAGE_BACKEND`, `supabase/` | Deleted |
+| `astro`, `@astrojs/*`, `@astrojs/vercel`, `react`, `react-dom`, `react-chartjs-2`, `@supabase/supabase-js`, native `argon2` | Removed from the dependencies |
 
 ### 2. Backend: NestJS
 
@@ -126,6 +134,7 @@ These are the newest releases the registry reported, not a tested combination. P
 - **Pro:** One API, one UI codebase, shared contracts, domain logic reused.
 - **Pro:** Secrets and Gemini stay server-side.
 - **Con:** Rewrite of every Astro page and React island into Svelte. The live workout is the largest piece.
+- **Con:** With Astro removed in Phase 1 there is **no runnable UI until the first Svelte pages land in Phase 3**. Between Phases 1 and 3 the API is exercised through the moved unit tests, contract tests and HTTP calls, and behavior is read from the `pre-migration` tag.
 - **Con:** A server that must be hosted (Cloudflare Workers, see the Cloudflare evaluation), unlike the current Vercel-only setup.
 - **Con:** Tauri mobile needs the Rust toolchain, Android Studio with SDK and NDK, and has fewer mobile plugins than Capacitor. Remote push in particular has no first-party plugin.
 - **Con:** Stack is on very recent majors (Nest 12, Kit 3, Vite 8, TypeScript 7); ecosystem lag is likely.
@@ -250,6 +259,7 @@ Resolved 2026-10-29: remote push is out of scope for the first release; Phase 2 
 ## Consequences
 
 - New workspace layout and a `docs/planning/mobile-migration-plan.md`.
+- Astro, its Vercel deployment and the Supabase code are deleted in Phase 1. `better-sqlite3` may stay as a **test-only** dependency if the moved tests keep their in-memory SQLite driver; whether to move tests to D1 through Miniflare is decided in Phase 1.
 - [ADR-001](./001-supabase-client-side.md) (browser talks to Supabase) is superseded in practice: the app talks only to the API.
 - [ADR-002](./002-chartjs-react-island.md) and [ADR-015](./015-live-workout-react-island.md) are superseded by the Svelte equivalents; [ADR-025](./025-offline-live-workout.md) is partially superseded (§5 above).
 - Auth contract changes from cookie sessions to a bearer session token; existing development hashes are discarded and the development database is reset (see section 7).
