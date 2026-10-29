@@ -14,8 +14,8 @@ graph TD
     Phone -.bundled SPA.-> SPA[SvelteKit static build]
     Web --> SPA
     API[NestJS API<br/>Cloudflare Worker] --> D1[(D1 SQLite)]
-    API -.planned.-> R2[(R2 private photos)]
-    API -.planned.-> Gemini[Gemini Vision and text]
+    API --> R2[(R2 private photos)]
+    API --> Gemini[Gemini Vision]
 ```
 
 The SPA is the same build for the web and for the Tauri WebView. There is no server-side rendering: the only server is the API.
@@ -32,7 +32,9 @@ Everything renders in the browser (`ssr = false`, `adapter-static` with an `inde
 | `/history` | Implemented |
 | `/progress` (streak, 28-day calendar, per-exercise chart) | Implemented |
 | `/family`, `/family/[id]` | Implemented |
-| `/photos`, `/nutrition`, `/settings` | Planned (migration plan, Phase 3 and the Phase 2 modules) |
+| `/nutrition` (photo analysis or manual entry, daily summary, goal) | Implemented (analysis needs the Gemini key) |
+| `/photos` (private progress photos) | Implemented (needs the R2 bucket) |
+| `/settings`, `/more` | Implemented |
 
 ## Tech Stack
 
@@ -48,7 +50,7 @@ Everything renders in the browser (`ssr = false`, `adapter-static` with an `inde
 | Monorepo | pnpm workspaces + Turborepo | ADR-027 |
 | Offline | IndexedDB outbox, local-first workouts, read-through cache | [mobile plan, Phase 4](../planning/mobile-migration-plan.md) |
 | Charts | Chart.js used directly from Svelte | supersedes [ADR-002](./decisions/002-chartjs-react-island.md) |
-| Photos | Cloudflare R2, presigned URLs (planned) | supersedes the storage part of [ADR-005](./decisions/005-private-photos.md) |
+| Photos | Cloudflare R2 through the Worker binding; bytes go through the owner-checked API, no presigned URLs | supersedes the storage part of [ADR-005](./decisions/005-private-photos.md) |
 | Test data | Object Mothers, real SQLite in memory, no mocks | [ADR-009](./decisions/009-object-mothers.md) |
 
 ## Project Structure
@@ -80,7 +82,7 @@ gym-up/
     contracts/                    zod request and response schemas shared by api and app
 ```
 
-Implemented contexts under `apps/api/src/lib/contexts/`: `auth`, `workout-tracking`, `progress`, `private-photos`, `public-view`, `nutrition`. `auth`, `workout-tracking`, `progress` and `public-view` (served as `/family`) have Nest modules; `private-photos` and `nutrition` are next (migration plan, Phase 2).
+Implemented contexts under `apps/api/src/lib/contexts/`: `auth`, `workout-tracking`, `progress`, `private-photos`, `public-view`, `nutrition`. Every context has a Nest module: `auth`, `workout-tracking`, `progress`, `public-view` (served as `/family`), `private-photos` and `nutrition`.
 
 ## Hexagonal Layering in `apps/api`
 
@@ -285,4 +287,5 @@ Live workouts are **local-first**: the snapshot and every set are written to Ind
 - **Web:** `pnpm --filter @gym-up/app deploy:web` builds the SPA and serves it from Workers static assets (`apps/app/wrangler.jsonc`).
 - **Android:** `pnpm --filter @gym-up/app android:debug` builds and installs a debug APK on the connected phone (it works around the Windows symlink restriction; with Developer Mode on, `pnpm tauri android build --debug --apk --target aarch64` also works). Needs Rust, the Android SDK and NDK, and `ANDROID_HOME`/`NDK_HOME`; see the migration plan, Phase 5.
 - **Local:** `pnpm --filter @gym-up/api dev:worker` runs the API on `localhost:8787` with a local D1 (`d1:migrate:local`, `d1:seed:local`); `pnpm --filter @gym-up/app dev` runs the SPA.
+- **Cloud steps that need your accounts (R2 bucket, Gemini key, rate limiting, release signing):** [cloud-setup-pending](../planning/cloud-setup-pending.md).
 - **Configuration:** the SPA reads `VITE_API_URL` (`.env.development`, `.env.production`). The API allows CORS for the Tauri origins plus the origins in `EXTRA_ORIGINS`.

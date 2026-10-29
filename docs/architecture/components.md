@@ -25,6 +25,10 @@ Parent: [./readme.md](./readme.md) · Up: [../README.md](../README.md)
 | `/dashboard` | Today's workout from the cache-backed `GET /workouts/today`; starts or continues a workout locally first |
 | `/workout/[id]` | Local-first set logging: rows are persisted to IndexedDB, queued in the outbox, with a rest timer and a finish action |
 | `/history` | Paginated history from the cache-backed `GET /workouts` |
+| `/nutrition` | Daily summary and calorie goal, meal photo analysis or manual entry, history with delete |
+| `/photos` | Private progress photos: capture or pick, compressed on the device, thumbnails fetched with the bearer token |
+| `/settings` | Name, weight unit, routine type, account and sign-out |
+| `/more` | Links to Historial, Fotos and Ajustes |
 | `/progress` | Streak, 28-day calendar and a per-exercise Chart.js line chart (max weight or volume, 7 days, 30 days or all) |
 | `/family`, `/family/[id]` | Every member's workout count, streak and dates (read-only; never photos or body data) |
 
@@ -32,7 +36,7 @@ Parent: [./readme.md](./readme.md) · Up: [../README.md](../README.md)
 
 | Component | Role |
 |-----------|------|
-| `AppNav.svelte` | Fixed bottom navigation (Inicio, Historial, Progreso, Familia, Salir); sign-out warns about unsent changes |
+| `AppNav.svelte` | Fixed bottom navigation (Inicio, Progreso, Comida, Familia, Más) |
 | `SyncBanner.svelte` | Pending and failed sync counts, with Retry and Discard actions for rejected commands |
 | `ProgressChart.svelte` | Chart.js line chart created once and updated in place when its props change |
 
@@ -48,7 +52,6 @@ Parent: [./readme.md](./readme.md) · Up: [../README.md](../README.md)
 | `offline/sync.svelte.ts` | Reactive facade: pending count, online state, the sync loop |
 | `offline/cache.ts` | Read-through cache for GET endpoints |
 | `offline/workout-session.ts` | Local snapshot of the open workout and the `active-workout` pointer |
-
-## Planned
-
-Photo capture and gallery, nutrition capture and history, and the settings page. (Charts use Chart.js directly, replacing the React island of [ADR-002](./decisions/002-chartjs-react-island.md).) They follow the same conventions and are tracked in the migration plan.
+| `api/binary.ts` | Authenticated blob download, raw upload and delete (photos) |
+| `image.ts` | On-device JPEG compression and base64 encoding |
+| `notify.ts` | Android local notification for the end of the rest (no-op on the web) |

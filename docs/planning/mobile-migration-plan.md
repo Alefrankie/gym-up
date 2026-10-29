@@ -56,7 +56,7 @@ Port `domain` and `application` code unchanged; write Nest controllers, provider
 | 2.5 | `nutrition` | Gemini adapter ([ADR-014](../architecture/decisions/014-ai-nutrition-analysis.md)); key only in API env. Rate limit. |
 | 2.6 | `public-view` | Family feed and member pages; respects RLS-equivalent rules ([ADR-004](../architecture/decisions/004-rls-visibility.md)). |
 
-**Status (2026-10-29):** 2.1 `auth`, 2.2 `workout-tracking` (today, history, start, detail, upsert set, complete), 2.3 `progress` (streak, calendar, logged exercises, exercise history) and 2.6 `public-view` (family list and member detail) are done, deployed and covered by end-to-end tests over real HTTP (19). Pending: 2.4 `private-photos` (needs R2 enabled on the Cloudflare account) and 2.5 `nutrition` (needs a Gemini API key as a Worker secret, and the image compression, which used `sharp`, moves to the client).
+**Status (2026-10-29):** all modules are implemented and covered by end-to-end tests over real HTTP: 2.1 `auth` (plus `PATCH /auth/me` for settings), 2.2 `workout-tracking`, 2.3 `progress`, 2.4 `private-photos` (owner-only PUT/GET/DELETE on an object store, 5 MB limit, idempotent by client id), 2.5 `nutrition` (Gemini analysis, meal log, summary, calorie goal) and 2.6 `public-view` (served as `/family`). Photos and meal analysis stay disabled (503) until the R2 bucket and the Gemini key exist; see [cloud-setup-pending](./cloud-setup-pending.md). The photo and nutrition code was checked in workerd with a simulated R2 bucket (a 300 KB binary upload round-trips byte for byte).
 
 Per module: contract tests against `packages/contracts`, OpenAPI published, and the moved use-case tests of that context passing.
 
@@ -83,7 +83,7 @@ Build in the browser first. Tauri is not involved yet.
 | 3.7 | Photos | `photos`, `photo-gallery`, `photo-upload` | M |
 | 3.8 | Nutrition | `nutrition`, `meal-photo-capture`, `nutrition-result`, `nutrition-history`, `daily-calorie-bar` | M |
 
-**Status (2026-10-29):** done: 3.1 login and register, 3.3 history, 3.4 dashboard, 3.5 progress (Chart.js used directly), 3.6 family and member detail, plus the workout screen (Phase 4). Pending: 3.2 settings, 3.7 photos, 3.8 nutrition.
+**Status (2026-10-29):** all pages are done: login, register, dashboard, workout, history, progress (Chart.js), family and member detail, settings, photos (camera or gallery, compressed on the device) and nutrition (photo analysis, manual entry, daily summary and goal). The bottom navigation has five entries (Inicio, Progreso, Comida, Familia, Más); Historial, Fotos and Ajustes live under Más.
 
 Exit: all pages except the workout screen work in the browser against the Nest API.
 
@@ -106,7 +106,8 @@ Status: **debug APK running on a physical phone** (2026-10-29: Infinix X6873, An
 
 - `pnpm --filter @gym-up/app android:debug` builds the frontend and the Rust library, runs Gradle and installs the APK on the connected device. It exists because the Tauri CLI cannot create its jniLibs symlink on Windows without Developer Mode; the script lets the CLI compile, copies the library instead of linking it, and runs Gradle with the rust tasks skipped.
 - Done: Tauri project, app id `com.gymup.app` (`.debug` suffix for debug builds), Android project generated, CORS allow-list for the Tauri origins, API URL from `VITE_API_URL`.
-- Not done: local notifications for the rest timer end, camera or file pick for photos (needs the photos module), haptics, secure token storage (ADR-027 open question 3), splash and icons, release keystore, signed AAB and Play Console internal track, HMR dev loop on the device (`tauri android dev`), and checking the offline outbox inside the WebView.
+- Also done: the rest timer end is scheduled as a local notification on Android (`tauri-plugin-notification`), with vibration and an on-screen timer as the fallback on the web.
+- Not done (needs accounts or a device, see [cloud-setup-pending](./cloud-setup-pending.md)): release keystore, signed AAB and Play Console internal track, secure token storage, app icons and splash, the `tauri android dev` HMR loop on the device, and checking the offline outbox and the camera input inside the Android WebView.
 
 Exit: signed AAB installs from the internal track and passes the manual checklist below.
 
