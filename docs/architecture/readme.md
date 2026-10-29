@@ -36,7 +36,11 @@ Per-context composition files (`[context].composition.ts`) wire concrete adapter
 | [database-schema.md](./database-schema.md) | PostgreSQL DDL, seed data, RLS policies |
 | [components.md](./components.md) | UI component specs |
 | [decisions/readme.md](./decisions/readme.md) | ADR index |
-| [contexts/readme.md](./contexts/readme.md) | Context specs by feature |
+| [contexts/readme.md](./contexts/readme.md) | Context specs by feature (Phase 2 adds exercise-library, routines, progression, body-metrics, social) |
+
+## Phase 2
+
+Phase 2 decisions are ADR-015 … ADR-026 ([index](./decisions/readme.md)). Schema changes are additive migrations 004–011 ([database-schema.md → Phase 2 Migrations](./database-schema.md#phase-2-migrations)). The plan is in [../stories/phase-2/readme.md](../stories/phase-2/readme.md).
 
 ## Rules
 

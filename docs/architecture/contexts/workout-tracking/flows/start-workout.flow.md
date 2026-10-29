@@ -7,6 +7,8 @@ Parent: [../readme.md](../readme.md) · Context: [../readme.md](../readme.md)
 | Status | planned |
 | Last edited | 2026-07-21 |
 
+> **Superseded in Phase 2.** Weekday mapping, rest-day screens and the one-workout-per-day rule are replaced by the rotation ([ADR-019](../../../decisions/019-rotation-scheduling-and-onboarding.md)) and the four start modes. Use [live-workout.flow.md](./live-workout.flow.md) (Steps 1–4) and [edit-workout.flow.md](./edit-workout.flow.md) (repeat). This Phase 1 flow is kept for history.
+
 ## Happy Path
 
 ### Step 1 - Dashboard Load

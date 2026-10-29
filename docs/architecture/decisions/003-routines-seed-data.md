@@ -2,7 +2,7 @@
 
 Parent: [./readme.md](./readme.md) · Up: [../../README.md](../../README.md)
 
-**Status:** Accepted · **Date:** 2026-07-21
+**Status:** Superseded by [ADR-018](./018-user-owned-programs.md) (2026-10-01) · **Date:** 2026-07-21
 
 ## Context
 

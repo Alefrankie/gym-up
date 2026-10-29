@@ -44,6 +44,24 @@ Tap member → view their progress (same layout as `/progress`, read-only). No e
 
 ---
 
+## Phase 2 — Functional Requirements
+
+Feed, likes and comments live in [social.md](./social.md) ([ADR-024](../../architecture/decisions/024-social-interactions.md)). Public view keeps the member list and member profiles.
+
+#### FR-PV-007
+
+The member profile (`/family/[user_id]`) adds a **Entrenamientos** list (20 per page, newest first). It uses the feed card ([FR-SO-002](./social.md#fr-so-002)) and links to the workout detail ([FR-SO-003](./social.md#fr-so-003)).
+
+#### FR-PV-008
+
+The member card (FR-PV-005) adds the weekly streak ([FR-PR-017](./progress.md#fr-pr-017)) and the PRs in the last 30 days.
+
+#### FR-PV-009
+
+The FR-PV-004 exclusions are extended. Body metrics, readiness check-ins, progression overrides, AI summaries and nutrition are never visible to other users ([ADR-023](../../architecture/decisions/023-body-metrics-privacy.md), [ADR-022](../../architecture/decisions/022-readiness-and-recovery.md), [ADR-026](../../architecture/decisions/026-weekly-ai-coach-summary.md)).
+
+---
+
 ## Data
 
 | Table | Access |
