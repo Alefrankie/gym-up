@@ -9,7 +9,7 @@
       "binding": "DB",
       "database_name": "gym-up",
       // Replace with the id printed by `wrangler d1 create gym-up`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "236195c7-7bc8-4993-802b-23f47eb92e4d",
       "migrations_dir": "db/migrations"
     }
   ],
