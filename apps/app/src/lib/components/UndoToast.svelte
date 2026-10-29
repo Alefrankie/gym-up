@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
 
   let { message, onundo, ondismiss }: { message: string; onundo: () => void; ondismiss: () => void } = $props();
 
@@ -9,7 +11,7 @@
   });
 </script>
 
-<div class="toast" role="status">
+<div class="toast" role="status" in:fly={{ y: 24, duration: 340, easing: cubicOut }} out:fade={{ duration: 160 }}>
   <span>{message}</span>
   <button type="button" onclick={onundo}>Deshacer</button>
 </div>
@@ -27,20 +29,17 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.4rem 0.5rem 0.4rem 1rem;
+    padding: 0.25rem 0.35rem 0.25rem 0.9rem;
+    font-size: var(--t-sm);
     border-radius: var(--radius);
-    background: linear-gradient(180deg, var(--raised), var(--surface-hi));
-    box-shadow: var(--shadow-card), 0 20px 30px -10px rgb(0 0 0 / 0.7);
-    animation: pop 200ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  @keyframes pop {
-    from {
-      transform: translateY(0.6rem);
-      opacity: 0;
-    }
+    background: var(--surface-hi);
+    box-shadow: var(--shadow-pop);
   }
   button {
-    min-height: 44px;
+    min-height: 40px;
+    padding: 0 0.7rem;
+    font-size: var(--t-sm);
+    font-weight: 600;
     background: none;
     box-shadow: none;
     color: var(--accent-hi);

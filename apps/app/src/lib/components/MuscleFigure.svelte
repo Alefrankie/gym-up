@@ -111,6 +111,6 @@
   }
   .m.p {
     fill: var(--accent);
-    filter: drop-shadow(0 0 3px rgb(255 106 43 / 0.7));
+    filter: none;
   }
 </style>

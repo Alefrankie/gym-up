@@ -15,6 +15,8 @@ export type NextWorkoutResult =
       dayNumber: number;
       /** Last session's best set per exercise id. */
       last: Record<string, LastPerformance>;
+      /** Workouts completed since Monday, against the routines in the program. */
+      week: { done: number; target: number };
     };
 
 /**
@@ -87,6 +89,13 @@ export class GetNextWorkoutUseCase {
     const startOfToday = new Date(now ?? new Date());
     startOfToday.setHours(0, 0, 0, 0);
     const last = await this.programs.lastPerformance(userId, chosen.slots.map((s) => s.exerciseId), startOfToday);
+    // ISO week: Monday 00:00 UTC up to the next Monday.
+    const monday = new Date(now ?? new Date());
+    monday.setUTCHours(0, 0, 0, 0);
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+    const nextMonday = new Date(monday);
+    nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+    const done = await this.workouts.countCompletedBetween(userId, monday, nextMonday);
 
     return {
       kind: 'workout_day',
@@ -97,6 +106,7 @@ export class GetNextWorkoutUseCase {
       existingWorkoutId: todays && today ? today.id : null,
       dayNumber: chosen.day.dayNumber,
       last: Object.fromEntries(last),
+      week: { done, target: tree.routines.length },
     };
   }
 }

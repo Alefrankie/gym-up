@@ -21,6 +21,7 @@ export function saveBody(
         warmupSets: e.warmupSets,
         restSeconds: e.restSeconds,
         notes: e.notes,
+        sets: e.sets ?? null,
       })),
     })),
   };

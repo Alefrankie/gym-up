@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, isoDateSchema, weightUnitSchema } from './common';
+import { idSchema, isoDateSchema, setPlanSchema, setTypeSchema, weightUnitSchema } from './common';
 
 export const workoutStatusSchema = z.enum(['in_progress', 'completed']);
 export type WorkoutStatus = z.infer<typeof workoutStatusSchema>;
@@ -35,6 +35,7 @@ export const workoutEntrySchema = z.object({
   weight: z.number().min(0).max(500),
   completed: z.boolean(),
   notes: z.string().max(500).nullable(),
+  setType: setTypeSchema.default('normal'),
   createdAt: isoDateSchema,
 });
 export type WorkoutEntryDto = z.infer<typeof workoutEntrySchema>;
@@ -50,6 +51,7 @@ export const upsertSetRequestSchema = z.object({
   weightUnit: weightUnitSchema,
   completed: z.boolean().default(true),
   notes: z.string().max(500).nullable().default(null),
+  setType: setTypeSchema.default('normal'),
 });
 export type UpsertSetRequest = z.infer<typeof upsertSetRequestSchema>;
 
@@ -65,6 +67,7 @@ export const workoutDetailEntrySchema = z.object({
   weight: z.number(),
   completed: z.boolean(),
   notes: z.string().nullable(),
+  setType: setTypeSchema.default('normal'),
 });
 export type WorkoutDetailEntryDto = z.infer<typeof workoutDetailEntrySchema>;
 
@@ -81,6 +84,10 @@ export const workoutHistoryItemSchema = z.object({
   exerciseCount: z.number().int(),
   /** Sum of reps x weight over completed entries, in kg. */
   totalVolume: z.number(),
+  /** Completed warm-up, drop and to-failure sets. */
+  warmupSets: z.number().int().default(0),
+  dropSets: z.number().int().default(0),
+  failureSets: z.number().int().default(0),
   status: workoutStatusSchema,
 });
 export type WorkoutHistoryItemDto = z.infer<typeof workoutHistoryItemSchema>;
@@ -112,6 +119,8 @@ export const routineExerciseSchema = z.object({
   last: z.object({ weight: z.number(), reps: z.number().int(), date: z.string() }).nullable().optional(),
   warmupSets: z.number().int().optional(),
   restSeconds: z.number().int().nullable().optional(),
+  /** Reps and kind of each set; absent means `targetSets` normal sets of `targetReps`. */
+  sets: setPlanSchema.nullable().optional(),
 });
 export type RoutineExerciseDto = z.infer<typeof routineExerciseSchema>;
 
@@ -138,6 +147,8 @@ export const todayWorkoutResponseSchema = z.discriminatedUnion('kind', [
     weightUnit: weightUnitSchema,
     dayNumber: z.number().int(),
     programName: z.string().optional(),
+    /** Workouts completed this week (Monday to Sunday) against the routines in the program. */
+    week: z.object({ done: z.number().int(), target: z.number().int() }).optional(),
   }),
 ]);
 export type TodayWorkoutResponse = z.infer<typeof todayWorkoutResponseSchema>;

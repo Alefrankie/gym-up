@@ -91,12 +91,14 @@ export class WorkoutsController {
         warmupSets: e.warmupSets,
         restSeconds: e.restSeconds,
         exerciseOrder: e.exerciseOrder,
+        sets: e.setPlan ?? null,
       })),
       workoutStatus: result.workoutStatus,
       existingWorkoutId: result.existingWorkoutId,
       weightUnit: user.weightUnit,
       dayNumber: result.dayNumber,
       programName: result.programName,
+      week: result.week,
     };
   }
 
@@ -161,6 +163,7 @@ export class WorkoutsController {
       weightUnit: body.weightUnit,
       completed: body.completed,
       notes: body.notes,
+      setType: body.setType,
     });
     return toWorkoutEntryDto(result.entry);
   }

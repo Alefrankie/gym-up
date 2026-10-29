@@ -7,6 +7,7 @@
   import { toDisplay } from '#lib/offline/workout-view.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
+  import SetTypeCell from '#lib/components/SetTypeCell.svelte';
 
   const view = useWorkoutView();
   const id = $derived(page.params.id ?? '');
@@ -29,17 +30,18 @@
   }
 </script>
 
+
 {#if !ex}
   <p class="muted">Este ejercicio no está en el entrenamiento.</p>
   <p><a class="back" href={`/workout/${id}`}><Icon name="left" size={18} /> Volver a la rutina</a></p>
 {:else}
   <section class="hero" aria-label={ex.exerciseName}>
-    <a class="round back-btn" href={`/workout/${id}`} aria-label="Volver a la rutina"><Icon name="left" size={22} /></a>
+    <a class="round back-btn" href={`/workout/${id}`} aria-label="Volver a la rutina"><Icon name="left" size={20} /></a>
     {#if view.elapsed}
-      <span class="elapsed" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={18} />{view.elapsed}</span>
+      <span class="elapsed" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={14} />{view.elapsed}</span>
     {/if}
     <div class="figs">
-      <MuscleFigure primary={ex.muscleGroup} secondary={ex.secondaryMuscles ?? []} view="both" size={72} />
+      <MuscleFigure primary={ex.muscleGroup} secondary={ex.secondaryMuscles ?? []} view="both" size={60} />
     </div>
     <div class="title">
       <span class="count">Ejercicio {index + 1} de {exercises.length}</span>
@@ -48,14 +50,14 @@
   </section>
 
   <div class="pills">
-    <span class="chip"><Icon name="timer" size={18} />{mmss(ex.restSeconds ?? REST_SECONDS)}</span>
+    <span class="chip"><Icon name="timer" size={14} />{mmss(ex.restSeconds ?? REST_SECONDS)}</span>
     <span class="chip">{muscle(ex.muscleGroup)}</span>
     {#if ex.last}
-      <span class="chip on"><Icon name="history" size={18} />{ago(ex.last.date)}: {toDisplay(ex.last.weight, view.unit)} {view.unit} × {ex.last.reps}</span>
+      <span class="chip on"><Icon name="history" size={14} />{ago(ex.last.date)}: {toDisplay(ex.last.weight, view.unit)} {view.unit} × {ex.last.reps}</span>
     {:else}
       <span class="chip">Primera vez</span>
     {/if}
-    <a class="chip link" href={`/library/${ex.exerciseId}`}><Icon name="book" size={18} />Cómo se hace</a>
+    <a class="chip link" href={`/library/${ex.exerciseId}`}><Icon name="book" size={14} />Cómo se hace</a>
   </div>
 
   <h2>Series</h2>
@@ -70,7 +72,7 @@
       {@const r = view.row(ex.exerciseId, n)}
       {#if r}
         <div class="set" class:done={r.completed} class:active={active === n}>
-          <span class="n">{n}</span>
+          <SetTypeCell {n} type={r.type} disabled={view.isCompleted} onpick={(type) => view.retype(ex.exerciseId, n, type)} />
           <input
             type="number"
             inputmode="numeric"
@@ -97,24 +99,24 @@
             disabled={view.isCompleted}
             onclick={() => view.commit(ex.exerciseId, n, !r.completed)}
             aria-label={r.completed ? `Desmarcar serie ${n}` : `Completar serie ${n}`}
-          ><Icon name="check" size={22} /></button>
+          ><Icon name="check" size={18} /></button>
         </div>
       {/if}
     {/each}
     {#if !view.isCompleted}
-      <button type="button" class="addset" onclick={() => view.addSet(ex)}><Icon name="plus" size={18} /> Añadir serie</button>
+      <button type="button" class="addset" onclick={() => view.addSet(ex)}><Icon name="plus" size={16} /> Añadir serie</button>
     {/if}
   </div>
 
   <div class="cta">
     <div class="pair">
-      <button type="button" class="round" disabled={index === 0} onclick={() => go(-1)} aria-label="Ejercicio anterior"><Icon name="left" size={22} /></button>
+      <button type="button" class="round" disabled={index === 0} onclick={() => go(-1)} aria-label="Ejercicio anterior"><Icon name="left" size={20} /></button>
       {#if isLast}
         <button class="primary" disabled={view.finishing || !view.anyCompleted || view.isCompleted} onclick={() => view.finish()}>
           {view.finishing ? 'Finalizando…' : 'Finalizar entrenamiento'}
         </button>
       {:else}
-        <button class="primary" onclick={() => go(1)}>Siguiente ejercicio <Icon name="right" size={20} /></button>
+        <button class="primary" onclick={() => go(1)}>Siguiente ejercicio <Icon name="right" size={16} /></button>
       {/if}
     </div>
   </div>
@@ -124,69 +126,68 @@
   .hero {
     position: relative;
     margin: -0.5rem -1rem 0;
-    padding: calc(env(safe-area-inset-top) + 3.6rem) 1rem 1.1rem;
-    background:
-      radial-gradient(70% 90% at 50% 30%, rgb(255 106 43 / 0.28), transparent 70%),
-      linear-gradient(180deg, var(--surface-hi), var(--bg));
+    padding: calc(env(safe-area-inset-top) + 3.25rem) 1rem 0.9rem;
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--line);
   }
   .round {
     display: grid;
     place-items: center;
-    width: 2.75rem;
-    min-height: 2.75rem;
-    height: 2.75rem;
+    width: 40px;
+    min-height: 40px;
+    height: 40px;
     padding: 0;
     border-radius: 50%;
     color: var(--text);
   }
   a.round {
-    background: linear-gradient(180deg, var(--raised), var(--surface-hi));
+    background: var(--surface-hi);
     box-shadow: var(--shadow-card);
   }
   .back-btn {
     position: absolute;
-    top: calc(env(safe-area-inset-top) + 0.6rem);
+    top: calc(env(safe-area-inset-top) + 0.5rem);
     left: 1rem;
   }
   .elapsed {
     position: absolute;
-    top: calc(env(safe-area-inset-top) + 0.7rem);
+    top: calc(env(safe-area-inset-top) + 0.5rem + 6px);
     right: 1rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.3rem 0.7rem;
+    gap: 0.25rem;
+    min-height: 28px;
+    padding: 0 0.6rem;
     border-radius: 999px;
     background: var(--accent-soft);
     color: var(--accent-hi);
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.15rem;
+    font-size: var(--t-sm);
+    font-weight: 600;
   }
   .figs {
     display: flex;
     justify-content: center;
-    height: 9.4rem;
+    height: 6rem;
     overflow: hidden;
   }
   .title {
-    margin-top: 0.4rem;
+    margin-top: 0.5rem;
   }
   .count {
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: var(--t-xs);
     font-weight: 500;
   }
   .title h1 {
     margin: 0.1rem 0 0;
-    font-size: 2rem;
+    font-size: var(--t-lg);
   }
   .pills {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     overflow-x: auto;
-    margin: 0.2rem -1rem 0;
-    padding: 0.4rem 1rem 0.2rem;
+    margin: 0 -1rem;
+    padding: 0.75rem 1rem 0;
     scrollbar-width: none;
   }
   .pills::-webkit-scrollbar {
@@ -194,7 +195,6 @@
   }
   .pills .chip {
     flex: none;
-    min-height: 40px;
   }
   .pills .link {
     color: var(--text);
@@ -202,46 +202,31 @@
   }
   .table {
     display: grid;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
   .heads,
   .set {
     display: grid;
-    grid-template-columns: 3.2rem 1fr 1fr 3.2rem;
-    gap: 0.6rem;
+    grid-template-columns: 48px 1fr 1fr 48px;
+    gap: 0.5rem;
     align-items: center;
   }
   .heads {
-    color: var(--muted);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    color: var(--faint);
+    font-size: var(--t-xs);
+    font-weight: 500;
     text-align: center;
-  }
-  .n {
-    display: grid;
-    place-items: center;
-    height: 3.4rem;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
-    box-shadow: var(--shadow-card);
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.4rem;
   }
   .set input {
-    min-height: 3.4rem;
+    min-height: 48px;
+    padding: 0 0.5rem;
     text-align: center;
     font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.7rem;
+    font-weight: 700;
+    font-size: var(--t-lg);
   }
   .set.active input {
-    box-shadow: 0 0 0 2px var(--accent) inset, 0 2px 4px rgb(0 0 0 / 0.35) inset;
-  }
-  .set.active .n {
-    color: var(--accent-hi);
+    box-shadow: 0 0 0 1px var(--accent) inset;
   }
   .set.done input {
     box-shadow: 0 0 0 1px var(--ok) inset;
@@ -250,62 +235,62 @@
   .check {
     display: grid;
     place-items: center;
-    width: 3.2rem;
-    min-height: 3.4rem;
-    height: 3.4rem;
+    width: 48px;
+    min-height: 48px;
+    height: 48px;
     padding: 0;
-    background: var(--bg);
-    box-shadow: 0 0 0 1px var(--line) inset, 0 2px 4px rgb(0 0 0 / 0.35) inset;
-    color: var(--muted);
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--line) inset;
+    color: var(--faint);
   }
   .set.done .check {
-    background: linear-gradient(180deg, #a9dc83, var(--ok));
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.4) inset, 0 8px 16px -8px rgb(143 203 107 / 0.7);
+    background: var(--ok);
+    box-shadow: none;
     color: #12220a;
   }
   .addset {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
-    min-height: 3.4rem;
+    gap: 0.35rem;
+    min-height: 42px;
     background: none;
-    box-shadow: none;
-    border: 1.5px dashed var(--line);
+    box-shadow: 0 0 0 1px var(--line) inset;
     color: var(--muted);
+    font-size: var(--t-sm);
+    font-weight: 500;
   }
   .cta {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 1.5rem 1rem calc(1rem + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, transparent, var(--bg) 55%);
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, var(--bg) 45%);
     pointer-events: none;
   }
   .pair {
     display: flex;
-    gap: 0.6rem;
-    max-width: 30rem;
+    gap: 0.5rem;
+    max-width: 22rem;
     margin: 0 auto;
     pointer-events: auto;
   }
   .pair .round {
     flex: none;
-    background: linear-gradient(180deg, var(--raised), var(--surface-hi));
+    background: var(--surface-hi);
     box-shadow: var(--shadow-card);
-    width: 3.4rem;
-    height: 3.4rem;
-    min-height: 3.4rem;
+    width: 48px;
+    height: 48px;
+    min-height: 48px;
   }
   .pair .primary {
     flex: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     margin-top: 0;
-    min-height: 3.4rem;
-    border-radius: 999px;
+    min-height: 48px;
   }
 </style>

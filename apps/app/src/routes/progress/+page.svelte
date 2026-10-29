@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
   import {
     calendarResponseSchema,
@@ -28,6 +29,55 @@
 
   let streak = $state<StreakDto | null>(null);
   let calendar = $state<CalendarDayDto[]>([]);
+
+  const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const DAYS = ['Lun', '', 'Mié', '', 'Vie', '', 'Dom'];
+  const now = new Date();
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  const monthKey = ymd(now).slice(0, 7);
+  const yearKey = ymd(now).slice(0, 4);
+
+  const done = $derived(new Set(calendar.filter((d) => d.hasWorkout).map((d) => d.date)));
+  const thisMonth = $derived([...done].filter((d) => d.startsWith(monthKey)).length);
+  const thisYear = $derived([...done].filter((d) => d.startsWith(yearKey)).length);
+  const thisWeek = $derived.by(() => {
+    const monday = new Date(now);
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+    const from = ymd(monday);
+    return [...done].filter((d) => d >= from).length;
+  });
+
+  /** Columns of 7 days (Monday first), oldest week first, ending with the current week. */
+  const weeks = $derived.by(() => {
+    const end = new Date(now);
+    end.setUTCDate(end.getUTCDate() + (6 - ((end.getUTCDay() + 6) % 7)));
+    const cols: { date: string; on: boolean; future: boolean }[][] = [];
+    for (let w = 52; w >= 0; w--) {
+      const col = [];
+      for (let d = 6; d >= 0; d--) {
+        const day = new Date(end);
+        day.setUTCDate(end.getUTCDate() - w * 7 - d);
+        const key = ymd(day);
+        col.push({ date: key, on: done.has(key), future: key > ymd(now) });
+      }
+      cols.push(col);
+    }
+    return cols;
+  });
+
+  /** Month label over the first week column that starts in that month. */
+  const monthLabel = (col: { date: string }[], i: number) => {
+    const m = Number(col[0]!.date.slice(5, 7)) - 1;
+    const prev = i > 0 ? Number(weeks[i - 1]![0]!.date.slice(5, 7)) - 1 : -1;
+    return m !== prev ? MONTHS[m] : '';
+  };
+
+  let heat = $state<HTMLElement>();
+  // Open on the current weeks, like a calendar scrolled to today.
+  $effect(() => {
+    if (heat && weeks.length) heat.scrollLeft = heat.scrollWidth;
+  });
   let exercises = $state<ExerciseDto[]>([]);
   let exerciseId = $state('');
   let range = $state<DateRange>('30d');
@@ -68,9 +118,9 @@
     if (!(await session.require())) return;
     try {
       const [s, c, x] = await Promise.all([
-        cachedGet('/progress/streak', streakSchema),
-        cachedGet('/progress/calendar', calendarResponseSchema),
-        cachedGet('/progress/exercises', exerciseListResponseSchema),
+        cachedGet('/progress/streak', streakSchema, { onCached: (c) => (streak = c.data) }),
+        cachedGet('/progress/calendar?days=371', calendarResponseSchema, { onCached: (c) => (calendar = c.data) }),
+        cachedGet('/progress/exercises', exerciseListResponseSchema, { onCached: (c) => ((exercises = c.data), (exerciseId ||= c.data[0]?.id ?? '')) }),
       ]);
       streak = s.data;
       calendar = c.data;
@@ -91,25 +141,49 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if streak}
-    <section class="card hero stats">
-      <div>
-        <span class="flame"><Icon name="flame" size={22} /></span>
-        <strong class="big-number">{streak.current}</strong>
-        <span class="muted">días seguidos</span>
-      </div>
-      <div>
-        <span class="flame"><Icon name="dumbbell" size={22} /></span>
-        <strong class="big-number">{streak.total}</strong>
-        <span class="muted">entrenamientos</span>
-      </div>
-    </section>
+    <div class="tiles">
+      <a class="tile" href="/history">
+        <span class="ico ember"><Icon name="flame" size={20} /></span>
+        <strong>{streak.current > 0 ? `${streak.current} ${streak.current === 1 ? 'día' : 'días'}` : 'Sin racha'}</strong>
+        <span class="muted">Racha actual</span>
+      </a>
+      <a class="tile" href="/history">
+        <span class="ico"><Icon name="bolt" size={20} /></span>
+        <strong>{thisWeek} {thisWeek === 1 ? 'entreno' : 'entrenos'}</strong>
+        <span class="muted">Esta semana</span>
+      </a>
+      <a class="tile month" href="/history">
+        <span class="watermark" aria-hidden="true">{now.getDate()}</span>
+        <strong>{MONTH_NAMES[now.getMonth()]}</strong>
+        <span class="muted">{thisMonth} {thisMonth === 1 ? 'entreno' : 'entrenos'}</span>
+      </a>
+      <a class="tile" href="/history">
+        <span class="ico"><Icon name="dumbbell" size={20} /></span>
+        <strong>{streak.total}</strong>
+        <span class="muted">Entrenos en total</span>
+      </a>
+    </div>
 
-    <section class="card">
-      <h2 class="first">Últimos 28 días</h2>
-      <div class="calendar" aria-label="Calendario de entrenamientos">
-        {#each calendar as day (day.date)}
-          <span class="day" class:on={day.hasWorkout} title={day.date}></span>
-        {/each}
+    <section class="card year">
+      <div class="year-head">
+        <h2 class="first">{thisYear} {thisYear === 1 ? 'entreno' : 'entrenos'}</h2>
+        <span class="muted">{yearKey}</span>
+      </div>
+      <div class="heat-wrap">
+        <div class="labels" aria-hidden="true">
+          <span></span>
+          {#each DAYS as d, i (i)}<span>{d}</span>{/each}
+        </div>
+        <div class="heat" bind:this={heat} aria-label="Entrenamientos del último año">
+          {#each weeks as col, i (col[0]!.date)}
+            <div class="col">
+              <span class="m">{monthLabel(col, i)}</span>
+              {#each col as day (day.date)}
+                <span class="cell" class:on={day.on} class:future={day.future} title={day.date}></span>
+              {/each}
+            </div>
+          {/each}
+        </div>
       </div>
     </section>
 
@@ -120,11 +194,7 @@
       {:else}
         <label>
           Ejercicio
-          <select bind:value={exerciseId} onchange={loadHistory}>
-            {#each exercises as ex (ex.id)}
-              <option value={ex.id}>{ex.name}</option>
-            {/each}
-          </select>
+          <Select bind:value={exerciseId} options={exercises.map((ex) => ({ value: ex.id, label: ex.name }))} onchange={loadHistory} />
         </label>
         <div class="tabs" role="group" aria-label="Rango">
           {#each RANGES as r (r.value)}
@@ -143,7 +213,7 @@
       {/if}
     </section>
   {:else if !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {/if}
 </main>
 
@@ -151,57 +221,138 @@
 
 <style>
   .first {
-    margin-top: 0;
+    margin: 0 0 0.75rem;
   }
-  .stats {
-    display: flex;
-    justify-content: space-around;
-    text-align: center;
-  }
-  .stats div {
+  .tiles {
     display: grid;
-    justify-items: center;
-    gap: 0.2rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
   }
-  .stats .big-number {
-    font-size: 3rem;
+  .tile {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    align-content: end;
+    gap: 0.15rem;
+    min-height: 9rem;
+    padding: 1rem;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    color: var(--text);
+    text-decoration: none;
+  }
+  .tile:active {
+    background: var(--surface-hi);
+  }
+  .tile .ico {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: var(--surface-hi);
     color: var(--text);
   }
-  .flame {
+  .tile .ico.ember {
     color: var(--ember);
   }
-  .calendar {
+  .tile strong {
+    font-size: var(--t-md);
+    font-weight: 650;
+  }
+  .tile .muted {
+    font-size: var(--t-sm);
+  }
+  .watermark {
+    position: absolute;
+    right: -0.25rem;
+    bottom: -1.4rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 5.5rem;
+    line-height: 1;
+    color: var(--surface-hi);
+  }
+  .month strong,
+  .month .muted {
+    position: relative;
+  }
+  .year-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .heat-wrap {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .labels,
+  .col {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.35rem;
-    margin-top: 0.75rem;
+    grid-template-rows: 16px repeat(7, 18px);
+    gap: 4px;
   }
-  .day {
-    aspect-ratio: 1;
-    border-radius: 0.4rem;
-    background: var(--bg);
-    box-shadow: 0 2px 3px rgb(0 0 0 / 0.4) inset;
+  .labels span {
+    font-size: var(--t-xs);
+    color: var(--muted);
+    line-height: 18px;
   }
-  .day.on {
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    box-shadow: 0 4px 10px -4px rgb(255 106 43 / 0.7);
+  .heat {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .heat::-webkit-scrollbar {
+    display: none;
+  }
+  .m {
+    font-size: var(--t-xs);
+    color: var(--muted);
+    white-space: nowrap;
+    width: 18px;
+    overflow: visible;
+  }
+  .cell {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    background: var(--surface-hi);
+  }
+  .cell.on {
+    background: var(--accent);
+  }
+  .cell.future {
+    background: transparent;
+  }
+  /* Segmented control: one track, the active segment lifts one surface step. */
   .tabs {
     display: flex;
-    gap: 0.5rem;
+    gap: 2px;
     margin: 0.75rem 0;
+    padding: 2px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    box-shadow: 0 0 0 1px var(--line) inset;
   }
   .tabs button {
     flex: 1;
-    min-height: 44px;
-    padding: 0.5rem;
-    background: var(--bg);
-    box-shadow: 0 2px 4px rgb(0 0 0 / 0.35) inset;
+    min-height: 36px;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    background: none;
+    box-shadow: none;
     color: var(--muted);
+    font-size: var(--t-sm);
+    font-weight: 500;
   }
   .tabs button.active {
-    background: var(--accent-soft);
-    box-shadow: 0 0 0 1px var(--accent) inset;
-    color: var(--accent-hi);
+    background: var(--raised);
+    color: var(--text);
   }
 </style>

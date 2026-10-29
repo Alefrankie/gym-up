@@ -18,7 +18,7 @@
   onMount(async () => {
     if (!(await session.require())) return;
     try {
-      exercise = (await cachedGet(`/exercises/${id}`, libraryExerciseDtoSchema)).data;
+      exercise = (await cachedGet(`/exercises/${id}`, libraryExerciseDtoSchema, { onCached: (c) => (exercise = c.data) })).data;
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -52,7 +52,7 @@
 </script>
 
 <main>
-  <p><a class="back" href="/library"><Icon name="left" size={18} /> Biblioteca</a></p>
+  <p><a class="back" href="/library"><Icon name="left" size={16} /> Biblioteca</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if exercise}
     <h1>{exercise.name}</h1>
@@ -63,7 +63,7 @@
         primary={exercise.primaryMuscle}
         secondary={exercise.secondaryMuscles}
         view="both"
-        size={96}
+        size={84}
         label={`Músculos trabajados: ${muscle(exercise.primaryMuscle)}`}
       />
       <dl>
@@ -95,12 +95,12 @@
 
     {#if mine && !exercise.isArchived}
       <div class="actions">
-        <a class="edit" href={`/library/${id}/edit`}><Icon name="edit" size={18} /> Editar</a>
-        <button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={18} /> Archivar</button>
+        <a class="edit" href={`/library/${id}/edit`}><Icon name="edit" size={16} /> Editar</a>
+        <button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> Archivar</button>
       </div>
     {/if}
   {:else if !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {/if}
 </main>
 
@@ -108,78 +108,85 @@
   .figure {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.9rem;
   }
   dl {
     margin: 0;
     display: grid;
-    gap: 0.1rem;
+    gap: 0.05rem;
     min-width: 0;
   }
   dt {
     color: var(--muted);
-    font-size: 0.8rem;
+    font-size: var(--t-xs);
     font-weight: 500;
-    margin-top: 0.45rem;
+    margin-top: 0.4rem;
+  }
+  dt:first-child {
+    margin-top: 0;
   }
   dd {
     margin: 0;
-    font-weight: 600;
+    font-size: var(--t-base);
+    font-weight: 500;
   }
   dd.main {
     color: var(--accent-hi);
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    font-weight: 800;
-    line-height: 1.1;
+    font-size: var(--t-lg);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
   }
   .steps {
     list-style: none;
     margin: 0 0 1rem;
     padding: 0;
     display: grid;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
   .steps li {
     display: flex;
-    gap: 0.8rem;
+    gap: 0.7rem;
     align-items: flex-start;
-    padding: 0.7rem 0.9rem;
+    padding: 0.65rem 0.8rem;
     border-radius: var(--radius);
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    background: var(--surface);
     box-shadow: var(--shadow-card);
+    line-height: 1.5;
   }
   .n {
     flex: none;
     display: grid;
     place-items: center;
-    width: 1.8rem;
-    height: 1.8rem;
+    width: 22px;
+    height: 22px;
+    margin-top: 0.05rem;
     border-radius: 50%;
     background: var(--accent-soft);
     color: var(--accent-hi);
-    font-family: var(--font-display);
-    font-weight: 800;
+    font-size: var(--t-xs);
+    font-weight: 600;
   }
   .actions {
     display: flex;
-    gap: 0.75rem;
-    margin-top: 1rem;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
   }
   .actions > * {
     flex: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
+    font-size: var(--t-sm);
   }
   .edit {
-    min-height: 48px;
+    min-height: var(--control);
     border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, var(--raised), var(--surface-hi));
-    box-shadow: var(--shadow-card);
+    background: var(--surface-hi);
+    box-shadow: 0 0 0 1px var(--line) inset;
     color: var(--text);
-    font-weight: 600;
+    font-weight: 550;
     text-decoration: none;
   }
 </style>

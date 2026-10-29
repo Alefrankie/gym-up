@@ -3,6 +3,17 @@ import { z } from 'zod';
 /** Client-generated UUID (ADR-025: every created entity gets its id on the client). */
 export const idSchema = z.string().uuid();
 
+/** Kind of set. Warm-ups do not count toward volume. */
+export const setTypeSchema = z.enum(['normal', 'warmup', 'drop', 'failure']);
+export type SetType = z.infer<typeof setTypeSchema>;
+
+/** Per-set plan of a routine exercise: reps and kind of each set, in order. */
+export const setPlanSchema = z
+  .array(z.object({ reps: z.number().int().min(1).max(100), type: setTypeSchema.default('normal') }))
+  .min(1)
+  .max(20);
+export type SetPlan = z.infer<typeof setPlanSchema>;
+
 export const weightUnitSchema = z.enum(['kg', 'lbs']);
 export type WeightUnit = z.infer<typeof weightUnitSchema>;
 

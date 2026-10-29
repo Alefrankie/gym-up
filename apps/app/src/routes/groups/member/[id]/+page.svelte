@@ -15,7 +15,7 @@
   onMount(async () => {
     if (!(await session.require())) return;
     try {
-      member = (await cachedGet(`/groups/members/${page.params.id}`, memberProfileSchema)).data;
+      member = (await cachedGet(`/groups/members/${page.params.id}`, memberProfileSchema, { onCached: (c) => (member = c.data) })).data;
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -34,10 +34,10 @@
   <p><button class="ghost back" onclick={() => history.back()}><Icon name="left" size={18} /> Volver</button></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !member && !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if member}
     <header class="who">
-      <Avatar name={member.profile.displayName} size={64} />
+      <Avatar name={member.profile.displayName} size={48} />
       <h1>{member.profile.displayName}</h1>
     </header>
 
@@ -47,7 +47,7 @@
         <span class="muted">entrenamientos</span>
       </div>
       <div>
-        <span class="big-number streak"><Icon name="flame" size={28} />{member.stats.currentStreak}</span>
+        <span class="big-number streak"><Icon name="flame" size={20} />{member.stats.currentStreak}</span>
         <span class="muted">racha</span>
       </div>
     </section>
@@ -60,7 +60,7 @@
         {#each member.workouts as w (w.id)}
           <li>
             <div class="row-body">
-              <Icon name="check" size={20} />
+              <span class="ok-ico"><Icon name="check" size={16} /></span>
               <span class="grow">{fmt(w.workoutDate)}</span>
             </div>
           </li>
@@ -76,19 +76,33 @@
   .who {
     display: flex;
     align-items: center;
-    gap: 0.9rem;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
   }
   .who h1 {
-    margin: 0.5rem 0;
+    margin: 0;
   }
   .stats {
-    display: flex;
-    justify-content: space-around;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     text-align: center;
   }
   .stats div {
     display: grid;
-    gap: 0.25rem;
+    gap: 0.3rem;
+  }
+  .stats div + div {
+    border-left: 1px solid var(--line);
+  }
+  .stats .muted {
+    font-size: var(--t-sm);
+  }
+  .ok-ico {
+    display: grid;
+    color: var(--ok);
+  }
+  .list li > .row-body {
+    min-height: 48px;
   }
   .streak {
     display: inline-flex;

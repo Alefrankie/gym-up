@@ -58,13 +58,13 @@
 </script>
 
 <main>
-  <p><a class="back" href={`/library/${id}`}><Icon name="left" size={18} /> Ejercicio</a></p>
+  <p><a class="back" href={`/library/${id}`}><Icon name="left" size={16} /> Ejercicio</a></p>
   <h1>Editar ejercicio</h1>
   {#if exercise}
     <ExerciseForm initial={exercise} {busy} {error} submitLabel="Guardar cambios" onsubmit={submit} />
   {:else if error}
     <p class="error" role="alert">{error}</p>
   {:else}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {/if}
 </main>

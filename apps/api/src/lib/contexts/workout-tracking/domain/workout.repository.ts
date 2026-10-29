@@ -26,6 +26,10 @@ export interface WorkoutHistoryItem {
   workoutDate: Date;
   routineDayName: string;
   exerciseCount: number;
+  /** Completed sets by kind (normal sets are not counted here). */
+  warmupSets: number;
+  dropSets: number;
+  failureSets: number;
   totalVolume: number; // kg — Σ(reps × weight) over completed entries (matches WorkoutSummary per Q4)
   status: WorkoutStatus;
 }
@@ -46,6 +50,7 @@ export interface WorkoutDetailEntry {
   weight: number; // kg
   completed: boolean;
   notes: string | null;
+  setType: 'normal' | 'warmup' | 'drop' | 'failure';
 }
 
 /**
@@ -93,6 +98,9 @@ export abstract class WorkoutRepository {
 
   /** Every workout of a user on a calendar day: a day may hold several, one per routine. */
   abstract findAllByUserAndDate(userId: string, date: Date): Promise<Workout[]>;
+
+  /** Completed workouts of a user with `from <= workout_date < to`. */
+  abstract countCompletedBetween(userId: string, from: Date, to: Date): Promise<number>;
 
   /**
    * Find any in-progress workout for a user (used for "resume"
@@ -196,6 +204,6 @@ export abstract class WorkoutRepository {
  * define the entry's identity).
  */
 export type WorkoutEntryPatch = Partial<
-  Pick<WorkoutEntry, 'reps' | 'weight' | 'completed' | 'notes'>
+  Pick<WorkoutEntry, 'reps' | 'weight' | 'completed' | 'notes' | 'setType'>
 >;
 

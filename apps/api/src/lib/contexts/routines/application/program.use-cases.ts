@@ -19,6 +19,7 @@ export interface ProgramSlotInput {
   warmupSets: number;
   restSeconds?: number | null;
   notes?: string | null;
+  sets?: { reps: number; type: 'normal' | 'warmup' | 'drop' | 'failure' }[] | null;
 }
 
 export interface ProgramRoutineInput {
@@ -112,6 +113,7 @@ export class AdoptProgramUseCase {
         warmupSets: s.warmupSets,
         restSeconds: s.restSeconds,
         notes: s.notes,
+        setPlan: s.setPlan ?? null,
       })),
     }));
     await this.repo.replaceRoutines(newId, copy);
@@ -179,6 +181,7 @@ export class SaveProgramUseCase {
         warmupSets: e.warmupSets,
         restSeconds: e.restSeconds ?? null,
         notes: e.notes ?? null,
+        setPlan: e.sets ?? null,
       })),
     }));
     if (new Set(routines.map((r) => r.id)).size !== routines.length) {

@@ -9,5 +9,5 @@
 </script>
 
 <main>
-  <p>Cargando…</p>
+  <p class="muted loading">Cargando…</p>
 </main>

@@ -3,6 +3,7 @@
 // dead signal never loses a set. The outbox (outbox.ts) carries the same changes to the server.
 
 import type { RoutineExerciseDto, WeightUnit } from '@gym-up/contracts';
+import type { SetType } from '@gym-up/contracts';
 import { kv } from './idb';
 
 export interface SetRow {
@@ -12,6 +13,8 @@ export interface SetRow {
   /** In `WorkoutSnapshot.unit`, as typed by the user. */
   weight: number;
   completed: boolean;
+  /** Missing on snapshots saved before set types existed: read as 'normal'. */
+  type?: SetType;
 }
 
 export interface WorkoutSnapshot {

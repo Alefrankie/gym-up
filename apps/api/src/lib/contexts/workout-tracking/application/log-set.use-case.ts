@@ -39,6 +39,7 @@ export interface LogSetInput {
   weightUnit: 'kg' | 'lbs';
   completed: boolean;
   notes: string | null;
+  setType?: 'normal' | 'warmup' | 'drop' | 'failure';
 }
 
 export type LogSetResult =
@@ -106,6 +107,7 @@ export class LogSetUseCase {
           weight: weightKg,
           completed: input.completed,
           notes: input.notes,
+          setType: input.setType ?? existing.setType,
         },
         input.userId,
       );
@@ -121,6 +123,7 @@ export class LogSetUseCase {
           weight: weightKg,
           completed: input.completed,
           notes: input.notes,
+          setType: input.setType ?? 'normal',
         },
         input.userId,
       );

@@ -55,6 +55,21 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       .orderBy(desc(workouts.workoutDate));
   }
 
+  async countCompletedBetween(userId: string, from: Date, to: Date): Promise<number> {
+    const rows = await this.db
+      .select({ n: count() })
+      .from(workouts)
+      .where(
+        and(
+          eq(workouts.userId, userId),
+          eq(workouts.status, 'completed'),
+          gte(workouts.workoutDate, from),
+          lt(workouts.workoutDate, to),
+        ),
+      );
+    return Number(rows[0]?.n ?? 0);
+  }
+
   async findByUserAndDate(
     userId: string,
     date: Date,
@@ -232,7 +247,10 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         status: workouts.status,
         routineDayName: routineDays.dayName,
         exerciseCount: sql<number>`COUNT(DISTINCT ${workoutEntries.exerciseId})`,
-        totalVolume: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 THEN ${workoutEntries.reps} * ${workoutEntries.weight} ELSE 0 END), 0)`,
+        totalVolume: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} != 'warmup' THEN ${workoutEntries.reps} * ${workoutEntries.weight} ELSE 0 END), 0)`,
+        warmupSets: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} = 'warmup' THEN 1 ELSE 0 END), 0)`,
+        dropSets: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} = 'drop' THEN 1 ELSE 0 END), 0)`,
+        failureSets: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} = 'failure' THEN 1 ELSE 0 END), 0)`,
       })
       .from(workouts)
       .innerJoin(routineDays, eq(routineDays.id, workouts.routineDayId))
@@ -252,6 +270,9 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       routineDayName: row.routineDayName,
       exerciseCount: Number(row.exerciseCount),
       totalVolume: Number(row.totalVolume),
+      warmupSets: Number(row.warmupSets),
+      dropSets: Number(row.dropSets),
+      failureSets: Number(row.failureSets),
       status: row.status,
     }));
   }
@@ -281,6 +302,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         weight: workoutEntries.weight,
         completed: workoutEntries.completed,
         notes: workoutEntries.notes,
+        setType: workoutEntries.setType,
       })
       .from(workoutEntries)
       .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
@@ -300,6 +322,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       weight: row.weight,
       completed: row.completed,
       notes: row.notes,
+      setType: row.setType,
     }));
   }
 }

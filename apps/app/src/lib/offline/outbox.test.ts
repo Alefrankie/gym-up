@@ -9,7 +9,7 @@ const W1 = '11111111-1111-4111-8111-111111111111';
 const W2 = '22222222-2222-4222-8222-222222222222';
 
 function set(id: string, reps = 10): UpsertSetRequest {
-  return { id, exerciseId: 'e1', setNumber: 1, reps, weight: 50, weightUnit: 'kg', completed: true, notes: null };
+  return { id, exerciseId: 'e1', setNumber: 1, reps, weight: 50, weightUnit: 'kg', completed: true, notes: null, setType: 'normal' };
 }
 const upsert = (workoutId: string, id: string, reps = 10): Command => ({ type: 'upsert-set', workoutId, set: set(id, reps) });
 const finish = (workoutId: string): Command => ({ type: 'finish-workout', workoutId });

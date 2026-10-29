@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
   import { EQUIPMENT, libraryExerciseListResponseSchema, type LibraryExerciseDto } from '@gym-up/contracts';
   import { ApiRequestError, NetworkError } from '#lib/api/client';
@@ -38,7 +39,7 @@
   onMount(async () => {
     if (!(await session.require())) return;
     try {
-      const res = await cachedGet('/exercises', libraryExerciseListResponseSchema);
+      const res = await cachedGet('/exercises', libraryExerciseListResponseSchema, { onCached: (c) => ((items = c.data.items), (loaded = true)) });
       items = res.data.items;
       stale = res.stale;
     } catch (e) {
@@ -65,13 +66,13 @@
 </script>
 
 <main>
-  <p><a class="back" href="/programs"><Icon name="left" size={18} /> Entrenar</a></p>
+  <p><a class="back" href="/programs"><Icon name="left" size={16} /> Entrenar</a></p>
   <h1>Biblioteca</h1>
   {#if stale}<p class="muted">Sin conexión: mostrando la última biblioteca descargada.</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <div class="search">
-    <Icon name="search" size={20} />
+    <Icon name="search" size={16} />
     <input type="search" placeholder="Buscar ejercicio" aria-label="Buscar ejercicio" bind:value={q} />
   </div>
 
@@ -85,17 +86,14 @@
   </div>
 
   <div class="row">
-    <select bind:value={equipmentFilter} aria-label="Equipo">
-      <option value="">Todo el equipo</option>
-      {#each EQUIPMENT as e}<option value={e}>{EQUIPMENT_LABELS[e]}</option>{/each}
-    </select>
+    <Select bind:value={equipmentFilter} label="Equipo" options={[{ value: '', label: 'Todo el equipo' }, ...EQUIPMENT.map((e) => ({ value: e, label: EQUIPMENT_LABELS[e] }))]} />
     <label class="mine"><input type="checkbox" bind:checked={mineOnly} /> Solo los míos</label>
   </div>
 
   <p class="count muted">{visible.length} {visible.length === 1 ? 'ejercicio' : 'ejercicios'}</p>
 
   {#if !loaded}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if visible.length === 0}
     <section class="card empty">
       <p>Ningún ejercicio coincide.</p>
@@ -106,12 +104,12 @@
       {#each visible as e (e.id)}
         <li>
           <a href={`/library/${e.id}`}>
-            <MuscleFigure primary={e.primaryMuscle} secondary={e.secondaryMuscles} size={26} />
+            <MuscleFigure primary={e.primaryMuscle} secondary={e.secondaryMuscles} size={22} />
             <span class="grow">
               <strong>{e.name}{#if e.isCustom} <span class="badge">propio</span>{/if}</strong>
               <span class="muted">{muscleLabel(e.primaryMuscle)} · {eqLabel(e.equipment)}</span>
             </span>
-            <Icon name="right" size={20} />
+            <Icon name="right" size={16} />
           </a>
         </li>
       {/each}
@@ -119,7 +117,7 @@
   {/if}
 </main>
 
-<a class="fab" href="/library/new" aria-label="Nuevo ejercicio"><Icon name="plus" size={26} /></a>
+<a class="fab" href="/library/new" aria-label="Nuevo ejercicio"><Icon name="plus" size={20} /></a>
 <AppNav />
 
 <style>
@@ -127,24 +125,24 @@
     position: relative;
     display: flex;
     align-items: center;
-    margin-bottom: 0.75rem;
-    color: var(--muted);
+    margin-bottom: 0.6rem;
+    color: var(--faint);
   }
   .search :global(svg) {
     position: absolute;
-    left: 0.8rem;
+    left: 0.75rem;
     pointer-events: none;
   }
   .search input {
     flex: 1;
-    padding-left: 2.6rem;
+    padding-left: 2.3rem;
   }
   .chips {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     overflow-x: auto;
-    margin: 0 -1rem 0.75rem;
-    padding: 0.2rem 1rem 0.5rem;
+    margin: 0 -1rem 0.6rem;
+    padding: 0.1rem 1rem 0.3rem;
     scrollbar-width: none;
   }
   .chips::-webkit-scrollbar {
@@ -152,29 +150,30 @@
   }
   .chips .chip {
     flex: none;
-    min-height: 40px;
-    box-shadow: 0 0 0 1px var(--line) inset;
-  }
-  .chips .chip.on {
-    box-shadow: 0 0 0 1px var(--accent) inset;
+    min-height: 32px;
   }
   .row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
   }
-  .row select {
+  .row :global(.select) {
     flex: 1;
   }
   .mine {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     white-space: nowrap;
+    font-size: var(--t-sm);
   }
   .count {
-    margin: 0.9rem 0 0;
-    font-size: 0.9rem;
+    margin: 1rem 0 0;
+    font-size: var(--t-xs);
+  }
+  .list a > :global(svg:last-child) {
+    flex: none;
+    color: var(--faint);
   }
   .empty {
     text-align: center;
@@ -182,14 +181,14 @@
   .fab {
     position: fixed;
     right: 1rem;
-    bottom: calc(5.6rem + env(safe-area-inset-bottom));
+    bottom: calc(5.4rem + env(safe-area-inset-bottom));
     display: grid;
     place-items: center;
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    box-shadow: var(--shadow-accent);
-    color: var(--accent-ink);
+    background: var(--surface-hi);
+    box-shadow: var(--shadow-pop);
+    color: var(--accent);
   }
 </style>

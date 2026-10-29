@@ -1,5 +1,5 @@
 import { goto } from '$app/navigation';
-import { todayWorkoutResponseSchema, workoutDetailSchema, type RoutineExerciseDto } from '@gym-up/contracts';
+import { todayWorkoutResponseSchema, workoutDetailSchema, type RoutineExerciseDto, type SetType } from '@gym-up/contracts';
 import { api, ApiRequestError } from '#lib/api/client';
 import { cachedGet } from './cache';
 import { restTimer } from './rest.svelte';
@@ -66,6 +66,14 @@ export class WorkoutView {
     return { done: nums.filter((n) => this.row(ex.exerciseId, n)?.completed).length, total: nums.length };
   }
 
+  /** Completed sets of one exercise, in order, for summaries (history, finished workout). */
+  doneSets(ex: RoutineExerciseDto): { n: number; reps: number; weight: number; type: SetType }[] {
+    return this.setNumbers(ex)
+      .map((n) => ({ n, r: this.row(ex.exerciseId, n) }))
+      .filter((x) => x.r?.completed)
+      .map(({ n, r }) => ({ n, reps: r!.reps, weight: r!.weight, type: r!.type ?? 'normal' }));
+  }
+
   /** The first set not done yet: the one to highlight. */
   activeSet(ex: RoutineExerciseDto): number | null {
     return this.setNumbers(ex).find((n) => !this.row(ex.exerciseId, n)?.completed) ?? null;
@@ -84,9 +92,11 @@ export class WorkoutView {
 
   #ensureRow(s: WorkoutSnapshot, ex: RoutineExerciseDto, n: number) {
     const k = rowKey(ex.exerciseId, n);
+    const planned = ex.sets?.[n - 1];
     s.rows[k] ??= {
       id: crypto.randomUUID(),
-      reps: ex.targetReps,
+      reps: planned?.reps ?? ex.targetReps,
+      type: planned?.type ?? 'normal',
       // Start from what you lifted last time: the number to beat is already in the box.
       weight: ex.last ? toDisplay(ex.last.weight, s.unit) : 0,
       completed: false,
@@ -161,6 +171,7 @@ export class WorkoutView {
           reps: e.reps,
           weight: toDisplay(e.weight, u),
           completed: e.completed,
+          type: e.setType,
         };
       }
       this.#ensureRows(built);
@@ -183,7 +194,7 @@ export class WorkoutView {
         const k = rowKey(e.exerciseId, e.setNumber);
         const mine = snap.rows[k];
         if (mine && pending.has(mine.id)) continue;
-        snap.rows[k] = { id: e.id, reps: e.reps, weight: toDisplay(e.weight, snap.unit), completed: e.completed };
+        snap.rows[k] = { id: e.id, reps: e.reps, weight: toDisplay(e.weight, snap.unit), completed: e.completed, type: e.setType };
       }
       if (detail.workout.status === 'completed') snap.status = 'completed';
       await saveSnapshot(snap);
@@ -211,6 +222,7 @@ export class WorkoutView {
         weightUnit: snap.unit,
         completed,
         notes: null,
+        setType: r.type ?? 'normal',
       },
     });
     if (completed) restTimer.start();
@@ -223,6 +235,14 @@ export class WorkoutView {
     if (!snap || !r) return;
     if (r.completed) await this.commit(exerciseId, setNumber, true);
     else await saveSnapshot(snap);
+  }
+
+  /** Marks a set as warm-up, drop set, to failure or normal; a completed set is re-sent. */
+  async retype(exerciseId: string, setNumber: number, type: SetType) {
+    const r = this.snap?.rows[rowKey(exerciseId, setNumber)];
+    if (!r) return;
+    r.type = type;
+    await this.edited(exerciseId, setNumber);
   }
 
   /** Adds one more set to an exercise, copying the previous set's reps and weight. */

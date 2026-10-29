@@ -36,7 +36,7 @@
 </script>
 
 <main>
-  <p><a class="back" href="/library"><Icon name="left" size={18} /> Biblioteca</a></p>
+  <p><a class="back" href="/library"><Icon name="left" size={16} /> Biblioteca</a></p>
   <h1>Nuevo ejercicio</h1>
   <ExerciseForm {busy} {error} submitLabel="Guardar ejercicio" onsubmit={submit} />
 </main>

@@ -33,22 +33,15 @@
               label,
               data: [...values],
               borderColor: accent,
-              borderWidth: 3,
-              backgroundColor: (ctx) => {
-                const area = ctx.chart.chartArea;
-                if (!area) return 'rgb(255 106 43 / 0.2)';
-                const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-                g.addColorStop(0, 'rgb(255 106 43 / 0.38)');
-                g.addColorStop(1, 'rgb(255 106 43 / 0)');
-                return g;
-              },
+              borderWidth: 2,
+              backgroundColor: 'rgb(255 106 43 / 0.08)',
               fill: true,
-              tension: 0.35,
-              pointRadius: 4,
-              pointHoverRadius: 6,
+              tension: 0.3,
+              pointRadius: 2.5,
+              pointHoverRadius: 4,
               pointBackgroundColor: accent,
               pointBorderColor: css('--surface'),
-              pointBorderWidth: 2,
+              pointBorderWidth: 1.5,
             },
           ],
         },
@@ -57,8 +50,8 @@
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: muted, maxTicksLimit: 6 }, grid: { display: false }, border: { display: false } },
-            y: { ticks: { color: muted }, grid: { color: line }, border: { display: false }, beginAtZero: true },
+            x: { ticks: { color: muted, maxTicksLimit: 6, font: { size: 11 } }, grid: { display: false }, border: { display: false } },
+            y: { ticks: { color: muted, font: { size: 11 } }, grid: { color: line }, border: { display: false }, beginAtZero: true },
           },
         },
       });
@@ -78,6 +71,6 @@
 <style>
   .chart {
     position: relative;
-    height: 14rem;
+    height: 11rem;
   }
 </style>

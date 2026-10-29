@@ -25,6 +25,7 @@ export interface NewProgramSlot {
   warmupSets: number;
   restSeconds: number | null;
   notes: string | null;
+  setPlan: { reps: number; type: 'normal' | 'warmup' | 'drop' | 'failure' }[] | null;
 }
 
 export interface NewProgramRoutine {

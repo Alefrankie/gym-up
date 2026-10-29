@@ -7,6 +7,7 @@
 
   // The sync loop runs for the whole life of the app, whichever screen is open.
   onMount(() => sync.start());
+
 </script>
 
 {@render children()}

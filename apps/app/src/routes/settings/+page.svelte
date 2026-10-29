@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
   import { updateProfileRequestSchema, userSchema, type UpdateProfileRequest } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
@@ -62,17 +63,11 @@
       </label>
       <label>
         Unidad de peso
-        <select bind:value={weightUnit}>
-          <option value="kg">kilogramos (kg)</option>
-          <option value="lbs">libras (lbs)</option>
-        </select>
+        <Select bind:value={weightUnit} options={[{ value: 'kg', label: 'kilogramos (kg)' }, { value: 'lbs', label: 'libras (lbs)' }]} />
       </label>
       <label>
         Rutina
-        <select bind:value={routineType}>
-          <option value="hombre">Hombre</option>
-          <option value="mujer">Mujer</option>
-        </select>
+        <Select bind:value={routineType} options={[{ value: 'hombre', label: 'Hombre' }, { value: 'mujer', label: 'Mujer' }]} />
       </label>
       {#if message}<p class="ok" role="status">{message}</p>{/if}
       {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -95,18 +90,20 @@
 
 <style>
   .first {
-    margin-top: 0;
+    margin: 0 0 0.75rem;
   }
   .email {
+    font-size: var(--t-sm);
     overflow-wrap: anywhere;
   }
   .out {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
   .small {
-    font-size: 0.8rem;
+    color: var(--faint);
+    font-size: var(--t-xs);
     word-break: break-all;
   }
 </style>

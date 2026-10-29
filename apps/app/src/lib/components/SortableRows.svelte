@@ -1,5 +1,7 @@
 <script lang="ts" generics="T">
   import { onMount, tick, type Snippet } from 'svelte';
+  import { flip } from 'svelte/animate';
+  import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
 
   let {
@@ -153,6 +155,7 @@
     {@const k = key(item)}
     <li
       bind:this={() => rowEls.get(k) ?? null, (el) => (el ? rowEls.set(k, el) : rowEls.delete(k))}
+      animate:flip={{ duration: dragKey === k ? 0 : 240, easing: cubicOut }}
       class:dragging={dragKey === k}
       class:swiping={swipeKey === k}
       onpointerdown={(e) => down(e, item)}
@@ -183,7 +186,7 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.7rem;
+    gap: 0.5rem;
   }
   li {
     position: relative;
@@ -194,7 +197,8 @@
   }
   .face {
     position: relative;
-    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+    transition: transform 280ms var(--ease);
   }
   li.swiping .face,
   li.dragging .face {
@@ -204,7 +208,8 @@
     z-index: 5;
   }
   li.dragging .face {
-    filter: drop-shadow(0 18px 22px rgb(0 0 0 / 0.65));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-pop);
   }
   .act {
     position: absolute;
@@ -212,9 +217,10 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 1.2rem;
+    padding: 0 1rem;
     border-radius: var(--radius);
-    font-weight: 700;
+    font-size: var(--t-sm);
+    font-weight: 550;
     color: var(--text);
     transition: filter 120ms;
     filter: saturate(0.6) brightness(0.8);
@@ -228,6 +234,7 @@
   }
   .replace {
     justify-content: flex-end;
-    background: #c97a14;
+    background: var(--raised);
+    box-shadow: 0 0 0 1px var(--line-strong) inset;
   }
 </style>

@@ -242,6 +242,32 @@ describe('programs', () => {
     expect(unknown.status).toBe(400);
   });
 
+  it('saves a per-set plan (reps and kind of each set) and serves it to the workout', async () => {
+    const s = await register('plan@example.com');
+    const exercises = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises', { token: s.token })).json).items;
+    const squat = exercises.find((e) => e.name === 'Squat')!.id;
+    const id = crypto.randomUUID();
+    await http('POST', '/programs', { token: s.token, body: { id, name: 'Plan' } });
+    const sets = [
+      { reps: 12, type: 'warmup' },
+      { reps: 8, type: 'normal' },
+      { reps: 6, type: 'failure' },
+      { reps: 10, type: 'drop' },
+    ];
+    const body = { name: 'Plan', routines: [{ name: 'A', exercises: [{ exerciseId: squat, targetSets: 4, targetReps: 8, warmupSets: 1, sets }] }] };
+    const saved = programDetailDtoSchema.parse((await http('PUT', `/programs/${id}`, { token: s.token, body })).json);
+    expect(saved.routines[0]!.exercises[0]!.sets).toEqual(sets);
+
+    const today = (await http('GET', '/workouts/today', { token: s.token })).json as { exercises: { sets: unknown }[] };
+    expect(today.exercises[0]!.sets).toEqual(sets);
+
+    const bad = await http('PUT', `/programs/${id}`, {
+      token: s.token,
+      body: { ...body, routines: [{ name: 'A', exercises: [{ exerciseId: squat, targetSets: 1, targetReps: 8, sets: [{ reps: 8, type: 'mega' }] }] }] },
+    });
+    expect(bad.status).toBe(400);
+  });
+
   it('keeps programs private to their owner and archives them', async () => {
     const a = await register('prog4@example.com');
     const b = await register('prog5@example.com');

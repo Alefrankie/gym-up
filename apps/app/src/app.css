@@ -1,39 +1,52 @@
-@import '@fontsource/barlow/latin-400.css';
-@import '@fontsource/barlow/latin-500.css';
-@import '@fontsource/barlow/latin-600.css';
+@import '@fontsource-variable/inter';
 @import '@fontsource/barlow-condensed/latin-700.css';
-@import '@fontsource/barlow-condensed/latin-800.css';
 
 /*
- * Forja: warm charcoal, fire-orange accent, cream text. Depth comes from layered surfaces
- * (lighter as they rise) and one soft shadow per card, never from borders.
+ * Gym Up: neutral graphite, one fire-orange accent, compact type.
+ * Inter for everything you read; Barlow Condensed only for big training numerals (weights, timers).
+ * Elevation is a 1px line on a surface one step lighter than the page. No gradients, no glows.
  */
 :root {
-  --bg: #14110e;
-  --bg-glow: rgb(255 106 43 / 0.1);
-  --surface: #1e1a16;
-  --surface-hi: #29231d;
-  --raised: #342c25;
-  --line: #3c332b;
-  --text: #f5ede3;
-  --muted: #a99d90;
+  --bg: #0e0e10;
+  --bg-glow: transparent;
+  --surface: #17171a;
+  --surface-hi: #1f1f23;
+  --raised: #29292e;
+  --line: #26262b;
+  --line-strong: #34343a;
+  --text: #ededef;
+  --muted: #8e8e98;
+  --faint: #6b6b74;
   --accent: #ff6a2b;
   --accent-hi: #ff8450;
-  --accent-ink: #1c0d05;
-  --accent-soft: rgb(255 106 43 / 0.16);
+  --accent-ink: #1a0b03;
+  --accent-soft: rgb(255 106 43 / 0.13);
   --ember: #ffb347;
-  --ok: #8fcb6b;
-  --danger: #f2564e;
+  --info: #8ab4ff;
+  --ok: #7cc46a;
+  --danger: #f0564e;
 
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.045) inset, 0 14px 28px -16px rgb(0 0 0 / 0.75), 0 2px 6px -2px rgb(0 0 0 / 0.5);
-  --shadow-press: 0 1px 0 rgb(0 0 0 / 0.4) inset;
-  --shadow-accent: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 10px 22px -10px rgb(255 106 43 / 0.7);
+  --shadow-card: 0 0 0 1px var(--line);
+  --shadow-press: none;
+  --shadow-accent: none;
+  --shadow-pop: 0 0 0 1px var(--line-strong), 0 16px 32px -12px rgb(0 0 0 / 0.65);
 
-  --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Barlow Condensed', 'Inter Variable', system-ui, sans-serif;
 
-  --radius: 14px;
-  --radius-sm: 10px;
+  /* Type scale on a 16px root, measured against Gravl (dp = CSS px). */
+  --t-xs: 0.75rem; /* 12 */
+  --t-sm: 0.875rem; /* 14: secondary lines */
+  --t-base: 1rem; /* 16: row titles, body */
+  --t-md: 1.0625rem; /* 17 */
+  --t-lg: 1.25rem; /* 20: section titles */
+  --t-xl: 1.375rem; /* 22: screen titles */
+  --t-num: 2rem; /* 32, training numerals */
+
+  --control: 46px;
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --radius: 12px;
+  --radius-sm: 8px;
   color-scheme: dark;
 }
 
@@ -49,16 +62,11 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.4;
+  font-feature-settings: 'cv11', 'ss01';
   font-variant-numeric: tabular-nums;
-}
-
-body {
-  background:
-    radial-gradient(120% 40% at 50% -8%, var(--bg-glow), transparent 70%),
-    var(--bg);
-  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
@@ -67,7 +75,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--ember);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -80,7 +88,7 @@ select {
 main {
   max-width: 34rem;
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 0.5rem) 1rem calc(6.5rem + env(safe-area-inset-bottom));
+  padding: calc(env(safe-area-inset-top) + 0.75rem) 1rem calc(5.5rem + env(safe-area-inset-bottom));
 }
 
 button,
@@ -93,25 +101,27 @@ textarea {
 h1,
 h2,
 h3 {
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  line-height: 1.05;
+  font-family: var(--font-body);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
   text-wrap: balance;
 }
 
 h1 {
-  font-size: 2.1rem;
-  margin: 1.1rem 0 1rem;
+  font-size: var(--t-xl);
+  margin: 0.75rem 0 1rem;
 }
 
 h2 {
-  font-size: 1.45rem;
-  margin: 1.6rem 0 0.6rem;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
 }
 
 h3 {
-  font-size: 1.15rem;
+  font-size: var(--t-base);
+  font-weight: 600;
   margin: 0 0 0.25rem;
 }
 
@@ -122,96 +132,108 @@ p {
 a {
   color: var(--accent-hi);
   text-underline-offset: 3px;
+  transition: color 200ms var(--ease), opacity 200ms var(--ease);
 }
 
 .back {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  min-height: 44px;
+  gap: 0.2rem;
+  min-height: 40px;
   color: var(--muted);
   text-decoration: none;
+  font-size: var(--t-sm);
   font-weight: 500;
 }
 
 form {
   display: grid;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
 label {
   display: grid;
   gap: 0.35rem;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--t-sm);
   font-weight: 500;
 }
 
 input,
 select,
 textarea {
-  min-height: 48px;
-  padding: 0.7rem 0.85rem;
+  min-height: var(--control);
+  padding: 0.55rem 0.75rem;
   border-radius: var(--radius-sm);
   border: 0;
-  background: var(--bg);
-  box-shadow: 0 0 0 1px var(--line) inset, 0 2px 4px rgb(0 0 0 / 0.35) inset;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line) inset;
   color: var(--text);
+  font-size: var(--t-base);
   min-width: 0;
+  transition: box-shadow 200ms var(--ease), background-color 200ms var(--ease);
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #7d7266;
+  color: var(--faint);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent) inset, 0 2px 4px rgb(0 0 0 / 0.35) inset;
+  box-shadow: 0 0 0 1px var(--accent) inset, 0 0 0 3px var(--accent-soft);
 }
 
 input[type='checkbox'] {
   min-height: 0;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.1rem;
+  height: 1.1rem;
   accent-color: var(--accent);
 }
 
 button {
-  min-height: 48px;
-  padding: 0.7rem 1.1rem;
+  min-height: var(--control);
+  padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   border: 0;
-  background: linear-gradient(180deg, var(--raised), var(--surface-hi));
-  box-shadow: var(--shadow-card);
+  background: var(--surface-hi);
+  box-shadow: 0 0 0 1px var(--line) inset;
   color: var(--text);
-  font-weight: 600;
+  font-size: var(--t-base);
+  font-weight: 550;
   cursor: pointer;
   transition:
-    transform 120ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 120ms;
+    transform 160ms var(--ease),
+    background-color 200ms var(--ease),
+    color 200ms var(--ease),
+    box-shadow 200ms var(--ease),
+    opacity 200ms var(--ease);
 }
 
 button:active:not(:disabled) {
-  transform: translateY(1px) scale(0.99);
-  box-shadow: var(--shadow-press);
+  transform: scale(0.98);
 }
 
 button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
 }
 
 button.primary {
   width: 100%;
-  background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-  box-shadow: var(--shadow-accent);
+  min-height: 48px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: none;
   color: var(--accent-ink);
-  font-weight: 700;
-  font-size: 1.05rem;
-  margin-top: 0.5rem;
+  font-weight: 650;
+  margin-top: 0.25rem;
+}
+
+button.primary:active:not(:disabled) {
+  background: var(--accent-hi);
 }
 
 button.ghost {
@@ -222,13 +244,13 @@ button.ghost {
 
 button.danger {
   background: none;
-  box-shadow: 0 0 0 1px var(--danger) inset;
+  box-shadow: 0 0 0 1px rgb(240 86 78 / 0.45) inset;
   color: var(--danger);
 }
 
 button.icon {
-  width: 44px;
-  min-height: 44px;
+  width: 40px;
+  min-height: 40px;
   padding: 0;
   display: inline-grid;
   place-items: center;
@@ -240,28 +262,26 @@ button.icon {
 
 .error {
   color: var(--danger);
+  font-size: var(--t-sm);
   font-weight: 500;
 }
 
 .ok {
   color: var(--ok);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .card {
-  background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+  background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  padding: 1rem;
-  margin: 0 0 1rem;
+  padding: 0.9rem;
+  margin: 0 0 0.75rem;
 }
 
 .card.hero {
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(90% 120% at 100% 0%, rgb(255 106 43 / 0.28), transparent 60%),
-    linear-gradient(180deg, var(--surface-hi), var(--surface));
 }
 
 .list {
@@ -269,14 +289,14 @@ button.icon {
   padding: 0;
   margin: 0.5rem 0 1rem;
   display: grid;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .list li {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 0.5rem;
   color: var(--text);
 }
 
@@ -286,19 +306,19 @@ button.icon {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.7rem;
   color: var(--text);
   text-decoration: none;
-  background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+  background: var(--surface);
   box-shadow: var(--shadow-card);
-  padding: 0.7rem 0.9rem;
+  padding: 0.6rem 0.8rem;
   border-radius: var(--radius);
-  min-height: 56px;
+  min-height: 52px;
+  transition: background-color 160ms var(--ease);
 }
 
 .list li > a:active {
-  transform: translateY(1px);
-  box-shadow: var(--shadow-press);
+  background: var(--surface-hi);
 }
 
 .list .grow {
@@ -309,46 +329,49 @@ button.icon {
 }
 
 .list strong {
-  font-weight: 600;
+  font-weight: 550;
   overflow-wrap: anywhere;
+}
+
+.list .muted {
+  font-size: var(--t-sm);
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  min-height: 36px;
-  padding: 0.3rem 0.8rem;
+  gap: 0.3rem;
+  min-height: 32px;
+  padding: 0.25rem 0.7rem;
   border-radius: 999px;
-  background: var(--surface-hi);
+  background: var(--surface);
   box-shadow: 0 0 0 1px var(--line) inset;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: var(--t-sm);
   font-weight: 500;
 }
 
 .chip.on {
   background: var(--accent-soft);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  box-shadow: 0 0 0 1px rgb(255 106 43 / 0.5) inset;
   color: var(--accent-hi);
 }
 
 .badge {
   display: inline-block;
-  padding: 0.1rem 0.55rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  background: var(--accent-soft);
+  color: var(--accent-hi);
+  font-size: var(--t-xs);
+  font-weight: 600;
   vertical-align: middle;
 }
 
 .big-number {
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 2.4rem;
+  font-weight: 700;
+  font-size: var(--t-num);
   line-height: 1;
 }
 
@@ -365,13 +388,12 @@ button.icon {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(180deg, #ff8450, var(--accent));
+  background: var(--accent);
   color: var(--accent-ink);
-  font-weight: 700;
-  padding: 0.6rem 1rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
   border-radius: var(--radius);
-  box-shadow: var(--shadow-accent);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .sets {
@@ -388,17 +410,48 @@ button.icon {
 }
 
 .set.done input {
-  box-shadow: 0 0 0 2px var(--ok) inset;
+  box-shadow: 0 0 0 1.5px var(--ok) inset;
 }
 
 .set .check {
   padding: 0;
-  font-size: 1.1rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* Screens fade in as they mount. Unlike view transitions this never blocks a tap. */
+main {
+  animation: page-in 180ms var(--ease) both;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Kind of set (C, D, F), shared by every badge and set cell. */
+.st-warmup {
+  color: var(--ember) !important;
+}
+.st-drop {
+  color: var(--info) !important;
+}
+.st-failure {
+  color: var(--danger) !important;
+}
+
+/* A loading hint only shows if the wait is noticeable; quick loads stay free of flashes. */
+.loading {
+  opacity: 0;
+  animation: loading-in 300ms var(--ease) 700ms forwards;
+}
+@keyframes loading-in {
+  to {
+    opacity: 1;
   }
 }

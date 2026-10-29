@@ -63,6 +63,7 @@ export function toProgramDetailDto(tree: ProgramTree): ProgramDetailDto {
         warmupSets: s.warmupSets,
         restSeconds: s.restSeconds,
         notes: s.notes,
+        sets: s.setPlan ?? null,
       })),
     })),
   };

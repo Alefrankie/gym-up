@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema } from './common';
+import { idSchema, setPlanSchema } from './common';
 
 /** Limits from ADR-018. */
 export const PROGRAM_LIMITS = { programs: 20, routines: 14, exercises: 30, maxSets: 20, maxReps: 100 } as const;
@@ -15,6 +15,8 @@ export const programExerciseDtoSchema = z.object({
   warmupSets: z.number().int(),
   restSeconds: z.number().int().nullable(),
   notes: z.string().nullable(),
+  /** Reps and kind of each set; absent means `targetSets` normal sets of `targetReps`. */
+  sets: setPlanSchema.nullable().optional(),
 });
 export type ProgramExerciseDto = z.infer<typeof programExerciseDtoSchema>;
 
@@ -64,6 +66,7 @@ export const programExerciseInputSchema = z.object({
     warmupSets: z.number().int().min(0).max(PROGRAM_LIMITS.maxSets).default(0),
     restSeconds: z.number().int().min(0).max(600).nullish(),
     notes: z.string().trim().max(500).nullish(),
+    sets: setPlanSchema.nullish(),
 });
 export type ProgramExerciseInput = z.infer<typeof programExerciseInputSchema>;
 

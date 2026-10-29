@@ -29,7 +29,13 @@
   onMount(async () => {
     if (!(await session.require())) return;
     try {
-      const res = await cachedGet(`/programs/${id}`, programDetailDtoSchema);
+      const res = await cachedGet(`/programs/${id}`, programDetailDtoSchema, {
+        onCached: (c) => {
+          program = c.data;
+          name = c.data.name;
+          routines = [...c.data.routines];
+        },
+      });
       program = res.data;
       name = program.name;
       routines = [...program.routines];
@@ -157,10 +163,10 @@
 </script>
 
 <main>
-  <p><a class="back" href="/programs"><Icon name="left" size={18} /> Entrenar</a></p>
+  <p><a class="back" href="/programs"><Icon name="left" size={16} /> Entrenar</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !program && !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if program}
     {#if editable}
       <input class="title" maxlength="60" aria-label="Nombre del programa" placeholder="Nombre del programa" bind:value={name} oninput={touch} />
@@ -174,7 +180,7 @@
       <h2>{routines.length} {routines.length === 1 ? 'rutina' : 'rutinas'}</h2>
       {#if editable}
         <button class="icon add" onclick={addRoutine} disabled={busy || routines.length >= PROGRAM_LIMITS.routines} aria-label="Añadir rutina">
-          <Icon name="plus" size={22} />
+          <Icon name="plus" size={18} />
         </button>
       {/if}
     </div>
@@ -206,10 +212,10 @@
             </a>
             {#if editable}
               <button type="button" data-nodrag class="start" disabled={starting !== null} onclick={() => start(r)} aria-label={`Empezar ${r.name}`}>
-                <Icon name="bolt" size={18} /> {starting === r.id ? '…' : 'Empezar'}
+                <Icon name="bolt" size={14} /> {starting === r.id ? '…' : 'Empezar'}
               </button>
             {:else}
-              <Icon name="right" size={20} />
+              <Icon name="right" size={18} />
             {/if}
           </div>
         {/snippet}
@@ -220,12 +226,12 @@
     {/if}
 
     {#if editable}
-      <p class="archive"><button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={18} /> Archivar programa</button></p>
+      <p class="archive"><button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> Archivar programa</button></p>
     {/if}
 
     {#if editable && (dirty || saved)}
       <div class="savebar">
-        {#if saved}<span class="ok"><Icon name="check" size={18} /> Guardado</span>{/if}
+        {#if saved}<span class="ok"><Icon name="check" size={16} /> Guardado</span>{/if}
         {#if dirty}<button class="primary" disabled={busy || !name.trim()} onclick={persist}>Guardar cambios</button>{/if}
       </div>
     {/if}
@@ -239,11 +245,11 @@
 <style>
   .title {
     width: 100%;
-    margin-top: 0.4rem;
-    min-height: 56px;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.7rem;
+    margin-top: 0.25rem;
+    min-height: 48px;
+    font-weight: 600;
+    font-size: var(--t-xl);
+    letter-spacing: -0.015em;
   }
   .use {
     margin-bottom: 0.5rem;
@@ -254,22 +260,22 @@
     justify-content: space-between;
   }
   .head h2 {
-    margin: 1.4rem 0 0.6rem;
+    margin: 1.25rem 0 0.5rem;
   }
   .add {
+    width: 36px;
+    min-height: 36px;
     border-radius: 50%;
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    box-shadow: var(--shadow-accent);
-    color: var(--accent-ink);
+    color: var(--accent);
   }
   .routine {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.5rem 0.6rem 0.5rem 0.9rem;
-    min-height: 4.4rem;
+    padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+    min-height: 56px;
     border-radius: var(--radius);
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    background: var(--surface);
     box-shadow: var(--shadow-card);
     color: var(--text);
     text-decoration: none;
@@ -279,8 +285,8 @@
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 0.9rem;
-    min-height: 3.4rem;
+    gap: 0.7rem;
+    min-height: 44px;
     color: var(--text);
     text-decoration: none;
   }
@@ -288,66 +294,81 @@
     flex: none;
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0 0.9rem;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    box-shadow: 0 0 0 1px var(--accent) inset;
+    gap: 0.25rem;
+    min-height: 34px;
+    padding: 0 0.7rem;
+    border-radius: var(--radius-sm);
     color: var(--accent-hi);
-    font-weight: 700;
+    font-size: var(--t-sm);
+    font-weight: 550;
   }
   .num {
     flex: none;
     display: grid;
     place-items: center;
-    width: 2.4rem;
-    height: 2.4rem;
-    border-radius: 50%;
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    color: var(--accent-ink);
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.3rem;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-hi);
+    box-shadow: 0 0 0 1px var(--line) inset;
+    color: var(--muted);
+    font-size: var(--t-sm);
+    font-weight: 600;
   }
   .grow {
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 0.2rem;
+    gap: 0.1rem;
   }
   .grow strong {
-    font-size: 1.15rem;
-    font-weight: 600;
+    font-size: var(--t-md);
+    font-weight: 550;
+  }
+  .grow .muted {
+    font-size: var(--t-sm);
   }
   .hint {
-    margin: 0.8rem 0 0;
-    font-size: 0.85rem;
+    margin: 0.75rem 0 0;
+    font-size: var(--t-xs);
     text-align: center;
   }
   .empty {
     text-align: center;
   }
   .archive {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
+  }
+  .archive button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--t-sm);
   }
   .savebar {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 1.4rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    padding: 1.25rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
     display: grid;
     gap: 0.4rem;
     justify-items: center;
-    background: linear-gradient(180deg, transparent, var(--bg) 55%);
+    background: linear-gradient(180deg, transparent, var(--bg) 60%);
     pointer-events: none;
   }
   .savebar > * {
     pointer-events: auto;
   }
+  .savebar .ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--t-sm);
+  }
   .savebar .primary {
     max-width: 22rem;
+    min-height: 44px;
     margin-top: 0;
-    border-radius: 999px;
   }
 </style>

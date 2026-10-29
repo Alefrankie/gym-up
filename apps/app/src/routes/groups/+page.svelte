@@ -19,7 +19,7 @@
 
   async function load() {
     try {
-      const res = await cachedGet('/groups', groupListResponseSchema);
+      const res = await cachedGet('/groups', groupListResponseSchema, { onCached: (c) => (groups = c.data.items) });
       groups = res.data.items;
       stale = res.stale;
     } catch (e) {
@@ -64,7 +64,7 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if !groups && !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if groups}
     {#if groups.length === 0}
       <section class="card hero intro">
@@ -79,12 +79,12 @@
         {#each groups as g (g.id)}
           <li>
             <a href={`/groups/${g.id}`}>
-              <Icon name="users" size={22} />
+              <span class="tile"><Icon name="users" size={18} /></span>
               <span class="grow">
                 <strong>{g.name}</strong>
                 <span class="muted">{g.memberCount} {g.memberCount === 1 ? 'miembro' : 'miembros'}</span>
               </span>
-              <Icon name="right" size={20} />
+              <span class="chev"><Icon name="right" size={16} /></span>
             </a>
           </li>
         {/each}
@@ -138,14 +138,35 @@
 <AppNav />
 
 <style>
+  .intro h2 {
+    margin: 0 0 0.35rem;
+  }
   .intro p {
     margin: 0;
+    font-size: var(--t-sm);
   }
+  .tile {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-hi);
+    color: var(--muted);
+  }
+  .chev {
+    display: grid;
+    color: var(--faint);
+  }
+  section.card h3 {
+    margin-bottom: 0.6rem;
+  }
+  /* Join codes are entered as capitals; the transform keeps typing feedback honest. */
   .code {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.4rem;
-    letter-spacing: 0.3em;
+    font-size: var(--t-md);
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     text-align: center;
   }

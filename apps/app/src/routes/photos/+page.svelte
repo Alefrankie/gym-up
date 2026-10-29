@@ -25,7 +25,7 @@
 
   async function load() {
     try {
-      photos = (await cachedGet('/photos', photoListResponseSchema)).data;
+      photos = (await cachedGet('/photos', photoListResponseSchema, { onCached: (c) => (photos = c.data) })).data;
       // Thumbnails are fetched one by one with the bearer token and shown through object URLs.
       for (const p of photos) {
         if (urls[p.id]) continue;
@@ -85,27 +85,27 @@
 <main>
   <p><a class="back" href="/more"><Icon name="left" size={18} /> Más</a></p>
   <h1>Fotos de progreso</h1>
-  <p class="privacy muted"><Icon name="key" size={18} /> Solo tú las ves. No aparecen en la vista de familia.</p>
+  <p class="privacy muted"><Icon name="key" size={16} /> Solo tú las ves. No aparecen en la vista de familia.</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <div class="actions">
     <label class="cta" class:disabled={busy}>
-      <Icon name="camera" size={20} />
+      <Icon name="camera" size={18} />
       {busy ? 'Subiendo…' : 'Tomar foto'}
       <input type="file" accept="image/*" capture="environment" onchange={pick} disabled={busy} hidden />
     </label>
     <label class="cta secondary" class:disabled={busy}>
-      <Icon name="plus" size={20} />
+      <Icon name="plus" size={18} />
       Elegir de la galería
       <input type="file" accept="image/*" onchange={pick} disabled={busy} hidden />
     </label>
   </div>
 
   {#if !photos && !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if photos && photos.length === 0}
     <section class="card empty">
-      <Icon name="camera" size={28} />
+      <Icon name="camera" size={20} />
       <p class="muted">Todavía no hay fotos. Sube la primera para ver tu cambio con el tiempo.</p>
     </section>
   {:else if photos}
@@ -124,8 +124,8 @@
       {#if urls[viewing.id]}<img src={urls[viewing.id]} alt={viewing.caption ?? 'Foto de progreso'} />{/if}
       <p>{fmt(viewing.photoDate)}{viewing.caption ? ` · ${viewing.caption}` : ''}</p>
       <div class="actions">
-        <button type="button" onclick={() => (viewing = null)}><Icon name="x" size={18} /> Cerrar</button>
-        <button type="button" class="danger" onclick={() => viewing && remove(viewing)}><Icon name="trash" size={18} /> Borrar</button>
+        <button type="button" onclick={() => (viewing = null)}><Icon name="x" size={16} /> Cerrar</button>
+        <button type="button" class="danger" onclick={() => viewing && remove(viewing)}><Icon name="trash" size={16} /> Borrar</button>
       </div>
     </div>
   {/if}
@@ -138,11 +138,12 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    font-size: var(--t-sm);
   }
   .actions {
     display: flex;
-    gap: 0.6rem;
-    margin: 1rem 0;
+    gap: 0.5rem;
+    margin: 0.75rem 0 1.25rem;
   }
   .actions > * {
     flex: 1;
@@ -152,23 +153,22 @@
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    min-height: 48px;
-    padding: 0.7rem 0.8rem;
+    gap: 0.4rem;
+    min-height: var(--control);
+    padding: 0.5rem 0.75rem;
     border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    box-shadow: var(--shadow-accent);
+    background: var(--accent);
     color: var(--accent-ink);
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: var(--t-base);
+    font-weight: 600;
     text-align: center;
     cursor: pointer;
   }
   .cta.secondary {
-    background: linear-gradient(180deg, var(--raised), var(--surface-hi));
-    box-shadow: var(--shadow-card);
+    background: var(--surface-hi);
+    box-shadow: 0 0 0 1px var(--line) inset;
     color: var(--text);
-    font-weight: 600;
+    font-weight: 550;
   }
   .cta.disabled {
     opacity: 0.45;
@@ -179,16 +179,17 @@
     justify-items: center;
     gap: 0.5rem;
     text-align: center;
-    padding: 1.5rem 1rem;
-    color: var(--accent-hi);
+    padding: 1.5rem 0.9rem;
+    color: var(--muted);
   }
   .empty p {
     margin: 0;
+    font-size: var(--t-sm);
   }
   .grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.6rem;
+    gap: 0.4rem;
   }
   .thumb {
     position: relative;
@@ -196,8 +197,8 @@
     min-height: 44px;
     padding: 0;
     overflow: hidden;
-    border-radius: var(--radius);
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    border-radius: var(--radius-sm);
+    background: var(--surface);
     box-shadow: var(--shadow-card);
   }
   .thumb img {
@@ -206,13 +207,17 @@
     object-fit: cover;
     display: block;
   }
+  /* Date label sits on a small solid chip so it reads on any photo. */
   .date {
     position: absolute;
-    inset: auto 0 0 0;
-    padding: 1rem 0.3rem 0.3rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    background: linear-gradient(180deg, transparent, rgb(0 0 0 / 0.75));
+    left: 0.3rem;
+    bottom: 0.3rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: rgb(14 14 16 / 0.78);
+    color: var(--text);
+    font-size: var(--t-xs);
+    font-weight: 500;
   }
   .overlay {
     position: fixed;
@@ -222,17 +227,30 @@
     align-content: center;
     gap: 0.75rem;
     padding: 1rem;
-    background: rgb(20 17 14 / 0.96);
+    background: rgb(14 14 16 / 0.96);
     text-align: center;
+  }
+  .overlay p {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--t-sm);
+  }
+  .overlay .actions {
+    margin: 0;
   }
   .overlay img {
     max-width: 100%;
     max-height: 70vh;
     margin: 0 auto;
     border-radius: var(--radius);
-    box-shadow: var(--shadow-card);
   }
-  button :global(svg) {
-    vertical-align: -4px;
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+  .thumb {
+    display: block;
   }
 </style>

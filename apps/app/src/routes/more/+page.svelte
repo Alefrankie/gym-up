@@ -25,12 +25,12 @@
     {#each links as l}
       <li>
         <a href={l.href}>
-          <span class="ico"><Icon name={l.icon} size={22} /></span>
+          <span class="ico"><Icon name={l.icon} size={18} /></span>
           <span class="grow">
             <strong>{l.title}</strong>
             <span class="muted hint">{l.hint}</span>
           </span>
-          <span class="muted"><Icon name="right" size={18} /></span>
+          <span class="muted"><Icon name="right" size={16} /></span>
         </a>
       </li>
     {/each}
@@ -43,14 +43,14 @@
   .ico {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--radius-sm);
     background: var(--accent-soft);
     color: var(--accent-hi);
     flex: none;
   }
   .hint {
-    font-size: 0.88rem;
+    font-size: var(--t-sm);
   }
 </style>

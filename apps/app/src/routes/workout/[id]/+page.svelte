@@ -17,10 +17,10 @@
 </script>
 
 <header class="bar">
-  <a class="back round" href="/dashboard" aria-label="Volver al inicio"><Icon name="left" size={22} /></a>
+  <a class="back round" href="/dashboard" aria-label="Volver al inicio"><Icon name="left" size={20} /></a>
   <h1>{view.snap?.dayName ?? 'Entrenamiento'}</h1>
   {#if view.elapsed}
-    <span class="elapsed" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={18} />{view.elapsed}</span>
+    <span class="elapsed" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={14} />{view.elapsed}</span>
   {:else}
     <span></span>
   {/if}
@@ -31,15 +31,15 @@
 <h2>{exercises.length} {exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</h2>
 <ul class="rows">
   {#each exercises as ex (ex.exerciseId)}
-    <li><ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.progress(ex)} /></li>
+    <li><ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.progress(ex)} sets={view.doneSets(ex)} /></li>
   {/each}
 </ul>
 
 {#if view.isCompleted}
-  <p class="ok"><Icon name="check" size={18} /> Entrenamiento completado</p>
+  <p class="ok"><Icon name="check" size={16} /> Entrenamiento completado</p>
 {:else}
   <button class="danger cancel" disabled={view.cancelling || view.finishing} onclick={cancel}>
-    <Icon name="trash" size={18} /> Cancelar entrenamiento
+    <Icon name="trash" size={16} /> Cancelar entrenamiento
   </button>
   <div class="cta">
     <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => view.finish()}>
@@ -51,45 +51,49 @@
 <style>
   .bar {
     display: grid;
-    grid-template-columns: 2.75rem 1fr auto;
+    grid-template-columns: 40px 1fr auto;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 0.4rem;
+    margin: 0.25rem 0 1rem;
   }
   .bar h1 {
     margin: 0;
-    font-size: 1.7rem;
+    font-size: var(--t-md);
+    font-weight: 600;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .round {
     display: grid;
     place-items: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 40px;
+    height: 40px;
     padding: 0;
     border-radius: 50%;
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    background: var(--surface);
     box-shadow: var(--shadow-card);
     color: var(--text);
   }
   .elapsed {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.3rem 0.7rem;
+    gap: 0.25rem;
+    min-height: 28px;
+    padding: 0 0.6rem;
     border-radius: 999px;
     background: var(--accent-soft);
     color: var(--accent-hi);
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.15rem;
+    font-size: var(--t-sm);
+    font-weight: 600;
   }
   .rows {
     list-style: none;
     margin: 0 0 1rem;
     padding: 0;
     display: grid;
-    gap: 0.7rem;
+    gap: 0.5rem;
   }
   .cancel {
     display: flex;
@@ -98,19 +102,21 @@
     gap: 0.4rem;
     width: 100%;
     margin-bottom: 1rem;
+    font-size: var(--t-sm);
   }
   .ok {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    font-size: var(--t-sm);
   }
   .cta {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 1.5rem 1rem calc(1rem + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, transparent, var(--bg) 55%);
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, var(--bg) 45%);
     pointer-events: none;
   }
   .cta button {
@@ -118,6 +124,5 @@
     max-width: 22rem;
     margin: 0 auto;
     pointer-events: auto;
-    border-radius: 999px;
   }
 </style>

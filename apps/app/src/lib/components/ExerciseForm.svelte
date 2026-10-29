@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import Select from '#lib/components/Select.svelte';
   export interface ExerciseFormValue {
     name: string;
     primaryMuscle: string;
@@ -58,9 +59,7 @@
   <label>Nombre <input required minlength="2" maxlength="60" bind:value={name} /></label>
   <label>
     Músculo principal
-    <select bind:value={primaryMuscle}>
-      {#each MUSCLE_GROUPS as m}<option value={m}>{MUSCLE_LABELS[m]}</option>{/each}
-    </select>
+    <Select bind:value={primaryMuscle} options={MUSCLE_GROUPS.map((m) => ({ value: m, label: MUSCLE_LABELS[m] }))} />
   </label>
   <fieldset>
     <legend class="muted">Músculos secundarios</legend>
@@ -74,15 +73,11 @@
   </fieldset>
   <label>
     Equipo
-    <select bind:value={equipment}>
-      {#each EQUIPMENT as e}<option value={e}>{EQUIPMENT_LABELS[e]}</option>{/each}
-    </select>
+    <Select bind:value={equipment} options={EQUIPMENT.map((e) => ({ value: e, label: EQUIPMENT_LABELS[e] }))} />
   </label>
   <label>
     Tipo
-    <select bind:value={exerciseType}>
-      {#each EXERCISE_TYPES as t}<option value={t}>{TYPE_LABELS[t]}</option>{/each}
-    </select>
+    <Select bind:value={exerciseType} options={EXERCISE_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))} />
   </label>
   <label>Instrucciones (opcional) <textarea rows="4" maxlength="2000" bind:value={instructions}></textarea></label>
   <label>Enlace de vídeo (opcional) <input type="url" maxlength="300" bind:value={videoUrl} /></label>
@@ -98,14 +93,14 @@
   }
   legend {
     padding: 0;
-    font-size: 0.9rem;
+    font-size: var(--t-sm);
     font-weight: 500;
   }
   .chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
   }
   .chips .chip {
     cursor: pointer;

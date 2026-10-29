@@ -52,6 +52,7 @@ export function toWorkoutEntryDto(e: WorkoutEntry): WorkoutEntryDto {
     weight: e.weight,
     completed: e.completed,
     notes: e.notes,
+    setType: e.setType,
     createdAt: iso(e.createdAt),
   };
 }

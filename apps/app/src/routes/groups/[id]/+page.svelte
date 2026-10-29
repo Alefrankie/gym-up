@@ -19,7 +19,7 @@
   onMount(async () => {
     if (!(await session.require())) return;
     try {
-      detail = (await cachedGet(`/groups/${id}`, groupDetailSchema)).data;
+      detail = (await cachedGet(`/groups/${id}`, groupDetailSchema, { onCached: (c) => (detail = c.data) })).data;
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -62,14 +62,14 @@
   <p><a class="back" href="/groups"><Icon name="left" size={18} /> Grupos</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !detail && !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if detail}
     <h1>{detail.group.name}</h1>
 
     <section class="card hero invite">
       <span class="muted">Código para invitar</span>
       <strong class="code">{detail.group.code}</strong>
-      <button onclick={copy}><Icon name={copied ? 'check' : 'copy'} size={18} /> {copied ? 'Copiado' : 'Copiar código'}</button>
+      <button onclick={copy}><Icon name={copied ? 'check' : 'copy'} size={16} /> {copied ? 'Copiado' : 'Copiar código'}</button>
     </section>
 
     <h2>Miembros</h2>
@@ -78,13 +78,13 @@
         <li>
           <a href={`/groups/member/${m.id}`}>
             <span class="rank">{i + 1}</span>
-            <Avatar name={m.displayName} />
+            <Avatar name={m.displayName} size={34} />
             <span class="grow">
               <strong>{m.displayName}{m.id === session.user?.id ? ' (tú)' : ''}</strong>
               <span class="muted">{m.totalWorkouts} entrenamientos · último: {fmt(m.lastWorkout)}</span>
             </span>
             <span class="streak" class:on={m.currentStreak > 0}>
-              <Icon name="flame" size={18} />{m.currentStreak}
+              <Icon name="flame" size={16} />{m.currentStreak}
             </span>
           </a>
         </li>
@@ -104,30 +104,38 @@
     gap: 0.5rem;
     text-align: center;
   }
+  .invite .muted {
+    font-size: var(--t-sm);
+  }
+  /* The invite code is read aloud and typed elsewhere: big, spaced, numeral face. */
   .code {
     font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 2.8rem;
-    letter-spacing: 0.28em;
-    padding-left: 0.28em;
+    font-weight: 700;
+    font-size: var(--t-num);
+    letter-spacing: 0.18em;
+    padding-left: 0.18em;
     line-height: 1;
   }
+  .invite button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--t-sm);
+  }
   .rank {
-    width: 1.2rem;
+    width: 1rem;
     text-align: center;
-    color: var(--muted);
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.2rem;
+    color: var(--faint);
+    font-size: var(--t-sm);
+    font-weight: 500;
   }
   .streak {
     display: inline-flex;
     align-items: center;
-    gap: 0.15rem;
-    color: var(--muted);
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.3rem;
+    gap: 0.2rem;
+    color: var(--faint);
+    font-size: var(--t-base);
+    font-weight: 600;
   }
   .streak.on {
     color: var(--ember);

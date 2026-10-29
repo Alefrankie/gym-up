@@ -85,7 +85,8 @@ const DDL = `
     target_reps_max INTEGER,
     warmup_sets INTEGER NOT NULL DEFAULT 0,
     rest_seconds INTEGER,
-    notes TEXT
+    notes TEXT,
+    set_plan TEXT
   );
   CREATE TABLE workouts (
     id TEXT PRIMARY KEY,
@@ -101,6 +102,7 @@ const DDL = `
     workout_id TEXT NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
     exercise_id TEXT NOT NULL REFERENCES exercises(id),
     set_number INTEGER NOT NULL,
+    set_type TEXT NOT NULL DEFAULT 'normal',
     reps INTEGER NOT NULL,
     weight INTEGER NOT NULL DEFAULT 0,
     completed INTEGER NOT NULL DEFAULT 0,

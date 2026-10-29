@@ -46,7 +46,9 @@ export class ProgressController {
   }
 
   @Get('calendar')
-  async calendarDays(@CurrentUser() user: User): Promise<CalendarDayDto[]> {
-    return this.calendar.execute({ userId: user.id });
+  async calendarDays(@CurrentUser() user: User, @Query('days') days?: string): Promise<CalendarDayDto[]> {
+    // 28 by default; the year heatmap asks for up to 53 weeks.
+    const n = Number.parseInt(days ?? '', 10);
+    return this.calendar.execute({ userId: user.id, days: Number.isFinite(n) ? Math.min(371, Math.max(1, n)) : undefined });
   }
 }

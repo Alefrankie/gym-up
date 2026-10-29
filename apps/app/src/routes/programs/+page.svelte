@@ -17,7 +17,7 @@
 
   async function load() {
     try {
-      const res = await cachedGet('/programs', programListResponseSchema);
+      const res = await cachedGet('/programs', programListResponseSchema, { onCached: (c) => (data = c.data) });
       data = res.data;
       stale = res.stale;
     } catch (e) {
@@ -36,19 +36,6 @@
 
   async function changed() {
     await invalidateCache(['/programs', '/workouts/today']);
-  }
-
-  async function adopt(p: ProgramSummaryDto) {
-    busy = true;
-    error = null;
-    try {
-      await api(`/programs/${p.id}/adopt`, { method: 'POST' });
-      await changed();
-      await load();
-    } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'Necesitas conexión para adoptar un programa';
-    }
-    busy = false;
   }
 
   async function activate(p: ProgramSummaryDto) {
@@ -97,21 +84,21 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if !data && !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if data}
     {#if active}
       <a class="card hero current" href={`/programs/${active.id}`}>
         <span class="badge">Programa activo</span>
         <span class="name">{active.name}</span>
         <span class="muted">{sub(active)}</span>
-        <span class="open">Ver y editar <Icon name="right" size={18} /></span>
+        <span class="open">Ver y editar <Icon name="right" size={16} /></span>
       </a>
     {/if}
 
     <a class="library" href="/library">
-      <Icon name="book" size={22} />
+      <Icon name="book" size={20} />
       <span class="grow"><strong>Biblioteca de ejercicios</strong><span class="muted">Músculos, equipo y cómo se hace</span></span>
-      <Icon name="right" size={20} />
+      <Icon name="right" size={18} />
     </a>
 
     {#if others.length}
@@ -132,7 +119,7 @@
 
     <form class="new" onsubmit={create}>
       <input required maxlength="60" placeholder="Nombre del nuevo programa" aria-label="Nombre del nuevo programa" bind:value={newName} />
-      <button disabled={busy}><Icon name="plus" size={18} /> Crear</button>
+      <button disabled={busy}><Icon name="plus" size={16} /> Crear</button>
     </form>
 
     <h2>Plantillas</h2>
@@ -140,10 +127,9 @@
       {#each data.templates as p (p.id)}
         <li>
           <a href={`/programs/${p.id}`}>
-            <Icon name="dumbbell" size={22} />
+            <Icon name="dumbbell" size={20} />
             <span class="grow"><strong>{p.name}</strong><span class="muted">{sub(p)}</span></span>
           </a>
-          <button class="side" disabled={busy} onclick={() => adopt(p)}>Usar</button>
         </li>
       {/each}
     </ul>
@@ -161,18 +147,19 @@
     color: var(--text);
   }
   .name {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 2rem;
-    line-height: 1.05;
+    font-weight: 620;
+    font-size: var(--t-lg);
+    letter-spacing: -0.015em;
+    line-height: 1.2;
   }
   .open {
     display: inline-flex;
     align-items: center;
     gap: 0.2rem;
-    margin-top: 0.4rem;
+    margin-top: 0.3rem;
     color: var(--accent-hi);
-    font-weight: 600;
+    font-size: var(--t-sm);
+    font-weight: 550;
   }
   .library {
     display: flex;
@@ -180,18 +167,36 @@
     gap: 0.8rem;
     padding: 0.8rem 0.9rem;
     border-radius: var(--radius);
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    background: var(--surface);
     box-shadow: var(--shadow-card);
     color: var(--text);
     text-decoration: none;
+  }
+  .library {
+    min-height: 56px;
+    padding: 0.6rem 0.8rem;
+    gap: 0.7rem;
   }
   .library .grow {
     flex: 1;
     display: grid;
   }
+  .library strong {
+    font-weight: 550;
+  }
+  .library .muted {
+    font-size: var(--t-sm);
+  }
+  .library > :global(svg:first-child) {
+    color: var(--accent);
+  }
   .side {
-    min-width: 4.6rem;
-    padding: 0 0.9rem;
+    align-self: center;
+    min-height: 36px;
+    min-width: 4.2rem;
+    padding: 0 0.75rem;
+    font-size: var(--t-sm);
+    font-weight: 550;
   }
   .new {
     display: flex;
@@ -200,5 +205,11 @@
   }
   .new input {
     flex: 1;
+  }
+  .new button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--t-sm);
   }
 </style>

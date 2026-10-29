@@ -23,7 +23,7 @@
     </button>
     <output aria-live="polite">{value}</output>
     <button type="button" class="icon" disabled={value >= max} onclick={() => set(value + 1)} aria-label={`Más ${label.toLowerCase()}`}>
-      <Icon name="plus" size={20} />
+      <Icon name="plus" size={16} />
     </button>
   </div>
 </div>
@@ -31,33 +31,35 @@
 <style>
   .stepper {
     display: grid;
-    gap: 0.3rem;
+    gap: 0.25rem;
     justify-items: center;
   }
   .label {
     color: var(--muted);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: var(--t-xs);
+    font-weight: 500;
   }
   .ctl {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.25rem;
   }
   output {
-    min-width: 2.6rem;
+    min-width: 2.25rem;
     text-align: center;
     font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.8rem;
+    font-weight: 700;
+    font-size: var(--t-xl);
+    line-height: 1;
   }
   .icon {
+    width: 36px;
+    min-height: 40px;
+    height: 40px;
     border-radius: 50%;
   }
   .bar {
-    width: 0.9rem;
+    width: 0.75rem;
     height: 2px;
     border-radius: 2px;
     background: currentColor;

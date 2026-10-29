@@ -184,6 +184,7 @@ export class SqliteProgramRepository implements ProgramRepository {
           warmupSets: s.warmupSets,
           restSeconds: s.restSeconds,
           notes: s.notes,
+          setPlan: s.setPlan,
           exerciseOrder: j + 1,
         };
         await this.db

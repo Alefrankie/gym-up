@@ -45,8 +45,8 @@
   async function load() {
     try {
       const [s, h] = await Promise.all([
-        cachedGet('/nutrition/summary', dailySummarySchema),
-        cachedGet('/nutrition/entries?limit=30', nutritionHistoryResponseSchema),
+        cachedGet('/nutrition/summary', dailySummarySchema, { onCached: (c) => ((summary = c.data), (goalInput = c.data.goal ? String(c.data.goal) : '')) }),
+        cachedGet('/nutrition/entries?limit=30', nutritionHistoryResponseSchema, { onCached: (c) => (entries = c.data) }),
       ]);
       summary = s.data;
       entries = h.data;
@@ -194,7 +194,7 @@
       </form>
     </section>
   {:else if !error}
-    <section class="card hero"><p class="muted">Cargando tu día…</p></section>
+    <section class="card hero loading"><p class="muted">Cargando tu día…</p></section>
   {/if}
 
   {#if draft}
@@ -217,11 +217,11 @@
   {:else}
     <div class="row">
       <label class="cta" class:disabled={busy}>
-        <Icon name="camera" size={20} />
+        <Icon name="camera" size={18} />
         {busy ? 'Analizando…' : 'Foto de la comida'}
         <input type="file" accept="image/*" capture="environment" onchange={analyze} disabled={busy} hidden />
       </label>
-      <button type="button" onclick={manual}><Icon name="plus" size={18} /> Agregar a mano</button>
+      <button type="button" onclick={manual}><Icon name="plus" size={16} /> Agregar a mano</button>
     </div>
   {/if}
 
@@ -233,14 +233,14 @@
       {#each entries as e (e.id)}
         <li>
           <div class="row-body">
-            <Icon name="utensils" size={22} />
+            <Icon name="utensils" size={18} />
             <span class="grow">
               <strong>{Math.round(e.totalCalories)} kcal</strong>
               <span class="muted">P {Math.round(e.totalProtein)} · C {Math.round(e.totalCarbs)} · G {Math.round(e.totalFat)}</span>
               <span class="muted">{e.foodItems.map((f) => f.name).join(', ') || 'Comida'} · {time(e.loggedAt)}</span>
             </span>
           </div>
-          <button type="button" class="icon ghost" onclick={() => removeEntry(e)} aria-label="Borrar comida"><Icon name="trash" size={20} /></button>
+          <button type="button" class="icon ghost" onclick={() => removeEntry(e)} aria-label="Borrar comida"><Icon name="trash" size={18} /></button>
         </li>
       {/each}
     </ul>
@@ -251,67 +251,71 @@
 
 <style>
   .eyebrow {
-    margin: 0 0 0.25rem;
-    color: var(--muted);
+    margin: 0 0 0.35rem;
+    color: var(--text);
+    font-size: var(--t-base);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.8rem;
   }
   .total {
     display: flex;
     align-items: baseline;
-    gap: 0.5rem;
-    margin: 0 0 0.75rem;
+    gap: 0.4rem;
+    margin: 0 0 0.6rem;
+  }
+  .total .muted {
+    font-size: var(--t-sm);
   }
   .kcal {
-    font-size: 3.6rem;
     color: var(--text);
   }
   .kcal.over {
     color: var(--ember);
   }
   .track {
-    height: 14px;
+    height: 6px;
     border-radius: 999px;
-    background: var(--bg);
-    box-shadow: 0 2px 4px rgb(0 0 0 / 0.5) inset;
+    background: var(--raised);
     overflow: hidden;
   }
   .fill {
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--accent), var(--accent-hi));
-    box-shadow: 0 0 12px rgb(255 106 43 / 0.5);
+    background: var(--accent);
     transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .fill.over {
-    background: linear-gradient(90deg, var(--accent-hi), var(--ember));
+    background: var(--ember);
   }
   .left {
-    margin: 0.6rem 0 0;
+    margin: 0.5rem 0 0;
+    font-size: var(--t-sm);
   }
   .macros {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
-    margin-top: 1.1rem;
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
   }
   .macros div {
     display: grid;
-    gap: 0.2rem;
+    gap: 0.1rem;
   }
   .macros .big-number {
-    font-size: 1.9rem;
+    font-family: var(--font-body);
+    font-size: var(--t-lg);
+    font-weight: 600;
+    line-height: 1.2;
   }
   .macros .muted {
-    font-size: 0.8rem;
+    font-size: var(--t-xs);
   }
   .goal {
     display: flex;
     align-items: end;
     gap: 0.5rem;
-    margin-top: 1rem;
+    margin-top: 0.9rem;
   }
   .goal label {
     flex: 1;
@@ -319,34 +323,36 @@
   .fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    gap: 0.6rem;
     margin: 0.75rem 0;
   }
   .row {
     display: flex;
-    gap: 0.6rem;
-    margin: 1rem 0;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
   }
   .row > * {
     flex: 1;
   }
+  .row .primary {
+    margin-top: 0;
+  }
   button :global(svg) {
-    vertical-align: -4px;
+    vertical-align: -3px;
   }
   .cta {
     display: inline-flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    min-height: 48px;
-    padding: 0.7rem 1.1rem;
+    gap: 0.4rem;
+    min-height: var(--control);
+    padding: 0.5rem 0.9rem;
     border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    box-shadow: var(--shadow-accent);
+    background: var(--accent);
     color: var(--accent-ink);
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: var(--t-base);
+    font-weight: 600;
     cursor: pointer;
   }
   .cta.disabled {
@@ -361,6 +367,6 @@
   }
   .row-body :global(svg) {
     flex: none;
-    color: var(--accent-hi);
+    color: var(--muted);
   }
 </style>

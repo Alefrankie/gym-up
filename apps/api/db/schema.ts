@@ -145,6 +145,8 @@ export const routineExercises = sqliteTable('routine_exercises', {
   warmupSets: integer('warmup_sets').notNull().default(0),
   restSeconds: integer('rest_seconds'),
   notes: text('notes'),
+  /** JSON [{ reps, type }] per set; null means targetSets normal sets of targetReps. */
+  setPlan: text('set_plan', { mode: 'json' }).$type<{ reps: number; type: 'normal' | 'warmup' | 'drop' | 'failure' }[]>(),
 });
 
 export type RoutineExercise = typeof routineExercises.$inferSelect;
@@ -201,6 +203,8 @@ export const workoutEntries = sqliteTable('workout_entries', {
   weight: integer('weight').notNull().default(0),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
   notes: text('notes'),
+  /** normal | warmup | drop | failure. Warm-up sets do not count toward volume. */
+  setType: text('set_type', { enum: ['normal', 'warmup', 'drop', 'failure'] }).notNull().default('normal'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import type { LibraryExerciseDto } from '@gym-up/contracts';
   import { equipment, muscle } from '#lib/labels';
   import Icon from './Icon.svelte';
@@ -28,13 +30,13 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
-<div class="sheet" role="dialog" aria-modal="true" aria-label={title}>
+<div class="sheet" transition:fly={{ y: 40, duration: 300, easing: cubicOut }} role="dialog" aria-modal="true" aria-label={title}>
   <header>
     <h2>{title}</h2>
-    <button class="icon ghost" onclick={onclose} aria-label="Cerrar"><Icon name="x" size={22} /></button>
+    <button class="icon ghost" onclick={onclose} aria-label="Cerrar"><Icon name="x" size={18} /></button>
   </header>
   <div class="search">
-    <Icon name="search" size={20} />
+    <Icon name="search" size={16} />
     <input bind:this={input} type="search" placeholder="Buscar ejercicio" aria-label="Buscar ejercicio" bind:value={q} />
   </div>
   <ul>
@@ -61,16 +63,9 @@
     z-index: 50;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.6rem;
     padding: calc(env(safe-area-inset-top) + 0.5rem) 1rem calc(1rem + env(safe-area-inset-bottom));
-    background: radial-gradient(120% 40% at 50% -8%, var(--bg-glow), transparent 70%), var(--bg);
-    animation: rise 220ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  @keyframes rise {
-    from {
-      transform: translateY(2rem);
-      opacity: 0;
-    }
+    background: var(--bg);
   }
   header {
     display: flex;
@@ -78,22 +73,23 @@
     justify-content: space-between;
   }
   header h2 {
-    margin: 0.5rem 0;
+    margin: 0.4rem 0;
+    font-size: var(--t-lg);
   }
   .search {
     position: relative;
     display: flex;
     align-items: center;
-    color: var(--muted);
+    color: var(--faint);
   }
   .search :global(svg) {
     position: absolute;
-    left: 0.8rem;
+    left: 0.75rem;
     pointer-events: none;
   }
   .search input {
     flex: 1;
-    padding-left: 2.6rem;
+    padding-left: 2.3rem;
   }
   ul {
     flex: 1;
@@ -102,32 +98,47 @@
     margin: 0 -1rem;
     padding: 0.2rem 1rem;
     display: grid;
-    gap: 0.6rem;
+    gap: 0.4rem;
     align-content: start;
   }
   .pick {
     width: 100%;
+    min-height: 56px;
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    padding: 0.5rem 0.8rem 0.5rem 0.5rem;
+    gap: 0.7rem;
+    padding: 0.4rem 0.75rem 0.4rem 0.45rem;
+    border-radius: var(--radius);
+    background: var(--surface);
     text-align: left;
+    font-weight: 400;
+  }
+  .pick:active:not(:disabled) {
+    background: var(--surface-hi);
   }
   .tile {
     flex: none;
     display: grid;
     place-items: center;
-    width: 3rem;
-    height: 3.6rem;
+    width: 40px;
+    height: 44px;
     border-radius: var(--radius-sm);
-    background: var(--bg);
-    box-shadow: 0 2px 5px rgb(0 0 0 / 0.4) inset;
+    background: var(--surface-hi);
+    box-shadow: 0 0 0 1px var(--line) inset;
   }
   .grow {
     display: grid;
+    gap: 0.1rem;
     min-width: 0;
+  }
+  .grow strong {
+    font-weight: 550;
+  }
+  .grow .muted {
+    font-size: var(--t-sm);
   }
   .empty {
     padding: 1rem 0;
+    font-size: var(--t-sm);
   }
 </style>

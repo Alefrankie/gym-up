@@ -23,44 +23,42 @@
 
 <style>
   nav {
+    view-transition-name: nav;
     position: fixed;
     inset: auto 0 0 0;
     display: flex;
     justify-content: space-around;
-    padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
-    box-shadow:
-      0 1px 0 rgb(255 255 255 / 0.06) inset,
-      0 -14px 30px -12px rgb(0 0 0 / 0.8);
+    padding: 0 0.25rem env(safe-area-inset-bottom);
+    background: var(--bg);
+    border-top: 1px solid var(--line);
   }
   a {
+    position: relative;
     flex: 1;
     display: grid;
+    align-content: center;
     justify-items: center;
-    gap: 0.15rem;
-    padding: 0.35rem 0 0.2rem;
-    min-height: 56px;
-    color: var(--muted);
+    gap: 0.25rem;
+    min-height: 68px;
+    color: var(--faint);
     text-decoration: none;
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-size: var(--t-xs);
+    font-weight: 500;
+    transition: color 180ms var(--ease);
   }
   .ico {
     display: grid;
     place-items: center;
-    width: 3.4rem;
-    height: 2rem;
+    width: 56px;
+    height: 32px;
     border-radius: 999px;
-    transition:
-      background 180ms cubic-bezier(0.22, 1, 0.36, 1),
-      color 180ms;
+    transition: background-color 200ms var(--ease);
   }
+  /* Active tab: accent icon on a soft pill, accent label. */
   a.active {
-    color: var(--accent-hi);
+    color: var(--accent);
   }
   a.active .ico {
     background: var(--accent-soft);
-    box-shadow: 0 0 18px -4px rgb(255 106 43 / 0.55);
   }
 </style>

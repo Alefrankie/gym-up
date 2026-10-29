@@ -17,6 +17,8 @@ export interface Workout {
   completedAt: string | null;
 }
 
+export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
+
 export interface WorkoutEntry {
   id: string;
   workoutId: string;
@@ -26,6 +28,7 @@ export interface WorkoutEntry {
   weight: number; // kg
   completed: boolean;
   notes: string | null;
+  setType: SetType;
 }
 
 export interface Routine {
@@ -76,4 +79,5 @@ export interface WorkoutEntryUpsertDTO {
   weight: number; // kg
   completed: boolean;
   notes: string | null;
+  setType: SetType;
 }

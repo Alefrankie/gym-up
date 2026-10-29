@@ -1,12 +1,15 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import {
     PROGRAM_LIMITS,
     libraryExerciseListResponseSchema,
     programDetailDtoSchema,
     type LibraryExerciseDto,
     type ProgramDetailDto,
+    type SetPlan,
   } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
@@ -18,7 +21,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
   import SortableRows from '#lib/components/SortableRows.svelte';
-  import Stepper from '#lib/components/Stepper.svelte';
+  import SetPlanEditor from '#lib/components/SetPlanEditor.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import UndoToast from '#lib/components/UndoToast.svelte';
 
@@ -34,6 +37,19 @@
     warmupSets: number;
     restSeconds: number | null;
     notes: string | null;
+    sets: SetPlan;
+  }
+
+  /** Reps and kind of each set; old routines without a plan get `targetSets` normal sets. */
+  const planOf = (e: { sets?: SetPlan | null; targetSets: number; targetReps: number }): SetPlan =>
+    e.sets?.length ? e.sets.map((s) => ({ ...s })) : Array.from({ length: e.targetSets }, () => ({ reps: e.targetReps, type: 'normal' as const }));
+
+  /** Keeps the summary columns in step with the plan. */
+  function planChanged(e: Draft) {
+    e.targetSets = e.sets.length;
+    e.targetReps = (e.sets.find((s) => s.type === 'normal') ?? e.sets[0]!).reps;
+    e.warmupSets = e.sets.filter((s) => s.type === 'warmup').length;
+    touch();
   }
 
   const programId = $derived(page.params.id ?? '');
@@ -57,17 +73,23 @@
   onMount(async () => {
     if (!(await session.require())) return;
     try {
-      // Fresh from the server: saving sends the whole program, so a stale copy must never be the base.
-      detail = await api(`/programs/${programId}`, { schema: programDetailDtoSchema });
-      const r = detail.routines.find((x) => x.id === routineId);
-      if (!r) {
+      // The saved copy paints at once; the server copy replaces it, since saving sends the whole program.
+      const show = (d: ProgramDetailDto) => {
+        detail = d;
+        const r = d.routines.find((x) => x.id === routineId);
+        if (!r) return false;
+        name = r.name;
+        focus = r.focus;
+        exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [], sets: planOf(e) }));
+        return true;
+      };
+      const res = await cachedGet(`/programs/${programId}`, programDetailDtoSchema, { onCached: (c) => void show(c.data) });
+      if (!show(res.data)) {
         error = 'Rutina no encontrada';
         return;
       }
-      name = r.name;
-      focus = r.focus;
-      exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [] }));
-      if (!detail.isTemplate) library = (await cachedGet('/exercises', libraryExerciseListResponseSchema)).data.items;
+      if (res.stale) error = 'Sin conexión: puedes ver la rutina, pero guardar necesita conexión.';
+      if (!res.data.isTemplate) library = (await cachedGet('/exercises', libraryExerciseListResponseSchema)).data.items;
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -99,7 +121,7 @@
       const i = exercises.findIndex((e) => e.key === p.target.key);
       if (i >= 0) exercises[i] = { ...exercises[i]!, ...fromLibrary(ex) };
     } else if (exercises.length < PROGRAM_LIMITS.exercises) {
-      const d: Draft = { key: crypto.randomUUID(), ...fromLibrary(ex), targetSets: 3, targetReps: 10, warmupSets: 0, restSeconds: null, notes: null };
+      const d: Draft = { key: crypto.randomUUID(), ...fromLibrary(ex), targetSets: 3, targetReps: 10, warmupSets: 0, restSeconds: null, notes: null, sets: planOf({ targetSets: 3, targetReps: 10 }) };
       exercises.push(d);
       open = d.key;
     }
@@ -137,7 +159,7 @@
         schema: programDetailDtoSchema,
       });
       const r = detail.routines.find((x) => x.id === routineId);
-      if (r) exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [] }));
+      if (r) exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [], sets: planOf(e) }));
       await invalidateCache(['/programs', '/workouts/today']);
       dirty = false;
       saved = true;
@@ -154,10 +176,10 @@
 </script>
 
 <main>
-  <p><a class="back" href={`/programs/${programId}`}><Icon name="left" size={18} /> {detail?.name ?? 'Programa'}</a></p>
+  <p><a class="back" href={`/programs/${programId}`}><Icon name="left" size={16} /> {detail?.name ?? 'Programa'}</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !detail && !error}
-    <p class="muted">Cargando…</p>
+    <p class="muted loading">Cargando…</p>
   {:else if detail}
     {#if editable}
       <input class="title" maxlength="60" aria-label="Nombre de la rutina" placeholder="Nombre de la rutina" bind:value={name} oninput={touch} />
@@ -175,7 +197,7 @@
       <h2>{exercises.length} {exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</h2>
       {#if editable}
         <button class="icon add" onclick={() => (picker = { mode: 'add' })} disabled={exercises.length >= PROGRAM_LIMITS.exercises} aria-label="Añadir ejercicio">
-          <Icon name="plus" size={22} />
+          <Icon name="plus" size={18} />
         </button>
       {/if}
     </div>
@@ -200,17 +222,16 @@
         {#snippet row(e)}
           <div class="ex" class:open={open === e.key}>
             <button type="button" class="head-row" onclick={() => (open = open === e.key ? null : e.key)} aria-expanded={open === e.key}>
-              <span class="tile"><MuscleFigure primary={e.muscleGroup} secondary={e.secondaryMuscles} size={26} /></span>
+              <span class="tile"><MuscleFigure primary={e.muscleGroup} secondary={e.secondaryMuscles} size={22} /></span>
               <span class="grow">
                 <strong>{e.exerciseName}</strong>
-                <span class="muted">{muscle(e.muscleGroup)} · {e.targetSets} series · {e.targetReps} reps</span>
+                <span class="muted">{muscle(e.muscleGroup)} · {e.targetSets} series · {e.targetReps} reps{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: 'C', drop: 'D', failure: 'F' })[s.type as 'warmup']).join(' ')}{/if}</span>
               </span>
-              {#if editable}<Icon name={open === e.key ? 'up' : 'down'} size={20} />{/if}
+              {#if editable}<Icon name={open === e.key ? 'up' : 'down'} size={18} />{/if}
             </button>
             {#if editable && open === e.key}
-              <div class="steppers" data-nodrag>
-                <Stepper label="Series" bind:value={e.targetSets} min={1} max={PROGRAM_LIMITS.maxSets} onchange={touch} />
-                <Stepper label="Reps" bind:value={e.targetReps} min={1} max={PROGRAM_LIMITS.maxReps} onchange={touch} />
+              <div class="steppers" data-nodrag transition:slide={{ duration: 260, easing: cubicOut }}>
+                <SetPlanEditor bind:sets={e.sets} onchange={() => planChanged(e)} />
               </div>
             {/if}
           </div>
@@ -223,7 +244,7 @@
 
     {#if editable && (dirty || saved)}
       <div class="savebar">
-        {#if saved}<span class="ok"><Icon name="check" size={18} /> Guardado</span>{/if}
+        {#if saved}<span class="ok"><Icon name="check" size={16} /> Guardado</span>{/if}
         {#if dirty}<button class="primary" disabled={busy || !name.trim()} onclick={save}>Guardar rutina</button>{/if}
       </div>
     {/if}
@@ -245,11 +266,11 @@
 <style>
   .title {
     width: 100%;
-    margin-top: 0.4rem;
-    min-height: 56px;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.7rem;
+    margin-top: 0.25rem;
+    min-height: 48px;
+    font-weight: 600;
+    font-size: var(--t-xl);
+    letter-spacing: -0.015em;
   }
   .focus {
     width: 100%;
@@ -261,60 +282,68 @@
     justify-content: space-between;
   }
   .head h2 {
-    margin: 1.4rem 0 0.6rem;
+    margin: 1.25rem 0 0.5rem;
   }
   .add {
+    width: 36px;
+    min-height: 36px;
     border-radius: 50%;
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    box-shadow: var(--shadow-accent);
-    color: var(--accent-ink);
+    color: var(--accent);
   }
   .ex {
     border-radius: var(--radius);
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    background: var(--surface);
     box-shadow: var(--shadow-card);
   }
   .head-row {
     width: 100%;
+    min-height: 56px;
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    padding: 0.55rem 0.8rem 0.55rem 0.55rem;
+    gap: 0.7rem;
+    padding: 0.4rem 0.75rem 0.4rem 0.45rem;
     border-radius: var(--radius);
     background: none;
     box-shadow: none;
     text-align: left;
     color: var(--text);
+    font-weight: 400;
+  }
+  .head-row > :global(svg) {
+    flex: none;
+    color: var(--faint);
   }
   .tile {
     flex: none;
     display: grid;
     place-items: center;
-    width: 3.4rem;
-    height: 4.2rem;
+    width: 40px;
+    height: 44px;
     border-radius: var(--radius-sm);
-    background: var(--bg);
-    box-shadow: 0 2px 5px rgb(0 0 0 / 0.4) inset;
+    background: var(--surface-hi);
+    box-shadow: 0 0 0 1px var(--line) inset;
   }
   .grow {
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 0.2rem;
+    gap: 0.1rem;
   }
   .grow strong {
-    font-size: 1.1rem;
-    font-weight: 600;
-    line-height: 1.2;
+    font-size: var(--t-md);
+    font-weight: 550;
+    line-height: 1.25;
+  }
+  .grow .muted {
+    font-size: var(--t-sm);
   }
   .steppers {
-    display: flex;
-    justify-content: space-around;
-    padding: 0.4rem 1rem 1rem;
+    padding: 0.75rem;
+    border-top: 1px solid var(--line);
   }
   .hint {
-    margin: 0.8rem 0 0;
-    font-size: 0.85rem;
+    margin: 0.75rem 0 0;
+    font-size: var(--t-xs);
     text-align: center;
   }
   .empty {
@@ -325,19 +354,25 @@
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 1.4rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    padding: 1.25rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
     display: grid;
     gap: 0.4rem;
     justify-items: center;
-    background: linear-gradient(180deg, transparent, var(--bg) 55%);
+    background: linear-gradient(180deg, transparent, var(--bg) 60%);
     pointer-events: none;
   }
   .savebar > * {
     pointer-events: auto;
   }
+  .savebar .ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--t-sm);
+  }
   .savebar .primary {
     max-width: 22rem;
+    min-height: 44px;
     margin-top: 0;
-    border-radius: 999px;
   }
 </style>

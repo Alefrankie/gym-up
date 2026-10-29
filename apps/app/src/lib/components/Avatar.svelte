@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { name, size = 44 }: { name: string; size?: number } = $props();
+  let { name, size = 36 }: { name: string; size?: number } = $props();
 
   // Warm, distinct tones from the palette; the same name always lands on the same one.
   const TONES: Array<[string, string]> = [
@@ -30,14 +30,10 @@
     width: var(--s);
     height: var(--s);
     border-radius: 50%;
-    background: linear-gradient(160deg, var(--a), var(--b));
-    box-shadow:
-      0 1px 0 rgb(255 255 255 / 0.4) inset,
-      0 6px 12px -6px rgb(0 0 0 / 0.7);
-    color: #1c0d05;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: calc(var(--s) * 0.42);
-    letter-spacing: 0.02em;
+    background: color-mix(in srgb, var(--a) 16%, transparent);
+    color: var(--a);
+    font-weight: 600;
+    font-size: calc(var(--s) * 0.38);
+    line-height: 1;
   }
 </style>

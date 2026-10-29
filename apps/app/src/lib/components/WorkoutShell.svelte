@@ -26,7 +26,7 @@
 
 {#if restTimer.seconds > 0}
   <div class="rest" role="timer" aria-label="Descanso">
-    <span class="clock"><Icon name="timer" size={22} /> Descanso {restTimer.label}</span>
+    <span class="clock"><Icon name="timer" size={16} /> Descanso <strong>{restTimer.label}</strong></span>
     <button type="button" class="skip" onclick={() => restTimer.skip()}>Omitir</button>
   </div>
 {/if}
@@ -34,7 +34,7 @@
 <main>
   <SyncBanner />
   {#if view.error}<p class="error" role="alert">{view.error}</p>{/if}
-  {#if !view.snap && !view.error}<p class="muted">Cargando…</p>{/if}
+  {#if !view.snap && !view.error}<p class="muted loading">Cargando…</p>{/if}
   {#if view.snap}{@render children()}{/if}
 </main>
 
@@ -48,20 +48,28 @@
     margin: 0 auto;
     z-index: 20;
     gap: 0.75rem;
+    min-height: 48px;
+    padding: 0.25rem 0.25rem 0.25rem 0.9rem;
   }
   .clock {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    font-size: var(--t-sm);
+    font-weight: 600;
+  }
+  .clock strong {
     font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.4rem;
+    font-weight: 700;
+    font-size: var(--t-xl);
+    line-height: 1;
   }
   .skip {
     min-height: 40px;
     padding: 0 0.9rem;
-    background: rgb(28 13 5 / 0.18);
+    background: rgb(28 13 5 / 0.16);
     box-shadow: none;
     color: var(--accent-ink);
+    font-size: var(--t-sm);
   }
 </style>

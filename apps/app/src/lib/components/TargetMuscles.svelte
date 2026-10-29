@@ -10,7 +10,7 @@
   <ul>
     {#each muscles as m (m.muscle)}
       <li>
-        <span class="tile"><MuscleFigure primary={m.muscle} size={30} /></span>
+        <span class="tile"><MuscleFigure primary={m.muscle} size={20} /></span>
         <span class="txt">
           <span class="name">{muscleLabel(m.muscle)}</span>
           <b class:full={m.pct === 100}>{m.pct}%</b>
@@ -22,14 +22,14 @@
 
 <style>
   section h2 {
-    margin-top: 1.2rem;
+    margin-top: 1.25rem;
   }
   ul {
     list-style: none;
     margin: 0 -1rem;
-    padding: 0.2rem 1rem 0.8rem;
+    padding: 0 1rem 0.25rem;
     display: flex;
-    gap: 0.7rem;
+    gap: 0.5rem;
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -40,31 +40,33 @@
     flex: none;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.4rem 0.9rem 0.4rem 0.4rem;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0.25rem 0.75rem 0.25rem 0.25rem;
     border-radius: var(--radius);
-    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    background: var(--surface);
     box-shadow: var(--shadow-card);
   }
   .tile {
     display: grid;
     place-items: center;
-    width: 3rem;
-    height: 4.4rem;
+    width: 32px;
+    height: 40px;
     border-radius: var(--radius-sm);
-    background: var(--bg);
-    box-shadow: 0 2px 5px rgb(0 0 0 / 0.4) inset;
+    background: var(--surface-hi);
+    overflow: hidden;
   }
   .txt {
     display: grid;
+    line-height: 1.25;
   }
   .name {
-    font-weight: 600;
+    font-size: var(--t-sm);
+    font-weight: 500;
   }
   b {
-    font-family: var(--font-display);
-    font-size: 1.3rem;
-    font-weight: 800;
+    font-size: var(--t-sm);
+    font-weight: 600;
     color: var(--ember);
   }
   b.full {
