@@ -29,7 +29,7 @@ Goal: prove the risky parts before committing.
 - Fetch a request from the app to a stub server (verifies CORS and the Android cleartext/HTTPS rules).
 - Open IndexedDB from the webview and write/read a record.
 - Install the latest versions in the ADR table together; record any peer-dependency conflicts as ADR exceptions.
-- **Cloudflare gate (platform chosen; this validates it).** Done on 2026-10-29: Nest 12 + Express built with SWC, deployed, Drizzle on D1, `db.batch` atomic, startup 50–58 ms in two runs, and the real `complete-workout` use case, repository and migrations ran unchanged on D1 (see ADR-027 spike results). **Still open:** R2 presigned upload, an adequate password hash on Workers (WebCrypto PBKDF2 is capped at 100k iterations), and a spike with a real module (for example `complete-workout`). Fallbacks: Hono on Workers, or Nest on a Node host.
+- **Cloudflare gate (platform chosen; this validates it).** Done on 2026-10-29: Nest 12 + Express built with SWC, deployed, Drizzle on D1, `db.batch` atomic, startup 50–58 ms in two runs, and the real `complete-workout` use case, repository and migrations ran unchanged on D1 (see ADR-027 spike results). **Still open:** R2 presigned upload, and authentication end to end. The password hash is decided (ADR-027 section 7, argon2id WASM with a shared instance). Fallbacks: Hono on Workers, or Nest on a Node host.
 
 Exit: all of the above run on a deployed Worker; version exceptions documented. If the gate fails, switch to the ADR-027 fallback (Hono on Workers keeping the hexagonal domain, or Nest on a Node host) before Phase 1.
 
@@ -47,7 +47,7 @@ Port `domain` and `application` code unchanged; write Nest controllers, provider
 
 | Order | Module | Notes |
 |-------|--------|-------|
-| 2.1 | `auth` | Email and password (as today) issuing an opaque bearer session token; auth guard, CORS. Password hash per ADR-027 open question 2. |
+| 2.1 | `auth` | Email and password (as today) issuing an opaque bearer session token; auth guard, CORS. Password hash: argon2id WASM, OWASP parameters, one shared instance, with the equivalence and known-answer tests from ADR-027 section 7; login rate limiting. |
 | 2.2 | `workout-tracking` | Idempotent upserts by client UUID, `updated_at` LWW, tombstones ([ADR-025](../architecture/decisions/025-offline-live-workout.md) §3, §5). Includes profile and routines read paths used today. |
 | 2.3 | `progress` | Read-only aggregations, easiest to contract-test. |
 | 2.4 | `private-photos` | R2 bucket, presigned URLs, owner-only, 5 per workout ([ADR-005](../architecture/decisions/005-private-photos.md)). |
@@ -106,7 +106,7 @@ Exit: signed AAB installs from the internal track and passes the manual checklis
 
 ## Phase 6 — Cutover and cleanup (S)
 
-- Data migration of existing SQLite data to the production DB (D1 if Cloudflare is adopted), and rehashing passwords if the hash changes (ADR-027 open question 2).
+- Data migration of existing SQLite data to the production DB (D1 if Cloudflare is adopted), and resetting the development database (there are no real users; old hashes are not carried over, ADR-027 section 7).
 - Point the web domain at the SvelteKit build on Workers; retire the Astro app, `@astrojs/*`, `@astrojs/vercel`, `@supabase/supabase-js`, `better-sqlite3` and the `supabase/` folder.
 - Remove `src/pages`, `src/components`, `src/layouts`; move or delete `src/lib/contexts` once ported.
 - Mark ADR-001, ADR-002, ADR-015 superseded and ADR-025 partially superseded; accept ADR-027; update `docs/architecture/system.md` and `components.md`.

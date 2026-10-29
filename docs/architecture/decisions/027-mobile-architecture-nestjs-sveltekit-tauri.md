@@ -48,7 +48,7 @@ The Astro project is retired at the end of the migration (strangler pattern, nev
 - The existing hexagonal layout ([ADR-013](./013-hexagonal-architecture.md)) carries over: `domain` and `application` code (use cases, repository ports) move **unchanged**; Nest controllers replace Astro API routes; Nest providers replace the hand-written `*.composition.ts` files ([ADR-010](./010-per-context-composition.md)). Abstract classes stay as interfaces ([ADR-011](./011-implements-not-extends.md)) and are used as Nest injection tokens.
 - Drizzle remains the data layer ([ADR-012](./012-drizzle-orm.md)). Production target is **D1** (SQLite). The Drizzle schema stays SQLite; the `STORAGE_BACKEND` switch and the Supabase repositories are deleted.
 - Validation: zod schemas from `packages/contracts`, applied at the controller boundary. OpenAPI generated with `@nestjs/swagger`.
-- Auth stays **simple**: email and password as today (decided 2026-10-29, no OAuth). The cookie session of `LocalAuthService` is replaced by an opaque bearer token stored server-side in the `sessions` table (same model as today, sent in the `Authorization` header), because cookies do not work cross-origin from the Tauri app. Password hashing on Workers: see open question 2.
+- Auth stays **simple**: email and password as today (decided 2026-10-29, no OAuth). The cookie session of `LocalAuthService` is replaced by an opaque bearer token stored server-side in the `sessions` table (same model as today, sent in the `Authorization` header), because cookies do not work cross-origin from the Tauri app. Password hashing: see [section 7](#7-password-hashing-decided-2026-10-29).
 - Idempotent upserts by client-generated UUID, `updated_at` last-write-wins, and tombstones from [ADR-025](./025-offline-live-workout.md) §3 and §5 are implemented in the API from the first workout endpoint.
 - Secrets (`GEMINI_API_KEY`, DB URL) exist only in the API environment.
 
@@ -104,6 +104,15 @@ Use the latest stable releases at implementation time and pin exact versions in 
 
 These are the newest releases the registry reported, not a tested combination. Phase 0 of the plan must install them together and confirm peer dependencies (notably the Nest 12 and Vite 8 toolchains against TypeScript 7, and `drizzle-orm` against the chosen Postgres driver). Where a package forces an older release of another, record the exception in this ADR.
 
+### 7. Password hashing (decided 2026-10-29)
+
+- **Algorithm:** argon2id with the OWASP minimum parameters `m=19456` KiB (19 MiB), `t=2`, `p=1`, 16-byte random salt, 32-byte hash, stored as a PHC string (`$argon2id$v=19$m=19456,t=2,p=1$...`).
+- **Library:** `argon2-wasm-edge` (MIT, community package, version pinned), vendored with one patch: a **single shared WASM instance**, runs serialized by a mutex, and the linear memory **zeroed before every run**. The stock library instantiates a new WASM module per hash and exhausts the 128 MB Worker limit after about five hashes; a reused instance without zeroing returns wrong hashes. Evidence in the [password hashing results](#password-hashing-on-workers-2026-10-29).
+- **Required tests:** the patched build matches the stock build for several parameter sets; a known-answer vector produced by an independent implementation (`@noble/hashes`) verifies; a deployed Worker with Nest booted completes at least 40 consecutive hashes without a `503`.
+- **No legacy hashes:** existing hashes (argon2id with `m=65536, t=3, p=4` in `profiles.password_hash`) come from development data only; the owner confirmed on 2026-10-29 that there are no real users. The development database is reset. There is no verification path for old hashes, no rehash-on-login, and no separate hashing Worker. If real users with old hashes ever exist, verifying 64 MiB hashes needs its own Worker (they failed inside the API isolate once Nest was loaded) and this decision must be revisited.
+- **Login rate limiting is required.** A hash takes about 80 ms and runs one at a time per isolate.
+- **Fallback:** WebCrypto PBKDF2, which is stable but capped at 100 000 iterations in production, below OWASP guidance.
+
 ## Rationale
 
 - A separate API is the only way to serve both the web build and a static Tauri bundle; SSR cannot exist inside the app.
@@ -117,7 +126,7 @@ These are the newest releases the registry reported, not a tested combination. P
 - **Pro:** One API, one UI codebase, shared contracts, domain logic reused.
 - **Pro:** Secrets and Gemini stay server-side.
 - **Con:** Rewrite of every Astro page and React island into Svelte. The live workout is the largest piece.
-- **Con:** A server that must be hosted (see open question 2), unlike the current Vercel-only setup.
+- **Con:** A server that must be hosted (Cloudflare Workers, see the Cloudflare evaluation), unlike the current Vercel-only setup.
 - **Con:** Tauri mobile needs the Rust toolchain, Android Studio with SDK and NDK, and has fewer mobile plugins than Capacitor. Remote push in particular has no first-party plugin.
 - **Con:** Stack is on very recent majors (Nest 12, Kit 3, Vite 8, TypeScript 7); ecosystem lag is likely.
 
@@ -142,7 +151,7 @@ Decided 2026-10-29: replace Supabase with Cloudflare so API, database, storage a
 | Web hosting | Workers static assets / Pages | Good fit for the SvelteKit static build. |
 | Auth | none first-party | Cloudflare has no end-user auth service like Supabase Auth (Cloudflare Access targets internal apps). Auth is built in the API with a library (for example Better Auth or Arctic) on D1. |
 | Gemini calls | Workers `fetch` | Works; key stored as a Worker secret. |
-| `argon2` | n/a | Native addon, does not run on Workers. Email+password needs a Workers-compatible hash (WASM argon2, scrypt, or WebCrypto PBKDF2); existing argon2 hashes must stay verifiable or be rehashed on next login. |
+| `argon2` | n/a | Native addon, does not run on Workers. Email+password uses argon2id compiled to WASM with a single shared instance (see [section 7](#7-password-hashing-decided-2026-10-29)). |
 
 Consequences if adopted:
 - Supabase is dropped (database, storage, and its RLS). Row-level visibility rules of [ADR-004](./004-rls-visibility.md) must live in the API; they have to exist there anyway.
@@ -203,14 +212,36 @@ Notes:
 - `Date.now()` is frozen inside a Worker until I/O happens, so timing Nest's boot from inside the Worker reads 0 ms. Cold overhead is inferred from first versus later requests instead.
 - Both runs agree on SWC, D1 transactions, `db.batch` and the PBKDF2 cap. Their startup figures differ slightly (58 ms against 50 and 52 ms), which is normal variation.
 
-Still not verified: R2 presigned uploads, a password hash with adequate cost on Workers (PBKDF2 at 100k, scrypt or argon2 in WASM, within Worker CPU limits), the real module set under load, and Tauri against this API.
+#### Password hashing on Workers (2026-10-29)
+
+Measured on a deployed Worker, from the dev machine (roughly 30 ms of the figures is network).
+
+| Algorithm | Time | Result |
+|-----------|------|--------|
+| PBKDF2, 100 000 iterations (WebCrypto) | 45-85 ms | Stable; iteration cap of 100 000 |
+| scrypt, N=2^15, r=8 (pure JS, 32 MiB) | about 220 ms | Worked in isolation |
+| scrypt, N=2^16, r=8 (pure JS, 64 MiB) | about 400 ms | Later requests failed with `503 Worker exceeded resource limits` |
+| argon2id, OWASP params (pure JS, `@noble/hashes`) | about 260 ms | Failed once after scrypt in the same isolate |
+| argon2id, OWASP params (WASM, stock `argon2-wasm-edge`) | 100-140 ms | **Fails with `503` after about 5 consecutive hashes**, then the isolate hangs |
+| argon2id, OWASP params (WASM, one shared instance, memory zeroed) | median 75 ms | **40 of 40** sequential, **8 of 8** in parallel (queued, up to about 460 ms) |
+| Same, with Nest booted in the isolate | median 82 ms | **30 of 30** sequential |
+
+Cause: `argon2-wasm-edge` calls `WebAssembly.instantiate` on every hash, creating a new linear memory of `m` KiB that is only freed when the garbage collector runs. About 5 to 7 hashes of 19 MiB reach the 128 MB isolate limit.
+
+Further findings:
+- A shared instance **without** zeroing its memory produced different hashes from the stock library in 5 of 6 cases. With `fill(0)` before each run, the output matched the stock library in 6 of 6 parameter sets (1 MiB to 64 MiB, `p` 1 to 4, repeated and shrinking sizes).
+- A hash with the repository's current parameters (`m=65536, t=3, p=4`), generated by `@noble/hashes`, verified correctly with the stock library on the Worker (about 400 ms; right password `true`, wrong password `false`).
+- With the shared instance, the repository's current parameters ran 3 of 3 times in a fresh isolate (270-300 ms, WASM memory stable at 64 MiB), but only 2 of 8 with Nest booted in the same isolate. The exact cause of the third failure is not established.
+- Only the hashing endpoints and the Nest boot were measured together; the full module set under load was not.
+
+Still not verified: R2 presigned uploads, authentication end to end, the real module set under load, and Tauri against this API.
 
 ## Open questions
 
 These are **not decided** and must be answered before the marked phase starts.
 
 1. ~~Cloudflare versus Supabase~~ **Resolved 2026-10-29: Cloudflare.** The deploy gate passed on 2026-10-29 for SWC, startup time, D1 and batch (see the spike results); R2, the password hash and Tauri remain open in Phase 0. The fallbacks above stay available.
-2. **Password hashing on Workers (before Phase 2).** WebCrypto PBKDF2 is capped at 100 000 iterations on Workers. Choose WASM argon2, scrypt or PBKDF2 within that cap and decide whether to rehash existing argon2 hashes on next login. Only relevant if Cloudflare is adopted.
+2. ~~Password hashing on Workers~~ **Resolved 2026-10-29:** argon2id WASM with OWASP parameters and one shared instance; no legacy hashes (see section 7).
 3. **Token storage in the app (before Phase 3).** Options: OS-backed secure storage via a plugin versus `plugin-store`. Web build needs a separate answer (memory plus refresh cookie versus storage).
 4. ~~Photo storage~~ **Resolved: R2** with presigned URLs.
 
@@ -221,6 +252,6 @@ Resolved 2026-10-29: remote push is out of scope for the first release; Phase 2 
 - New workspace layout and a `docs/planning/mobile-migration-plan.md`.
 - [ADR-001](./001-supabase-client-side.md) (browser talks to Supabase) is superseded in practice: the app talks only to the API.
 - [ADR-002](./002-chartjs-react-island.md) and [ADR-015](./015-live-workout-react-island.md) are superseded by the Svelte equivalents; [ADR-025](./025-offline-live-workout.md) is partially superseded (§5 above).
-- Auth contract changes from cookie sessions to a bearer session token; password hashes carry over (see open question 2).
+- Auth contract changes from cookie sessions to a bearer session token; existing development hashes are discarded and the development database is reset (see section 7).
 - CORS allow-list for the web origin and the Tauri origins (`tauri://localhost`, `http://tauri.localhost`).
 - Stories in `docs/stories/phase-2` need re-scoping against the new stack.
