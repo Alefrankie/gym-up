@@ -8,6 +8,7 @@
   });
 
   const links = [
+    { href: '/family', title: 'Familia', hint: 'Cómo van los demás' },
     { href: '/history', title: 'Historial', hint: 'Todos tus entrenamientos' },
     { href: '/photos', title: 'Fotos de progreso', hint: 'Privadas, solo para ti' },
     { href: '/settings', title: 'Ajustes', hint: 'Nombre, unidad de peso, rutina y cuenta' },

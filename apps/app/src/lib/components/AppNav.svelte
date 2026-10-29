@@ -3,10 +3,10 @@
 
   const links = [
     { href: '/dashboard', label: 'Inicio', match: ['/dashboard', '/workout'] },
+    { href: '/programs', label: 'Entrenar', match: ['/programs', '/library'] },
     { href: '/progress', label: 'Progreso', match: ['/progress'] },
     { href: '/nutrition', label: 'Comida', match: ['/nutrition'] },
-    { href: '/family', label: 'Familia', match: ['/family'] },
-    { href: '/more', label: 'Más', match: ['/more', '/history', '/photos', '/settings'] },
+    { href: '/more', label: 'Más', match: ['/more', '/history', '/photos', '/settings', '/family'] },
   ];
 </script>
 

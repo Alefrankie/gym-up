@@ -87,13 +87,18 @@
   {:else if today?.kind === 'workout_day'}
     {@const t = today}
     <section class="card">
+      {#if t.programName}<p class="muted">{t.programName}</p>{/if}
       <h2>{t.routineDay.dayName}</h2>
       <p class="muted">{t.routineDay.focus}</p>
       <ul class="list">
         {#each t.exercises as ex}
           <li>
             <strong>{ex.exerciseName}</strong>
-            <span class="muted">{ex.targetSets} x {ex.targetReps}</span>
+            <span class="muted">
+              {ex.targetSets} x {ex.targetRepsMin !== undefined && ex.targetRepsMax !== undefined && ex.targetRepsMin !== ex.targetRepsMax
+                ? `${ex.targetRepsMin}-${ex.targetRepsMax}`
+                : ex.targetReps}
+            </span>
           </li>
         {/each}
       </ul>
