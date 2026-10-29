@@ -1,6 +1,6 @@
-import type { Exercise, RoutineDay, RoutineExercise } from '@db/schema';
+import type { Exercise, RoutineDay, RoutineExercise, Workout } from '@db/schema';
 import type { WorkoutRepository } from '@/lib/contexts/workout-tracking/domain/workout.repository';
-import type { LastPerformance, ProgramRepository } from '../domain/program.repository';
+import type { LastPerformance, ProgramRepository, ProgramRoutine, ProgramTree } from '../domain/program.repository';
 import type { AdoptProgramUseCase } from './program.use-cases';
 
 export type NextWorkoutResult =
@@ -45,7 +45,10 @@ export class GetNextWorkoutUseCase {
     const tree = await this.programs.findTree(programId);
     if (!tree || tree.routines.length === 0) return { kind: 'no_routine' };
 
-    const today = await this.workouts.findByUserAndDate(input.userId, input.now ?? new Date());
+    const todaysWorkouts = await this.workouts.findAllByUserAndDate(input.userId, input.now ?? new Date());
+    // Several routines can be done on one day: an unfinished one wins, then the latest finished one.
+    const inProgram = todaysWorkouts.filter((w) => tree.routines.some((r) => r.day.id === w.routineDayId));
+    const today = inProgram.find((w) => w.status === 'in_progress') ?? inProgram[0];
     const todays = today ? tree.routines.find((r) => r.day.id === today.routineDayId) : undefined;
 
     let chosen = todays;
@@ -55,9 +58,35 @@ export class GetNextWorkoutUseCase {
       chosen = tree.routines[index === -1 ? 0 : index]!;
     }
 
-    const startOfToday = new Date(input.now ?? new Date());
+    return this.describe(input.userId, tree, chosen, today, todays, input.now);
+  }
+
+  /** Any routine of a program the user can see, to start it on any day (not only the one the rotation says). */
+  async forRoutine(input: { userId: string; routineDayId: string; now?: Date }): Promise<NextWorkoutResult> {
+    const programId = await this.programs.findProgramIdOfRoutine(input.routineDayId);
+    if (!programId) return { kind: 'no_routine' };
+    const tree = await this.programs.findTree(programId);
+    if (!tree || tree.program.isArchived) return { kind: 'no_routine' };
+    if (!tree.program.isTemplate && tree.program.ownerId !== input.userId) return { kind: 'no_routine' };
+    const chosen = tree.routines.find((r) => r.day.id === input.routineDayId);
+    if (!chosen) return { kind: 'no_routine' };
+    const todays = (await this.workouts.findAllByUserAndDate(input.userId, input.now ?? new Date())).find(
+      (w) => w.routineDayId === input.routineDayId,
+    );
+    return this.describe(input.userId, tree, chosen, todays, todays ? chosen : undefined, input.now);
+  }
+
+  private async describe(
+    userId: string,
+    tree: ProgramTree,
+    chosen: ProgramRoutine,
+    today: Workout | undefined,
+    todays: ProgramRoutine | undefined,
+    now?: Date,
+  ): Promise<NextWorkoutResult> {
+    const startOfToday = new Date(now ?? new Date());
     startOfToday.setHours(0, 0, 0, 0);
-    const last = await this.programs.lastPerformance(input.userId, chosen.slots.map((s) => s.exerciseId), startOfToday);
+    const last = await this.programs.lastPerformance(userId, chosen.slots.map((s) => s.exerciseId), startOfToday);
 
     return {
       kind: 'workout_day',

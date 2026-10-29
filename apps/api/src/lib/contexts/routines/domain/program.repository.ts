@@ -92,6 +92,9 @@ export abstract class ProgramRepository {
   abstract updateProgram(id: string, patch: { name: string; description: string | null; daysPerWeek: number }): Promise<void>;
   abstract archive(id: string): Promise<void>;
 
+  /** The program a routine belongs to. */
+  abstract findProgramIdOfRoutine(routineDayId: string): Promise<string | undefined>;
+
   abstract getActiveProgramId(userId: string): Promise<string | null>;
   abstract setActiveProgram(userId: string, programId: string | null): Promise<void>;
   /** Best completed set of each exercise in the user's most recent earlier session with it (weight in kg). */

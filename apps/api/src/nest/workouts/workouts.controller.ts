@@ -26,7 +26,7 @@ import {
 import type { User } from '@/lib/contexts/auth/auth.types';
 import { DiscardWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/discard-workout.use-case';
 import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
-import { GetNextWorkoutUseCase } from '@/lib/contexts/routines/application/get-next-workout.use-case';
+import { GetNextWorkoutUseCase, type NextWorkoutResult } from '@/lib/contexts/routines/application/get-next-workout.use-case';
 import { GetWorkoutDetailUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-detail.use-case';
 import { GetWorkoutHistoryUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-history.use-case';
 import { LogSetUseCase } from '@/lib/contexts/workout-tracking/application/log-set.use-case';
@@ -60,7 +60,16 @@ export class WorkoutsController {
   /** What the dashboard shows for today. */
   @Get('today')
   async today(@CurrentUser() user: User): Promise<TodayWorkoutResponse> {
-    const result = await this.getToday.execute({ userId: user.id, routineType: user.routineType });
+    return this.toResponse(user, await this.getToday.execute({ userId: user.id, routineType: user.routineType }));
+  }
+
+  /** Any routine of a program the caller can see, to start it on any day. */
+  @Get('routine/:routineDayId')
+  async routine(@CurrentUser() user: User, @Param('routineDayId') routineDayId: string): Promise<TodayWorkoutResponse> {
+    return this.toResponse(user, await this.getToday.forRoutine({ userId: user.id, routineDayId }));
+  }
+
+  private toResponse(user: User, result: NextWorkoutResult): TodayWorkoutResponse {
     if (result.kind === 'no_routine') return { kind: 'no_routine' };
     return {
       kind: 'workout_day',

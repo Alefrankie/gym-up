@@ -5,6 +5,7 @@
   import { PROGRAM_LIMITS, programDetailDtoSchema, type ProgramDetailDto } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
+  import { startRoutine } from '#lib/offline/start-workout';
   import { saveBody } from '#lib/programs';
   import { session } from '#lib/session';
   import Icon from '#lib/components/Icon.svelte';
@@ -90,6 +91,29 @@
     }
   }
 
+  let starting = $state<string | null>(null);
+
+  /** Starts a routine on any day, whatever the rotation says; opens its first exercise. */
+  async function start(r: RoutineDto) {
+    if (r.exercises.length === 0) {
+      error = 'Esta rutina no tiene ejercicios todavía. Añádelos para poder empezarla.';
+      return;
+    }
+    starting = r.id;
+    error = null;
+    try {
+      const out = await startRoutine(r.id, (name) => confirm(`Tienes "${name}" en curso. ¿Cancelarlo y empezar "${r.name}"?`));
+      if (out.kind === 'started') {
+        await goto(out.firstExerciseId ? `/workout/${out.workoutId}/${out.firstExerciseId}` : `/workout/${out.workoutId}`);
+        return;
+      }
+      if (out.kind === 'missing') error = 'No se pudo cargar la rutina';
+    } catch (e) {
+      error = e instanceof NetworkError ? 'Necesitas conexión para empezar una rutina nueva.' : e instanceof ApiRequestError ? e.message : 'No se pudo empezar la rutina';
+    }
+    starting = null;
+  }
+
   /** A new routine is saved right away so its editor can load it from the server. */
   async function addRoutine() {
     if (!program || routines.length >= PROGRAM_LIMITS.routines) return;
@@ -172,18 +196,26 @@
         onremove={editable ? remove : undefined}
       >
         {#snippet row(r, i)}
-          <a class="routine" href={`/programs/${id}/${r.id}`}>
-            <span class="num">{i + 1}</span>
-            <span class="grow">
-              <strong>{r.name}</strong>
-              <span class="muted">{r.focus || 'Sin enfoque'} · {r.exercises.length} {r.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</span>
-            </span>
-            <Icon name="right" size={20} />
-          </a>
+          <div class="routine">
+            <a class="open" href={`/programs/${id}/${r.id}`}>
+              <span class="num">{i + 1}</span>
+              <span class="grow">
+                <strong>{r.name}</strong>
+                <span class="muted">{r.focus || 'Sin enfoque'} · {r.exercises.length} {r.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</span>
+              </span>
+            </a>
+            {#if editable}
+              <button type="button" data-nodrag class="start" disabled={starting !== null} onclick={() => start(r)} aria-label={`Empezar ${r.name}`}>
+                <Icon name="bolt" size={18} /> {starting === r.id ? '…' : 'Empezar'}
+              </button>
+            {:else}
+              <Icon name="right" size={20} />
+            {/if}
+          </div>
         {/snippet}
       </SortableRows>
       {#if editable}
-        <p class="hint muted">Mantén pulsada una rutina para moverla · desliza a la derecha para eliminarla</p>
+        <p class="hint muted">Toca "Empezar" para entrenar esa rutina hoy, sea cual sea su día · mantén pulsada para moverla · desliza a la derecha para eliminarla</p>
       {/if}
     {/if}
 
@@ -233,14 +265,36 @@
   .routine {
     display: flex;
     align-items: center;
-    gap: 0.9rem;
-    padding: 0.8rem 0.9rem;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.9rem;
     min-height: 4.4rem;
     border-radius: var(--radius);
     background: linear-gradient(180deg, var(--surface-hi), var(--surface));
     box-shadow: var(--shadow-card);
     color: var(--text);
     text-decoration: none;
+  }
+  .open {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-height: 3.4rem;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .start {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0 0.9rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+    color: var(--accent-hi);
+    font-weight: 700;
   }
   .num {
     flex: none;

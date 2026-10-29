@@ -4,8 +4,8 @@
   import { todayWorkoutResponseSchema, type TodayWorkoutResponse } from '@gym-up/contracts';
   import { ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet } from '#lib/offline/cache';
-  import { getActiveWorkoutId, saveSnapshot, setActiveWorkoutId } from '#lib/offline/workout-session';
-  import { sync } from '#lib/offline/sync.svelte';
+  import { getActiveWorkoutId } from '#lib/offline/workout-session';
+  import { beginWorkout } from '#lib/offline/start-workout';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import { muscleLoad } from '#lib/muscle-load';
@@ -37,29 +37,11 @@
     }
   });
 
-  /**
-   * Starts locally first: the workout exists on this device immediately (id generated here, exercises from
-   * the last copy of today's routine), and the `start-workout` command reaches the server whenever there is signal.
-   */
   async function start(t: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>) {
     busy = true;
     error = null;
     try {
-      const id = t.existingWorkoutId ?? activeWorkoutId ?? crypto.randomUUID();
-      if (!t.existingWorkoutId && !activeWorkoutId) {
-        await saveSnapshot({
-          workoutId: id,
-          routineDayId: t.routineDay.id,
-          dayName: t.routineDay.dayName,
-          exercises: t.exercises,
-          rows: {},
-          status: 'in_progress',
-          unit: t.weightUnit,
-          startedAt: Date.now(),
-        });
-        await sync.enqueue({ type: 'start-workout', id, routineDayId: t.routineDay.id });
-      }
-      await setActiveWorkoutId(id);
+      const id = await beginWorkout(t);
       const first = t.exercises[0]?.exerciseId;
       await goto(first ? `/workout/${id}/${first}` : `/workout/${id}`);
     } catch {

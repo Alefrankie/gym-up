@@ -198,6 +198,11 @@ export class SqliteProgramRepository implements ProgramRepository {
     await this.db.update(routines).set({ isArchived: true, updatedAt: Date.now() }).where(eq(routines.id, id));
   }
 
+  async findProgramIdOfRoutine(routineDayId: string): Promise<string | undefined> {
+    const rows = await this.db.select({ id: routineDays.routineId }).from(routineDays).where(eq(routineDays.id, routineDayId)).limit(1);
+    return rows[0]?.id;
+  }
+
   async getActiveProgramId(userId: string): Promise<string | null> {
     const rows = await this.db
       .select({ id: profiles.activeProgramId })

@@ -343,4 +343,34 @@ describe('today follows the program rotation', () => {
     expect(last.day.dayNumber).toBe(5);
     expect(after.dayNumber).toBe(1);
   });
+
+  it('starts any routine of the program on any day, several in one day, and previews it with last loads', async () => {
+    const s = await register('any-day@example.com');
+    const programs = programListResponseSchema.parse((await http('GET', '/programs', { token: s.token })).json);
+    const ppl = programs.templates.find((t) => t.name === 'Push / Pull / Legs')!;
+    const mine = programDetailDtoSchema.parse((await http('POST', `/programs/${ppl.id}/adopt`, { token: s.token })).json);
+    const [push, pull] = mine.routines;
+
+    // Preview a routine that is not the next one in the rotation.
+    const preview = todayWorkoutResponseSchema.parse((await http('GET', `/workouts/routine/${pull!.id}`, { token: s.token })).json);
+    if (preview.kind !== 'workout_day') throw new Error('expected workout_day');
+    expect(preview).toMatchObject({ programName: 'Push / Pull / Legs', dayNumber: 2, workoutStatus: 'not_started', existingWorkoutId: null });
+    expect(preview.exercises.length).toBe(pull!.exercises.length);
+
+    // Start both routines the same day: two workouts, and replaying a start returns the same one.
+    const a = crypto.randomUUID();
+    const b = crypto.randomUUID();
+    const startA = startWorkoutResponseSchema.parse((await http('POST', '/workouts', { token: s.token, body: { id: a, routineDayId: push!.id } })).json);
+    const startB = startWorkoutResponseSchema.parse((await http('POST', '/workouts', { token: s.token, body: { id: b, routineDayId: pull!.id } })).json);
+    expect(startA).toMatchObject({ kind: 'started', workout: { id: a } });
+    expect(startB).toMatchObject({ kind: 'started', workout: { id: b } });
+    const replay = startWorkoutResponseSchema.parse((await http('POST', '/workouts', { token: s.token, body: { id: crypto.randomUUID(), routineDayId: pull!.id } })).json);
+    expect(replay).toMatchObject({ kind: 'resumed', workout: { id: b } });
+
+    // The preview now knows the routine is in progress, and a foreign routine does not exist for this user.
+    const again = todayWorkoutResponseSchema.parse((await http('GET', `/workouts/routine/${pull!.id}`, { token: s.token })).json);
+    expect(again).toMatchObject({ kind: 'workout_day', workoutStatus: 'in_progress', existingWorkoutId: b });
+    const other = await register('any-day-2@example.com');
+    expect((await http('GET', `/workouts/routine/${pull!.id}`, { token: other.token })).json).toEqual({ kind: 'no_routine' });
+  });
 });
