@@ -6,6 +6,8 @@ export const PASSWORD_HASHER = Symbol('PASSWORD_HASHER');
 export const AUTH_SERVICE = Symbol('AUTH_SERVICE');
 export const RATE_LIMITER = Symbol('RATE_LIMITER');
 export const PHOTO_STORAGE = Symbol('PHOTO_STORAGE');
+export const AI_PORT = Symbol('AI_PORT');
+export const AI_ANALYSIS = Symbol('AI_ANALYSIS');
 
 /** Minimal rate limiter port; the Worker adapts Cloudflare's Rate Limiting binding to it. */
 export interface RateLimiter {

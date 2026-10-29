@@ -22,7 +22,7 @@ describe('SqliteNutritionEntryRepository', () => {
     userId1 = u1.id;
     userId2 = u2.id;
     mkdirSync(TEST_UPLOADS, { recursive: true });
-    repo = new SqliteNutritionEntryRepository(handle.db, { uploadsRoot: TEST_UPLOADS });
+    repo = new SqliteNutritionEntryRepository(handle.db);
   });
 
   afterEach(() => {
@@ -90,12 +90,9 @@ describe('SqliteNutritionEntryRepository', () => {
     expect(todayEntries[0].totalCalories).toBe(700);
   });
 
-  it('deletes entry and file from disk', async () => {
+  it('deletes the entry row', async () => {
     const input = makeInput();
     const created = await repo.create(input, userId1);
-    const filePath = join(TEST_UPLOADS, created.storagePath);
-    writeFileSync(filePath, 'fake-image-bytes');
-
     await repo.delete(created.id, userId1);
     const found = await repo.findById(created.id, userId1);
     expect(found).toBeUndefined();

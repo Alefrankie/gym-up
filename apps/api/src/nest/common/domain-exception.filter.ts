@@ -18,6 +18,12 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   InvalidRoutineDayError: 400,
   EmailAlreadyRegisteredError: 409,
   InvalidCredentialsError: 401,
+  NutritionEntryOwnershipError: 403,
+  InvalidPhotoError: 400,
+  AIUnrecognizedFoodError: 422,
+  AITimeoutError: 504,
+  MissingApiKeyError: 503,
+  InvalidCalorieGoalError: 400,
   PhotoSizeExceededError: 413,
   UnsupportedPhotoFormatError: 415,
   CaptionTooLongError: 400,
@@ -37,8 +43,10 @@ const ERROR_LABEL: Record<number, string> = {
   409: 'Conflict',
   413: 'Payload Too Large',
   415: 'Unsupported Media Type',
+  422: 'Unprocessable Entity',
   429: 'Too Many Requests',
   503: 'Service Unavailable',
+  504: 'Gateway Timeout',
   500: 'Internal Server Error',
 };
 

@@ -14,6 +14,7 @@ import argon2WASM from 'argon2-wasm-edge/wasm/argon2.wasm';
 import blake2bWASM from 'argon2-wasm-edge/wasm/blake2b.wasm';
 import type { Db } from '@/lib/db/client';
 import { R2PhotoStorage, type R2BucketLike } from '@/lib/contexts/private-photos/infrastructure/r2-photo-storage';
+import { GeminiVisionAdapter } from '@/lib/contexts/nutrition/infrastructure/ai/gemini-vision.adapter';
 import { createApp } from './nest/create-app';
 import type { RateLimiter } from './nest/tokens';
 import { registerArgon2Wasm, SharedInstanceArgon2PasswordHasher } from './worker/shared-argon2-hasher';
@@ -24,6 +25,8 @@ interface WorkerEnv {
   LOGIN_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
   /** Optional R2 bucket for private photos (see wrangler.jsonc). Without it the photo endpoints answer 503. */
   PHOTOS?: R2BucketLike;
+  /** Optional Gemini API key (a Worker secret). Without it /nutrition/analyze answers 503. */
+  GEMINI_API_KEY?: string;
   /** Comma separated extra CORS origins (for example a preview web build). */
   EXTRA_ORIGINS?: string;
 }
@@ -44,6 +47,7 @@ async function boot() {
       hasher: new SharedInstanceArgon2PasswordHasher(),
       rateLimiter,
       photoStorage: e.PHOTOS ? new R2PhotoStorage(e.PHOTOS) : undefined,
+      aiAnalysis: e.GEMINI_API_KEY ? new GeminiVisionAdapter(e.GEMINI_API_KEY) : undefined,
     },
     (e.EXTRA_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean),
   );
