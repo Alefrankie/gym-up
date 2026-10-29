@@ -14,6 +14,7 @@
   const links: Array<{ href: string; title: string; hint: string; icon: IconName }> = [
     { href: '/nutrition', title: 'Comida', hint: 'Lo que comes cada día', icon: 'utensils' },
     { href: '/history', title: 'Historial', hint: 'Todos tus entrenamientos', icon: 'history' },
+    { href: '/supplements', title: 'Suplementos', hint: 'Creatina, proteína y lo que tomes cada día', icon: 'check' },
     { href: '/photos', title: 'Fotos de progreso', hint: 'Privadas, solo para ti', icon: 'camera' },
     { href: '/settings', title: 'Ajustes', hint: 'Nombre, unidad de peso, rutina y cuenta', icon: 'sliders' },
   ];

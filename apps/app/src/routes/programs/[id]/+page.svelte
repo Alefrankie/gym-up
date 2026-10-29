@@ -2,43 +2,53 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { PROGRAM_LIMITS, programDetailDtoSchema, type ProgramDetailDto } from '@gym-up/contracts';
+  import { PROGRAM_LIMITS, programDetailDtoSchema, programListResponseSchema, type ProgramDetailDto } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
-  import { startRoutine } from '#lib/offline/start-workout';
+  import { muscleLoad } from '#lib/muscle-load';
+  import { muscle } from '#lib/labels';
   import { saveBody } from '#lib/programs';
   import { session } from '#lib/session';
+  import BarList from '#lib/components/BarList.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import ProgramThumb from '#lib/components/ProgramThumb.svelte';
+  import SaveBar from '#lib/components/SaveBar.svelte';
   import SortableRows from '#lib/components/SortableRows.svelte';
+  import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import UndoToast from '#lib/components/UndoToast.svelte';
 
   type RoutineDto = ProgramDetailDto['routines'][number];
 
   const id = $derived(page.params.id ?? '');
   let program = $state<ProgramDetailDto | null>(null);
+  let activeId = $state<string | null>(null);
   let name = $state('');
   let routines = $state<RoutineDto[]>([]);
   let error = $state<string | null>(null);
   let busy = $state(false);
-  let dirty = $state(false);
   let saved = $state(false);
   let removed = $state<{ item: RoutineDto; index: number } | null>(null);
 
   const editable = $derived(!!program && !program.isTemplate);
+  const isActive = $derived(!!program && activeId === program.id);
+
+  // What was last loaded or saved; the save bar appears only when name or day order really differ from it.
+  let baseline = $state('');
+  const fingerprint = () => JSON.stringify([name.trim(), routines.map((r) => r.id)]);
+  const dirty = $derived(!!baseline && fingerprint() !== baseline);
+
+  function show(d: ProgramDetailDto) {
+    program = d;
+    name = d.name;
+    routines = [...d.routines];
+    baseline = fingerprint();
+  }
 
   onMount(async () => {
     if (!(await session.require())) return;
     try {
-      const res = await cachedGet(`/programs/${id}`, programDetailDtoSchema, {
-        onCached: (c) => {
-          program = c.data;
-          name = c.data.name;
-          routines = [...c.data.routines];
-        },
-      });
-      program = res.data;
-      name = program.name;
-      routines = [...program.routines];
+      show((await cachedGet(`/programs/${id}`, programDetailDtoSchema, { onCached: (c) => show(c.data) })).data);
+      activeId = (await cachedGet('/programs', programListResponseSchema, { onCached: (c) => (activeId = c.data.activeProgramId) })).data.activeProgramId;
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -49,24 +59,31 @@
     }
   });
 
-  const touch = () => {
-    dirty = true;
-    saved = false;
-  };
+  const allExercises = $derived(routines.flatMap((r) => r.exercises));
+  const totalSets = $derived(allExercises.reduce((n, e) => n + e.targetSets, 0));
+  /** Planned working sets per muscle in one full rotation (primary muscle only), most first. */
+  const perMuscle = $derived.by(() => {
+    const m = new Map<string, number>();
+    for (const e of allExercises) m.set(e.muscleGroup, (m.get(e.muscleGroup) ?? 0) + e.targetSets);
+    return [...m].sort((a, b) => b[1] - a[1]);
+  });
+  const setsPerMuscle = $derived(perMuscle.map(([k, v]) => ({ label: muscle(k), value: v })));
+  const routineMuscles = (r: RoutineDto) => [...new Set(r.exercises.map((e) => e.muscleGroup))];
+  const minutes = (r: RoutineDto) =>
+    Math.max(5, Math.round(r.exercises.reduce((n, e) => n + e.targetSets * ((e.restSeconds ?? 90) + 45), 0) / 300) * 5);
 
   function remove(item: RoutineDto) {
     const index = routines.findIndex((r) => r.id === item.id);
     if (index < 0) return;
     routines.splice(index, 1);
     removed = { item, index };
-    touch();
+    saved = false;
   }
 
   function undo() {
     if (!removed) return;
     routines.splice(removed.index, 0, removed.item);
     removed = null;
-    touch();
   }
 
   async function persist(): Promise<boolean> {
@@ -74,91 +91,65 @@
     busy = true;
     error = null;
     try {
-      program = await api(`/programs/${id}`, {
-        method: 'PUT',
-        body: saveBody(program, { name: name.trim() || program.name, routines }),
-        schema: programDetailDtoSchema,
-      });
-      routines = [...program.routines];
+      show(
+        await api(`/programs/${id}`, {
+          method: 'PUT',
+          body: saveBody(program, { name: name.trim() || program.name, routines }),
+          schema: programDetailDtoSchema,
+        }),
+      );
       await invalidateCache(['/programs', '/workouts/today']);
-      dirty = false;
       saved = true;
-      busy = false;
       return true;
     } catch (e) {
-      error =
-        e instanceof NetworkError
-          ? 'Sin conexión: conéctate para guardar el programa.'
-          : e instanceof ApiRequestError
-            ? e.message
-            : 'No se pudo guardar';
-      busy = false;
+      error = e instanceof NetworkError ? 'Sin conexión: conéctate para guardar el programa.' : e instanceof ApiRequestError ? e.message : 'No se pudo guardar';
       return false;
+    } finally {
+      busy = false;
     }
   }
 
-  let starting = $state<string | null>(null);
-
-  /** Starts a routine on any day, whatever the rotation says; opens its first exercise. */
-  async function start(r: RoutineDto) {
-    if (r.exercises.length === 0) {
-      error = 'Esta rutina no tiene ejercicios todavía. Añádelos para poder empezarla.';
-      return;
-    }
-    starting = r.id;
-    error = null;
-    try {
-      const out = await startRoutine(r.id, (name) => confirm(`Tienes "${name}" en curso. ¿Cancelarlo y empezar "${r.name}"?`));
-      if (out.kind === 'started') {
-        await goto(out.firstExerciseId ? `/workout/${out.workoutId}/${out.firstExerciseId}` : `/workout/${out.workoutId}`);
-        return;
-      }
-      if (out.kind === 'missing') error = 'No se pudo cargar la rutina';
-    } catch (e) {
-      error = e instanceof NetworkError ? 'Necesitas conexión para empezar una rutina nueva.' : e instanceof ApiRequestError ? e.message : 'No se pudo empezar la rutina';
-    }
-    starting = null;
-  }
-
-  /** A new routine is saved right away so its editor can load it from the server. */
+  /** A new day is saved right away so its editor can load it from the server. */
   async function addRoutine() {
     if (!program || routines.length >= PROGRAM_LIMITS.routines) return;
-    const fresh: RoutineDto = {
-      id: crypto.randomUUID(),
-      dayNumber: routines.length + 1,
-      name: `Rutina ${routines.length + 1}`,
-      focus: '',
-      notes: null,
-      exercises: [],
-    };
+    const fresh: RoutineDto = { id: crypto.randomUUID(), dayNumber: routines.length + 1, name: `Día ${routines.length + 1}`, focus: '', notes: null, exercises: [] };
     routines.push(fresh);
     if (await persist()) await goto(`/programs/${id}/${fresh.id}`);
     else routines.pop();
   }
 
-  async function adopt() {
+  async function act(fn: () => Promise<unknown>, fallback: string) {
     busy = true;
+    error = null;
     try {
+      await fn();
+    } catch (e) {
+      error = e instanceof ApiRequestError ? e.message : fallback;
+    }
+    busy = false;
+  }
+
+  const activate = () =>
+    act(async () => {
+      await api(`/programs/${id}/activate`, { method: 'POST' });
+      await invalidateCache(['/programs', '/workouts/today']);
+      activeId = id;
+    }, 'Necesitas conexión para activar el programa');
+
+  const adopt = () =>
+    act(async () => {
       const copy = await api<ProgramDetailDto>(`/programs/${id}/adopt`, { method: 'POST', schema: programDetailDtoSchema });
       await invalidateCache(['/programs', '/workouts/today']);
       await goto(`/programs/${copy.id}`);
-    } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'Necesitas conexión para usar esta plantilla';
-      busy = false;
-    }
-  }
+    }, 'Necesitas conexión para usar esta plantilla');
 
   async function archive() {
     if (!confirm('¿Archivar este programa? Tu historial no se borra.')) return;
-    busy = true;
-    try {
+    await act(async () => {
       await api(`/programs/${id}`, { method: 'DELETE' });
       await invalidateCache(['/programs', '/workouts/today']);
       await goto('/programs');
-    } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'No se pudo archivar';
-      busy = false;
-    }
+    }, 'No se pudo archivar');
   }
 </script>
 
@@ -168,139 +159,184 @@
   {#if !program && !error}
     <p class="muted loading">Cargando…</p>
   {:else if program}
-    {#if editable}
-      <input class="title" maxlength="60" aria-label="Nombre del programa" placeholder="Nombre del programa" bind:value={name} oninput={touch} />
-    {:else}
-      <h1>{program.name}</h1>
-      {#if program.description}<p class="muted">{program.description}</p>{/if}
-      <button class="primary use" disabled={busy} onclick={adopt}>Usar este programa</button>
+    <header class="hero">
+      <ProgramThumb muscles={perMuscle.map(([k]) => k)} size={72} />
+      <div class="hero-text">
+        {#if editable}
+          <input class="title-input" maxlength="60" aria-label="Nombre del programa" bind:value={name} oninput={() => (saved = false)} />
+        {:else}
+          <h1>{program.name}</h1>
+        {/if}
+        {#if isActive}
+          <span class="active"><span class="dot"></span>Programa activo</span>
+        {:else if editable && routines.length > 0}
+          <button type="button" class="ghost activate" disabled={busy} onclick={activate}>Hacer activo</button>
+        {:else if program.description}
+          <span class="muted desc">{program.description}</span>
+        {/if}
+      </div>
+    </header>
+
+    <div class="stats">
+      <div><strong>{routines.length}</strong><span>{routines.length === 1 ? 'día' : 'días'}</span></div>
+      <div><strong>{allExercises.length}</strong><span>ejercicios</span></div>
+      <div><strong>{totalSets}</strong><span>series / semana</span></div>
+    </div>
+
+    {#if allExercises.length}
+      <TargetMuscles muscles={muscleLoad(allExercises)} />
     {/if}
 
     <div class="head">
-      <h2>{routines.length} {routines.length === 1 ? 'rutina' : 'rutinas'}</h2>
+      <h2>Días</h2>
       {#if editable}
-        <button class="icon add" onclick={addRoutine} disabled={busy || routines.length >= PROGRAM_LIMITS.routines} aria-label="Añadir rutina">
+        <button class="icon add" onclick={addRoutine} disabled={busy || routines.length >= PROGRAM_LIMITS.routines} aria-label="Añadir día">
           <Icon name="plus" size={18} />
         </button>
       {/if}
     </div>
 
     {#if routines.length === 0}
-      <section class="card empty">
-        <p>Este programa aún no tiene rutinas.</p>
-        {#if editable}<button class="primary" onclick={addRoutine}>Crear la primera rutina</button>{/if}
-      </section>
+      <button type="button" class="empty" disabled={!editable} onclick={addRoutine}><Icon name="plus" size={18} /> Añade el primer día</button>
     {:else}
-      <SortableRows
-        items={routines}
-        key={(r) => r.id}
-        disabled={!editable}
-        onreorder={(next) => {
-          routines = next;
-          touch();
-        }}
-        onremove={editable ? remove : undefined}
-      >
+      <SortableRows items={routines} key={(r) => r.id} disabled={!editable} onreorder={(next) => ((routines = next), (saved = false))} onremove={editable ? remove : undefined}>
         {#snippet row(r, i)}
-          <div class="routine">
-            <a class="open" href={`/programs/${id}/${r.id}`}>
-              <span class="num">{i + 1}</span>
-              <span class="grow">
-                <strong>{r.name}</strong>
-                <span class="muted">{r.focus || 'Sin enfoque'} · {r.exercises.length} {r.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</span>
+          <a class="day" href={`/programs/${id}/${r.id}`}>
+            <span class="num">{i + 1}</span>
+            <span class="grow">
+              <strong>{r.name}</strong>
+              <span class="muted">
+                {#if r.exercises.length}
+                  {r.focus ? `${r.focus} · ` : ''}{r.exercises.length} ejercicios · ≈ {minutes(r)} min
+                {:else}
+                  Sin ejercicios todavía
+                {/if}
               </span>
-            </a>
-            {#if editable}
-              <button type="button" data-nodrag class="start" disabled={starting !== null} onclick={() => start(r)} aria-label={`Empezar ${r.name}`}>
-                <Icon name="bolt" size={14} /> {starting === r.id ? '…' : 'Empezar'}
-              </button>
-            {:else}
-              <Icon name="right" size={18} />
-            {/if}
-          </div>
+            </span>
+            <ProgramThumb muscles={routineMuscles(r)} size={44} />
+          </a>
         {/snippet}
       </SortableRows>
       {#if editable}
-        <p class="hint muted">Toca "Empezar" para entrenar esa rutina hoy, sea cual sea su día · mantén pulsada para moverla · desliza a la derecha para eliminarla</p>
+        <p class="hint muted">Toca un día para verlo, editarlo o empezarlo · mantén pulsado para moverlo · desliza a la derecha para quitarlo</p>
       {/if}
     {/if}
 
-    {#if editable}
-      <p class="archive"><button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> Archivar programa</button></p>
+    {#if setsPerMuscle.length}
+      <section class="card chart">
+        <h2 class="first">Series por músculo</h2>
+        <p class="muted sub">En una semana completa del programa</p>
+        <BarList items={setsPerMuscle} />
+      </section>
     {/if}
 
-    {#if editable && (dirty || saved)}
-      <div class="savebar">
-        {#if saved}<span class="ok"><Icon name="check" size={16} /> Guardado</span>{/if}
-        {#if dirty}<button class="primary" disabled={busy || !name.trim()} onclick={persist}>Guardar cambios</button>{/if}
-      </div>
+    {#if editable}
+      <p class="archive"><button class="ghost danger-text" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> Archivar programa</button></p>
     {/if}
   {/if}
 </main>
 
+{#if program && !program.isTemplate}
+  <SaveBar {dirty} {saved} {busy} disabled={!name.trim()} onsave={persist} />
+{:else if program}
+  <SaveBar dirty={false} saved={false} onsave={() => {}}>
+    {#snippet idle()}
+      <button class="primary" disabled={busy} onclick={adopt}>Usar este programa</button>
+    {/snippet}
+  </SaveBar>
+{/if}
+
 {#if removed}
-  <UndoToast message={`${removed.item.name} eliminada`} onundo={undo} ondismiss={() => (removed = null)} />
+  <UndoToast message={`${removed.item.name} eliminado`} onundo={undo} ondismiss={() => (removed = null)} />
 {/if}
 
 <style>
-  .title {
-    width: 100%;
-    margin-top: 0.25rem;
-    min-height: 48px;
-    font-weight: 600;
-    font-size: var(--t-xl);
-    letter-spacing: -0.015em;
+  .hero {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.25rem 0 1rem;
   }
-  .use {
+  .hero-text {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 0.3rem;
+    justify-items: start;
+  }
+  .hero h1 {
+    margin: 0;
+  }
+  .desc {
+    font-size: var(--t-sm);
+  }
+  .active {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--accent-hi);
+    font-size: var(--t-sm);
+    font-weight: 600;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .activate {
+    min-height: 32px;
+    padding: 0 0.6rem;
+    margin-left: -0.6rem;
+    color: var(--accent-hi);
+    font-size: var(--t-sm);
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
+  }
+  .stats div {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .stats strong {
+    font-family: var(--font-display);
+    font-size: var(--t-xl);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .stats span {
+    color: var(--muted);
+    font-size: var(--t-xs);
   }
   .head {
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
-  .head h2 {
-    margin: 1.25rem 0 0.5rem;
-  }
   .add {
-    width: 36px;
-    min-height: 36px;
+    width: 40px;
+    min-height: 40px;
     border-radius: 50%;
-    color: var(--accent);
+    color: var(--accent-hi);
   }
-  .routine {
+  .day {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.4rem 0.5rem 0.4rem 0.75rem;
-    min-height: 56px;
+    gap: 0.8rem;
+    min-height: 72px;
+    padding: 0.5rem 0.75rem;
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: var(--shadow-card);
     color: var(--text);
     text-decoration: none;
-  }
-  .open {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    min-height: 44px;
-    color: var(--text);
-    text-decoration: none;
-  }
-  .start {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    min-height: 34px;
-    padding: 0 0.7rem;
-    border-radius: var(--radius-sm);
-    color: var(--accent-hi);
-    font-size: var(--t-sm);
-    font-weight: 550;
   }
   .num {
     flex: none;
@@ -308,25 +344,26 @@
     place-items: center;
     width: 32px;
     height: 32px;
-    border-radius: var(--radius-sm);
+    border-radius: 50%;
     background: var(--surface-hi);
-    box-shadow: 0 0 0 1px var(--line) inset;
     color: var(--muted);
     font-size: var(--t-sm);
-    font-weight: 600;
+    font-weight: 650;
   }
   .grow {
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 0.1rem;
+    gap: 0.15rem;
   }
   .grow strong {
-    font-size: var(--t-md);
-    font-weight: 550;
+    font-weight: 600;
   }
   .grow .muted {
     font-size: var(--t-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .hint {
     margin: 0.75rem 0 0;
@@ -334,41 +371,34 @@
     text-align: center;
   }
   .empty {
-    text-align: center;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 56px;
+    background: none;
+    box-shadow: 0 0 0 1px var(--line) inset;
+    color: var(--muted);
   }
-  .archive {
+  .chart {
     margin-top: 1.5rem;
   }
-  .archive button {
+  .first {
+    margin: 0;
+  }
+  .sub {
+    margin: 0.2rem 0 1rem;
+    font-size: var(--t-sm);
+  }
+  .archive {
+    margin: 1.5rem 0 5rem;
+  }
+  .danger-text {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    color: var(--danger);
     font-size: var(--t-sm);
-  }
-  .savebar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 1.25rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
-    display: grid;
-    gap: 0.4rem;
-    justify-items: center;
-    background: linear-gradient(180deg, transparent, var(--bg) 60%);
-    pointer-events: none;
-  }
-  .savebar > * {
-    pointer-events: auto;
-  }
-  .savebar .ok {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: var(--t-sm);
-  }
-  .savebar .primary {
-    max-width: 22rem;
-    min-height: 44px;
-    margin-top: 0;
   }
 </style>

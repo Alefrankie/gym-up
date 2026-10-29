@@ -23,5 +23,8 @@ export const sendCommand: Sender = async (command: Command) => {
     case 'finish-workout':
       await api(`/workouts/${command.workoutId}/complete`, { method: 'POST' });
       return;
+    case 'mark-supplement':
+      await api(`/supplements/${command.supplementId}/log`, { method: 'PUT', body: { day: command.day, taken: command.taken } });
+      return;
   }
 };

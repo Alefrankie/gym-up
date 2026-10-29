@@ -18,7 +18,8 @@ export type Command =
   | { type: 'start-workout'; id: string; routineDayId: string }
   | { type: 'upsert-set'; workoutId: string; set: UpsertSetRequest }
   | { type: 'finish-workout'; workoutId: string }
-  | { type: 'discard-workout'; workoutId: string };
+  | { type: 'discard-workout'; workoutId: string }
+  | { type: 'mark-supplement'; supplementId: string; day: string; taken: boolean };
 
 export interface OutboxItem {
   seq?: number;
@@ -57,7 +58,10 @@ const MAX_BACKOFF_MS = 5 * 60 * 1000;
 export const backoffMs = (attempts: number) => Math.min(MAX_BACKOFF_MS, 1000 * 2 ** Math.max(0, attempts - 1));
 
 function commandKey(c: Command): string | null {
-  return c.type === 'upsert-set' ? `${c.workoutId}:${c.set.id}` : null;
+  if (c.type === 'upsert-set') return `${c.workoutId}:${c.set.id}`;
+  // Ticking and unticking the same supplement on the same day: only the last tap matters.
+  if (c.type === 'mark-supplement') return `supplement:${c.supplementId}:${c.day}`;
+  return null;
 }
 
 function retargeted(c: Command, remap: Remap): Command {
@@ -69,6 +73,8 @@ function retargeted(c: Command, remap: Remap): Command {
     case 'finish-workout':
     case 'discard-workout':
       return c.workoutId === remap.from ? { ...c, workoutId: remap.to } : c;
+    case 'mark-supplement':
+      return c;
   }
 }
 
@@ -105,7 +111,7 @@ export class Outbox {
     let startNeverSent = false;
     for (const i of await this.items()) {
       const c = i.command;
-      const mine = c.type === 'start-workout' ? c.id === workoutId : c.workoutId === workoutId;
+      const mine = c.type === 'start-workout' ? c.id === workoutId : 'workoutId' in c && c.workoutId === workoutId;
       if (!mine) continue;
       if (c.type === 'start-workout') startNeverSent = true;
       await idb.delete('outbox', i.seq!);

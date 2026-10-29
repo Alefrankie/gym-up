@@ -2,7 +2,9 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { libraryExerciseDtoSchema, type LibraryExerciseDto } from '@gym-up/contracts';
+  import { exerciseHistoryResponseSchema, libraryExerciseDtoSchema, type ChartPointDto, type LibraryExerciseDto } from '@gym-up/contracts';
+  import { toDisplay } from '#lib/offline/workout-view.svelte';
+  import ProgressChart from '#lib/components/ProgressChart.svelte';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
   import { TYPE_LABELS, equipment, muscle } from '#lib/labels';
@@ -27,6 +29,16 @@
             ? 'Ejercicio no encontrado'
             : 'No se pudo cargar el ejercicio';
     }
+  });
+
+  // Your heaviest set per session with this exercise, when there is any.
+  let history = $state<ChartPointDto[]>([]);
+  const unit = $derived(session.user?.weightUnit ?? 'kg');
+  $effect(() => {
+    if (!id) return;
+    cachedGet(`/progress/exercises/${id}/history?range=all`, exerciseHistoryResponseSchema, { onCached: (c) => (history = c.data) })
+      .then((r) => (history = r.data))
+      .catch(() => {});
   });
 
   const mine = $derived(exercise?.isCustom && exercise.ownerId === session.user?.id);
@@ -79,6 +91,14 @@
         <dd>{TYPE_LABELS[exercise.exerciseType] ?? exercise.exerciseType}</dd>
       </dl>
     </section>
+
+    {#if history.length}
+      <section class="card progress">
+        <h2 class="first">Tu progreso</h2>
+        <p class="muted sub">Peso máximo por sesión ({unit}) · récord {Math.max(...history.map((p) => toDisplay(p.weight, unit)))} {unit}</p>
+        <ProgressChart labels={history.map((p) => p.date.slice(5))} values={history.map((p) => toDisplay(p.weight, unit))} label={`Peso máximo (${unit})`} />
+      </section>
+    {/if}
 
     {#if steps.length}
       <h2>Cómo se hace</h2>
@@ -188,5 +208,15 @@
     color: var(--text);
     font-weight: 550;
     text-decoration: none;
+  }
+  .progress {
+    margin-top: 1rem;
+  }
+  .progress .first {
+    margin: 0;
+  }
+  .progress .sub {
+    margin: 0.2rem 0 0.75rem;
+    font-size: var(--t-sm);
   }
 </style>

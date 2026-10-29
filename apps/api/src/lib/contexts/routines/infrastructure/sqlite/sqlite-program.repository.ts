@@ -16,6 +16,7 @@ import {
   type LastPerformance,
   type NewProgram,
   type NewProgramRoutine,
+  type ProgramStats,
   type ProgramTree,
 } from '../../domain/program.repository';
 
@@ -59,6 +60,30 @@ export class SqliteProgramRepository implements ProgramRepository {
       .where(inArray(routineDays.routineId, programIds))
       .groupBy(routineDays.routineId);
     return new Map(rows.map((r) => [r.id, Number(r.n)]));
+  }
+
+  async programStats(programIds: string[]): Promise<Map<string, ProgramStats>> {
+    if (programIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({ id: routineDays.routineId, sets: routineExercises.targetSets, muscle: exercises.muscleGroup })
+      .from(routineExercises)
+      .innerJoin(routineDays, eq(routineDays.id, routineExercises.routineDayId))
+      .innerJoin(exercises, eq(exercises.id, routineExercises.exerciseId))
+      .where(inArray(routineDays.routineId, programIds));
+    const acc = new Map<string, { exerciseCount: number; setCount: number; byMuscle: Map<string, number> }>();
+    for (const r of rows) {
+      const a = acc.get(r.id) ?? { exerciseCount: 0, setCount: 0, byMuscle: new Map() };
+      a.exerciseCount += 1;
+      a.setCount += r.sets;
+      a.byMuscle.set(r.muscle, (a.byMuscle.get(r.muscle) ?? 0) + r.sets);
+      acc.set(r.id, a);
+    }
+    return new Map(
+      [...acc].map(([id, a]) => [
+        id,
+        { exerciseCount: a.exerciseCount, setCount: a.setCount, muscles: [...a.byMuscle].sort((x, y) => y[1] - x[1]).map(([m]) => m).slice(0, 4) },
+      ]),
+    );
   }
 
   async findTree(programId: string): Promise<ProgramTree | undefined> {

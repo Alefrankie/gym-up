@@ -341,3 +341,30 @@ export const groupMembers = sqliteTable(
 );
 
 export type Group = typeof groups.$inferSelect;
+
+/** Daily supplements a user wants to tick off (creatine, pre-workout, protein…). Archived ones keep their log. */
+export const supplements = sqliteTable('supplements', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull().default(0),
+});
+
+/** One row per supplement taken on a calendar day (the user's local `YYYY-MM-DD`). */
+export const supplementLogs = sqliteTable(
+  'supplement_logs',
+  {
+    supplementId: text('supplement_id')
+      .notNull()
+      .references(() => supplements.id, { onDelete: 'cascade' }),
+    day: text('day').notNull(),
+    takenAt: integer('taken_at').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.supplementId, t.day] })],
+);
+
+export type Supplement = typeof supplements.$inferSelect;

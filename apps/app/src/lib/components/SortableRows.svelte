@@ -204,6 +204,10 @@
   li.dragging .face {
     transition: none;
   }
+  /* A menu opened inside a row (set type) must sit above the rows below it. */
+  li:focus-within {
+    z-index: 6;
+  }
   li.dragging {
     z-index: 5;
   }

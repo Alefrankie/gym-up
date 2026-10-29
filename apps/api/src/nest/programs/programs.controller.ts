@@ -19,7 +19,7 @@ import {
   ListProgramsUseCase,
   SaveProgramUseCase,
 } from '@/lib/contexts/routines/application/program.use-cases';
-import type { ProgramTree } from '@/lib/contexts/routines/domain/program.repository';
+import type { ProgramStats, ProgramTree } from '@/lib/contexts/routines/domain/program.repository';
 import { AuthGuard, CurrentUser } from '../common/auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
@@ -31,7 +31,7 @@ const parseMuscles = (json: string): string[] => {
   }
 };
 
-const summary = (p: Routine, routineCount: number): ProgramSummaryDto => ({
+const summary = (p: Routine, routineCount: number, stats?: ProgramStats): ProgramSummaryDto => ({
   id: p.id,
   name: p.name,
   description: p.description,
@@ -41,6 +41,9 @@ const summary = (p: Routine, routineCount: number): ProgramSummaryDto => ({
   isTemplate: p.isTemplate,
   routineCount,
   sourceTemplateId: p.sourceTemplateId,
+  exerciseCount: stats?.exerciseCount ?? 0,
+  setCount: stats?.setCount ?? 0,
+  muscles: stats?.muscles ?? [],
 });
 
 export function toProgramDetailDto(tree: ProgramTree): ProgramDetailDto {
@@ -86,8 +89,8 @@ export class ProgramsController {
   async index(@CurrentUser() user: User): Promise<ProgramListResponse> {
     const r = await this.list.execute(user.id);
     return {
-      templates: r.templates.map((t) => summary(t.program, t.routineCount)),
-      mine: r.mine.map((t) => summary(t.program, t.routineCount)),
+      templates: r.templates.map((t) => summary(t.program, t.routineCount, t.stats)),
+      mine: r.mine.map((t) => summary(t.program, t.routineCount, t.stats)),
       activeProgramId: r.activeProgramId,
     };
   }

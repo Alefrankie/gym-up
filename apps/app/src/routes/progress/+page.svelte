@@ -16,6 +16,7 @@
   import { cachedGet } from '#lib/offline/cache';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
+  import ColumnChart from '#lib/components/ColumnChart.svelte';
   import ProgressChart from '#lib/components/ProgressChart.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -188,6 +189,16 @@
     </section>
 
     <section class="card">
+      <h2 class="first">Entrenos por semana</h2>
+      <p class="muted chart-sub">Últimas 12 semanas</p>
+      <ColumnChart
+        values={weeks.slice(-12).map((col) => col.filter((d) => d.on).length)}
+        labels={weeks.slice(-12).map((col) => String(Number(col[0]!.date.slice(8))))}
+        label="Entrenos por semana"
+      />
+    </section>
+
+    <section class="card">
       <h2 class="first">Evolución por ejercicio</h2>
       {#if exercises.length === 0}
         <p class="muted">Registra tu primer entrenamiento y aquí verás tu evolución.</p>
@@ -354,5 +365,9 @@
   .tabs button.active {
     background: var(--raised);
     color: var(--text);
+  }
+  .chart-sub {
+    margin: 0.2rem 0 1rem;
+    font-size: var(--t-sm);
   }
 </style>

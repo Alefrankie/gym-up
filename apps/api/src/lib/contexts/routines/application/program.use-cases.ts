@@ -6,6 +6,7 @@ import {
   ProgramOwnershipError,
   type NewProgramRoutine,
   type ProgramRepository,
+  type ProgramStats,
   type ProgramTree,
 } from '../domain/program.repository';
 
@@ -31,8 +32,8 @@ export interface ProgramRoutineInput {
 }
 
 export interface ListedPrograms {
-  templates: Array<{ program: Routine; routineCount: number }>;
-  mine: Array<{ program: Routine; routineCount: number }>;
+  templates: Array<{ program: Routine; routineCount: number; stats?: ProgramStats }>;
+  mine: Array<{ program: Routine; routineCount: number; stats?: ProgramStats }>;
   activeProgramId: string | null;
 }
 
@@ -64,8 +65,9 @@ export class ListProgramsUseCase {
       this.repo.listByOwner(userId),
       this.repo.getActiveProgramId(userId),
     ]);
-    const counts = await this.repo.routineCounts([...templates, ...mine].map((p) => p.id));
-    const withCount = (p: Routine) => ({ program: p, routineCount: counts.get(p.id) ?? 0 });
+    const ids = [...templates, ...mine].map((p) => p.id);
+    const [counts, stats] = await Promise.all([this.repo.routineCounts(ids), this.repo.programStats(ids)]);
+    const withCount = (p: Routine) => ({ program: p, routineCount: counts.get(p.id) ?? 0, stats: stats.get(p.id) });
     return { templates: templates.map(withCount), mine: mine.map(withCount), activeProgramId };
   }
 }

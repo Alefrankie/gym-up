@@ -12,10 +12,19 @@
     onchange();
   }
 
+  /** Warm-ups always come first, in the order they were added; the rest keep their order. */
+  function grouped(list: SetPlan): SetPlan {
+    return [...list.filter((s) => s.type === 'warmup'), ...list.filter((s) => s.type !== 'warmup')];
+  }
+
   function setType(i: number, type: SetType) {
     sets[i] = { ...sets[i]!, type };
+    sets = grouped(sets);
     onchange();
   }
+
+  /** Working sets are numbered 1, 2, 3… after the warm-ups. */
+  const number = (i: number) => sets.slice(0, i + 1).filter((s) => s.type !== 'warmup').length;
 
   function add() {
     if (sets.length >= PROGRAM_LIMITS.maxSets) return;
@@ -39,20 +48,21 @@
   </div>
   {#each sets as s, i (i)}
     <div class="row" transition:slide={{ duration: 200, easing: cubicOut }}>
-      <SetTypeCell n={i + 1} type={s.type} onpick={(type) => setType(i, type)} />
-      <div class="reps">
-        <button type="button" class="step" aria-label={`Menos reps en la serie ${i + 1}`} onclick={() => setReps(i, s.reps - 1)}><Icon name="down" size={18} /></button>
-        <input
-          type="number"
-          inputmode="numeric"
-          min="1"
-          max={PROGRAM_LIMITS.maxReps}
-          value={s.reps}
-          aria-label={`Serie ${i + 1}: repeticiones`}
-          onchange={(e) => setReps(i, Number((e.currentTarget as HTMLInputElement).value) || 1)}
-        />
-        <button type="button" class="step" aria-label={`Más reps en la serie ${i + 1}`} onclick={() => setReps(i, s.reps + 1)}><Icon name="up" size={18} /></button>
-      </div>
+      <SetTypeCell n={number(i)} type={s.type} onpick={(type) => setType(i, type)} />
+      <input
+        class="reps"
+        type="number"
+        inputmode="numeric"
+        min="1"
+        max={PROGRAM_LIMITS.maxReps}
+        value={s.reps}
+        aria-label={`Serie ${i + 1}: repeticiones`}
+        onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
+        oninput={(e) => {
+          const v = Number((e.currentTarget as HTMLInputElement).value);
+          if (v >= 1) setReps(i, v);
+        }}
+      />
       <button type="button" class="del" disabled={sets.length <= 1} aria-label={`Quitar serie ${i + 1}`} onclick={() => remove(i)}>
         <Icon name="x" size={18} />
       </button>
@@ -80,25 +90,20 @@
     text-align: center;
   }
   .reps {
-    display: grid;
-    grid-template-columns: 44px 1fr 44px;
-    align-items: center;
     min-height: 48px;
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    box-shadow: 0 0 0 1px var(--line) inset;
-  }
-  .reps input {
-    min-height: 46px;
     padding: 0;
-    background: none;
-    box-shadow: none;
     text-align: center;
     font-family: var(--font-display);
     font-weight: 700;
     font-size: var(--t-lg);
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
-  .step,
+  .reps::-webkit-inner-spin-button,
+  .reps::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
   .del {
     min-height: 44px;
     padding: 0;

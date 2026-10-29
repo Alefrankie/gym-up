@@ -41,6 +41,10 @@ export const programSummaryDtoSchema = z.object({
   isTemplate: z.boolean(),
   routineCount: z.number().int(),
   sourceTemplateId: z.string().nullable(),
+  /** Exercises and planned sets in one full rotation; most-trained muscle groups first (list only). */
+  exerciseCount: z.number().int().optional(),
+  setCount: z.number().int().optional(),
+  muscles: z.array(z.string()).optional(),
 });
 export type ProgramSummaryDto = z.infer<typeof programSummaryDtoSchema>;
 

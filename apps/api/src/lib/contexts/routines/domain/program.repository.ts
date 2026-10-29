@@ -76,12 +76,20 @@ export class InvalidProgramError extends Error {
   }
 }
 
+export interface ProgramStats {
+  exerciseCount: number;
+  setCount: number;
+  muscles: string[];
+}
+
 export abstract class ProgramRepository {
   abstract findById(id: string): Promise<Routine | undefined>;
   abstract listTemplates(): Promise<Routine[]>;
   abstract listByOwner(ownerId: string): Promise<Routine[]>;
   abstract countByOwner(ownerId: string): Promise<number>;
   abstract routineCounts(programIds: string[]): Promise<Map<string, number>>;
+  /** Per program: exercises, planned sets per rotation and the muscle groups it trains most, most-trained first. */
+  abstract programStats(programIds: string[]): Promise<Map<string, ProgramStats>>;
   abstract findTree(programId: string): Promise<ProgramTree | undefined>;
   /** Template of the given legacy type (used to give users without a program a starting point). */
   abstract findTemplateByType(type: 'hombre' | 'mujer'): Promise<Routine | undefined>;

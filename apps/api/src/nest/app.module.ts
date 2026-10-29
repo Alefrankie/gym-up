@@ -10,6 +10,7 @@ import type { PhotoStorage } from '@/lib/contexts/private-photos/domain/photo-st
 import { LibraryModule } from './library/library.module';
 import { ProgramsModule } from './programs/programs.module';
 import { GroupsModule } from './groups/groups.module';
+import { SupplementsModule } from './supplements/supplements.module';
 import { ProgressModule } from './progress/progress.module';
 import { WorkoutsModule } from './workouts/workouts.module';
 
@@ -39,7 +40,7 @@ export class AppModule {
     return {
       module: AppModule,
       global: true,
-      imports: [AuthModule, WorkoutsModule, ProgressModule, GroupsModule, PhotosModule, NutritionModule, LibraryModule, ProgramsModule],
+      imports: [AuthModule, WorkoutsModule, ProgressModule, GroupsModule, PhotosModule, NutritionModule, LibraryModule, ProgramsModule, SupplementsModule],
       providers: [
         { provide: DB, useValue: deps.db },
         { provide: PASSWORD_HASHER, useValue: deps.hasher },

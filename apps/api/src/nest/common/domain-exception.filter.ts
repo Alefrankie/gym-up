@@ -38,6 +38,8 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   ExerciseOwnershipError: 403,
   ExerciseNameTakenError: 409,
   GroupNotFoundError: 404,
+  SupplementNotFoundError: 404,
+  SupplementLimitError: 409,
   GroupFullError: 409,
   GroupLimitError: 409,
   ProgramNotFoundError: 404,

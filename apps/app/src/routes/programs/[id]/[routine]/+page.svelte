@@ -23,7 +23,10 @@
   import SortableRows from '#lib/components/SortableRows.svelte';
   import SetPlanEditor from '#lib/components/SetPlanEditor.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
+  import SaveBar from '#lib/components/SaveBar.svelte';
   import UndoToast from '#lib/components/UndoToast.svelte';
+  import { goto } from '$app/navigation';
+  import { startRoutine } from '#lib/offline/start-workout';
 
   interface Draft {
     key: string;
@@ -62,7 +65,11 @@
   let library = $state<LibraryExerciseDto[]>([]);
   let error = $state<string | null>(null);
   let busy = $state(false);
-  let dirty = $state(false);
+  // What was last loaded or saved; the save bar shows only when the routine really differs from it.
+  let baseline = $state('');
+  const fingerprint = () =>
+    JSON.stringify({ name: name.trim(), focus: focus.trim(), exercises: exercises.map((e) => [e.exerciseId, e.sets, e.restSeconds, e.notes]) });
+  const dirty = $derived(!!baseline && fingerprint() !== baseline);
   let saved = $state(false);
   let open = $state<string | null>(null);
   let picker = $state<{ mode: 'add' } | { mode: 'replace'; target: Draft } | null>(null);
@@ -81,6 +88,7 @@
         name = r.name;
         focus = r.focus;
         exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [], sets: planOf(e) }));
+        baseline = fingerprint();
         return true;
       };
       const res = await cachedGet(`/programs/${programId}`, programDetailDtoSchema, { onCached: (c) => void show(c.data) });
@@ -101,7 +109,6 @@
   });
 
   const touch = () => {
-    dirty = true;
     saved = false;
   };
 
@@ -160,8 +167,8 @@
       });
       const r = detail.routines.find((x) => x.id === routineId);
       if (r) exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [], sets: planOf(e) }));
+      baseline = fingerprint();
       await invalidateCache(['/programs', '/workouts/today']);
-      dirty = false;
       saved = true;
     } catch (e) {
       error =
@@ -173,6 +180,25 @@
     }
     busy = false;
   }
+
+  let starting = $state(false);
+
+  /** Starts this routine today, whatever the rotation says; opens its first exercise. */
+  async function start() {
+    starting = true;
+    error = null;
+    try {
+      const out = await startRoutine(routineId, (n) => confirm(`Tienes "${n}" en curso. ¿Cancelarlo y empezar "${name}"?`));
+      if (out.kind === 'started') {
+        await goto(out.firstExerciseId ? `/workout/${out.workoutId}/${out.firstExerciseId}` : `/workout/${out.workoutId}`);
+        return;
+      }
+      if (out.kind === 'missing') error = 'No se pudo cargar la rutina';
+    } catch (e) {
+      error = e instanceof NetworkError ? 'Necesitas conexión para empezar una rutina nueva.' : e instanceof ApiRequestError ? e.message : 'No se pudo empezar la rutina';
+    }
+    starting = false;
+  }
 </script>
 
 <main>
@@ -182,7 +208,7 @@
     <p class="muted loading">Cargando…</p>
   {:else if detail}
     {#if editable}
-      <input class="title" maxlength="60" aria-label="Nombre de la rutina" placeholder="Nombre de la rutina" bind:value={name} oninput={touch} />
+      <input class="title-input" maxlength="60" aria-label="Nombre de la rutina" placeholder="Nombre de la rutina" bind:value={name} oninput={touch} />
       <input class="focus" maxlength="80" aria-label="Enfoque" placeholder="Enfoque (ej. Pecho y tríceps)" bind:value={focus} oninput={touch} />
     {:else}
       <h1>{name}</h1>
@@ -242,14 +268,18 @@
       {/if}
     {/if}
 
-    {#if editable && (dirty || saved)}
-      <div class="savebar">
-        {#if saved}<span class="ok"><Icon name="check" size={16} /> Guardado</span>{/if}
-        {#if dirty}<button class="primary" disabled={busy || !name.trim()} onclick={save}>Guardar rutina</button>{/if}
-      </div>
-    {/if}
   {/if}
 </main>
+
+{#if detail && editable}
+  <SaveBar {dirty} {saved} {busy} disabled={!name.trim()} label="Guardar rutina" onsave={save}>
+    {#snippet idle()}
+      {#if exercises.length}
+        <button class="primary go" disabled={starting} onclick={start}><Icon name="bolt" size={16} /> {starting ? 'Empezando…' : 'Empezar rutina'}</button>
+      {/if}
+    {/snippet}
+  </SaveBar>
+{/if}
 
 {#if picker}
   <ExercisePicker
@@ -264,14 +294,6 @@
 {/if}
 
 <style>
-  .title {
-    width: 100%;
-    margin-top: 0.25rem;
-    min-height: 48px;
-    font-weight: 600;
-    font-size: var(--t-xl);
-    letter-spacing: -0.015em;
-  }
   .focus {
     width: 100%;
     margin-top: 0.5rem;
@@ -348,31 +370,5 @@
   }
   .empty {
     text-align: center;
-  }
-  .savebar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 1.25rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
-    display: grid;
-    gap: 0.4rem;
-    justify-items: center;
-    background: linear-gradient(180deg, transparent, var(--bg) 60%);
-    pointer-events: none;
-  }
-  .savebar > * {
-    pointer-events: auto;
-  }
-  .savebar .ok {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: var(--t-sm);
-  }
-  .savebar .primary {
-    max-width: 22rem;
-    min-height: 44px;
-    margin-top: 0;
   }
 </style>

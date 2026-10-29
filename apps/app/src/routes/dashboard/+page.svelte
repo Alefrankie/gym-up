@@ -9,7 +9,9 @@
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import { muscleLoad } from '#lib/muscle-load';
+  import ActiveWorkoutCard from '#lib/components/ActiveWorkoutCard.svelte';
   import ExerciseRow from '#lib/components/ExerciseRow.svelte';
+  import SupplementsCard from '#lib/components/SupplementsCard.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
@@ -55,6 +57,8 @@
 
 <main>
   <SyncBanner />
+  <ActiveWorkoutCard oncancelled={() => location.reload()} />
+  <SupplementsCard />
   {#if stale}
     <p class="muted">Sin conexión: mostrando tu última rutina descargada.</p>
   {/if}
