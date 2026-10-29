@@ -4,6 +4,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
+  import { longDate, relativeDay } from '#lib/dates';
   import { loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
   import DayStrip from '#lib/components/DayStrip.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -24,6 +25,14 @@
 
   onMount(async () => {
     if (await session.require()) await load();
+  });
+
+  /** Day by day, newest first: what was taken. Only days with something taken are listed. */
+  const history = $derived.by(() => {
+    if (!list) return [];
+    const byDay = new Map<string, string[]>();
+    for (const s of list.items) for (const d of s.days) byDay.set(d, [...(byDay.get(d) ?? []), s.name]);
+    return [...byDay].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, names]) => ({ day, names }));
   });
 
   async function toggle(id: string, taken: boolean) {
@@ -65,7 +74,7 @@
 <main>
   <p><a class="back" href="/dashboard"><Icon name="left" size={18} /> Inicio</a></p>
   <h1>Suplementos</h1>
-  <p class="muted lead">Marca lo que tomaste hoy. Las barras muestran los últimos 30 días.</p>
+  <p class="muted lead">Hoy es {longDate()}. Marca lo que tomaste; las barras son los últimos 30 días.</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if list}
@@ -79,7 +88,7 @@
             <span class="grow">
               <strong>{s.name}</strong>
               <span class="muted">
-                {s.days.filter((d) => d.startsWith(list!.day.slice(0, 7))).length} días este mes{#if s.streak > 1} · <span class="streak">{s.streak} seguidos</span>{/if}
+                {s.days.filter((d) => d.startsWith(list!.day.slice(0, 7))).length === 1 ? '1 día' : `${s.days.filter((d) => d.startsWith(list!.day.slice(0, 7))).length} días`} este mes{#if s.streak > 1} · <span class="streak">{s.streak} seguidos</span>{/if}
               </span>
             </span>
             <button type="button" class="ghost del" aria-label={`Quitar ${s.name}`} onclick={() => remove(s.id, s.name)}><Icon name="trash" size={18} /></button>
@@ -88,6 +97,20 @@
         </li>
       {/each}
     </ul>
+
+    {#if history.length}
+      <h2>Historial</h2>
+      <ul class="log">
+        {#each history as h (h.day)}
+          <li>
+            <span class="when">{relativeDay(h.day, list.day)}</span>
+            <span class="what">
+              {#each h.names as n (n)}<span class="chip on">{n}</span>{/each}
+            </span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
 
     <form class="add" onsubmit={add}>
       <input maxlength="40" placeholder="Añadir (ej. Omega 3, magnesio…)" aria-label="Nuevo suplemento" bind:value={name} />
@@ -163,6 +186,30 @@
   .add button {
     display: inline-flex;
     align-items: center;
+    gap: 0.3rem;
+  }
+  .log {
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    display: grid;
+  }
+  .log li {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    border-bottom: 1px solid var(--line);
+  }
+  .when {
+    color: var(--muted);
+    font-size: var(--t-sm);
+    text-transform: capitalize;
+  }
+  .what {
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.3rem;
   }
 </style>

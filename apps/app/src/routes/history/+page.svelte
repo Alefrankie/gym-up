@@ -1,5 +1,4 @@
 <script lang="ts">
-  import SetTypeBadge from '#lib/components/SetTypeBadge.svelte';
   import { onMount } from 'svelte';
   import { workoutHistoryResponseSchema, type WorkoutHistoryResponse } from '@gym-up/contracts';
   import { ApiRequestError, NetworkError } from '#lib/api/client';
@@ -8,6 +7,7 @@
   import AppNav from '#lib/components/AppNav.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import WorkoutHistoryRow from '#lib/components/WorkoutHistoryRow.svelte';
 
   let history = $state<WorkoutHistoryResponse | null>(null);
   let page = $state(1);
@@ -35,7 +35,6 @@
     if (await session.require()) await load(1);
   });
 
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
 </script>
 
 <main>
@@ -54,23 +53,7 @@
   {:else if history}
     <ul class="list">
       {#each history.items as item}
-        <li>
-          <a href={`/workout/${item.id}`}>
-            <span class="ico"><Icon name="dumbbell" size={18} /></span>
-            <span class="grow">
-              <strong>{item.routineDayName} {#if item.status === 'in_progress'}<span class="badge">En curso</span>{/if}</strong>
-              <span class="muted meta">{fmt(item.workoutDate)} · {item.exerciseCount} ejercicios</span>
-              {#if item.warmupSets || item.dropSets || item.failureSets}
-                <span class="kinds">
-                  {#if item.warmupSets}<span class="kind"><SetTypeBadge type="warmup" />{item.warmupSets}</span>{/if}
-                  {#if item.dropSets}<span class="kind"><SetTypeBadge type="drop" />{item.dropSets}</span>{/if}
-                  {#if item.failureSets}<span class="kind"><SetTypeBadge type="failure" />{item.failureSets}</span>{/if}
-                </span>
-              {/if}
-            </span>
-            <span class="vol"><b>{Math.round(item.totalVolume)}</b> kg</span>
-          </a>
-        </li>
+        <li><WorkoutHistoryRow {item} /></li>
       {/each}
     </ul>
     {#if history.totalPages > 1}
@@ -86,29 +69,6 @@
 <AppNav />
 
 <style>
-  .ico {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    background: var(--surface-hi);
-    color: var(--muted);
-    flex: none;
-  }
-  .meta {
-    font-size: var(--t-sm);
-  }
-  .vol {
-    color: var(--faint);
-    font-size: var(--t-xs);
-    white-space: nowrap;
-  }
-  .vol b {
-    font-size: var(--t-base);
-    font-weight: 600;
-    color: var(--text);
-  }
   .empty {
     display: grid;
     justify-items: center;
@@ -129,20 +89,5 @@
   }
   .pager {
     margin-top: 0.5rem;
-  }
-  .kinds {
-    display: flex;
-    gap: 0.25rem;
-    margin-top: 0.2rem;
-  }
-  .kind {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.05rem 0.4rem 0.05rem 0.15rem;
-    border-radius: 6px;
-    background: var(--surface-hi);
-    color: var(--text);
-    font-size: var(--t-xs);
   }
 </style>

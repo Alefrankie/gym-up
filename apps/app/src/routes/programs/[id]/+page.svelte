@@ -8,6 +8,7 @@
   import { muscleLoad } from '#lib/muscle-load';
   import { muscle } from '#lib/labels';
   import { saveBody } from '#lib/programs';
+  import { estimateMinutes, totalSets } from '#lib/workout-math';
   import { session } from '#lib/session';
   import BarList from '#lib/components/BarList.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -60,7 +61,7 @@
   });
 
   const allExercises = $derived(routines.flatMap((r) => r.exercises));
-  const totalSets = $derived(allExercises.reduce((n, e) => n + e.targetSets, 0));
+  const setsTotal = $derived(totalSets(allExercises));
   /** Planned working sets per muscle in one full rotation (primary muscle only), most first. */
   const perMuscle = $derived.by(() => {
     const m = new Map<string, number>();
@@ -69,8 +70,6 @@
   });
   const setsPerMuscle = $derived(perMuscle.map(([k, v]) => ({ label: muscle(k), value: v })));
   const routineMuscles = (r: RoutineDto) => [...new Set(r.exercises.map((e) => e.muscleGroup))];
-  const minutes = (r: RoutineDto) =>
-    Math.max(5, Math.round(r.exercises.reduce((n, e) => n + e.targetSets * ((e.restSeconds ?? 90) + 45), 0) / 300) * 5);
 
   function remove(item: RoutineDto) {
     const index = routines.findIndex((r) => r.id === item.id);
@@ -180,7 +179,7 @@
     <div class="stats">
       <div><strong>{routines.length}</strong><span>{routines.length === 1 ? 'día' : 'días'}</span></div>
       <div><strong>{allExercises.length}</strong><span>ejercicios</span></div>
-      <div><strong>{totalSets}</strong><span>series / semana</span></div>
+      <div><strong>{setsTotal}</strong><span>series / semana</span></div>
     </div>
 
     {#if allExercises.length}
@@ -207,7 +206,7 @@
               <strong>{r.name}</strong>
               <span class="muted">
                 {#if r.exercises.length}
-                  {r.focus ? `${r.focus} · ` : ''}{r.exercises.length} ejercicios · ≈ {minutes(r)} min
+                  {r.focus ? `${r.focus} · ` : ''}{r.exercises.length} ejercicios · ≈ {estimateMinutes(r.exercises)} min
                 {:else}
                   Sin ejercicios todavía
                 {/if}

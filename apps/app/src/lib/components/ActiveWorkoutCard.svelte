@@ -2,9 +2,8 @@
   import { onMount } from 'svelte';
   import { getActiveWorkoutId, loadSnapshot, type WorkoutSnapshot } from '#lib/offline/workout-session';
   import { cancelWorkoutById } from '#lib/offline/start-workout';
-  import { scale } from 'svelte/transition';
-  import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
+  import OverflowMenu from './OverflowMenu.svelte';
 
   /** The workout under way on this device, if any: what it is, how long it has run, and how to continue or drop it. */
   let { oncancelled }: { oncancelled?: () => void } = $props();
@@ -12,7 +11,6 @@
   let snap = $state<WorkoutSnapshot | null>(null);
   let now = $state(Date.now());
   let busy = $state(false);
-  let menu = $state(false);
 
   onMount(() => {
     void (async () => {
@@ -36,7 +34,6 @@
   });
 
   async function cancel() {
-    menu = false;
     if (!snap || !confirm(`¿Cancelar "${snap.dayName}"? Se borra todo lo registrado en él.`)) return;
     busy = true;
     await cancelWorkoutById(snap.workoutId);
@@ -59,18 +56,9 @@
         <Icon name="right" size={20} />
       </span>
       <span class="bar" aria-hidden="true"><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></span>
-      <span class="muted meta">{done} de {total} series · toca para continuar</span>
+      <span class="muted meta">{done} de {total} series</span>
     </a>
-    <button type="button" class="more" aria-label="Más opciones" aria-expanded={menu} onclick={() => (menu = !menu)}>
-      <Icon name="more" size={20} />
-    </button>
-    {#if menu}
-      <div class="menu" role="menu" transition:scale={{ start: 0.95, duration: 150, easing: cubicOut }}>
-        <button type="button" role="menuitem" class="danger-item" disabled={busy} onclick={cancel}>
-          <Icon name="trash" size={18} /> Cancelar entrenamiento
-        </button>
-      </div>
-    {/if}
+    <div class="more"><OverflowMenu items={[{ label: 'Cancelar entrenamiento', icon: 'trash', danger: true, disabled: busy, onselect: cancel }]} /></div>
   </div>
 {/if}
 
@@ -157,36 +145,5 @@
     position: absolute;
     top: 0.45rem;
     right: 0.45rem;
-    width: 40px;
-    min-height: 40px;
-    padding: 0;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: none;
-    box-shadow: none;
-    color: var(--muted);
-  }
-  .menu {
-    position: absolute;
-    z-index: 20;
-    top: 2.9rem;
-    right: 0.45rem;
-    padding: 0.3rem;
-    border-radius: var(--radius);
-    background: var(--surface-hi);
-    box-shadow: var(--shadow-pop);
-    transform-origin: top right;
-  }
-  .danger-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 44px;
-    padding: 0 0.75rem;
-    background: none;
-    box-shadow: none;
-    color: var(--danger);
-    white-space: nowrap;
   }
 </style>

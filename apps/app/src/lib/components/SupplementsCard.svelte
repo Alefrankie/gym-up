@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { SupplementListResponse } from '@gym-up/contracts';
   import { NetworkError } from '#lib/api/errors';
+  import { shortDay } from '#lib/dates';
   import { loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
   import Icon from './Icon.svelte';
 
@@ -33,9 +34,11 @@
 {#if list && list.items.length}
   <section class="supps" aria-label="Suplementos de hoy">
     <header>
-      <h2>Suplementos</h2>
-      <span class="muted count">{done}/{list.items.length} hoy</span>
-      <a class="manage" href="/supplements" aria-label="Gestionar suplementos"><Icon name="sliders" size={18} /></a>
+      <div class="title">
+        <h2>Suplementos</h2>
+        <span class="muted count">Hoy, {shortDay(list.day)} · {done} de {list.items.length} tomados</span>
+      </div>
+      <a class="manage" href="/supplements">Historial <Icon name="right" size={16} /></a>
     </header>
     <div class="chips">
       {#each list.items as s (s.id)}
@@ -67,14 +70,19 @@
   .count {
     font-size: var(--t-sm);
   }
+  .title {
+    display: grid;
+    gap: 0.1rem;
+  }
   .manage {
     margin-left: auto;
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    min-height: 40px;
+    font-size: var(--t-sm);
+    font-weight: 600;
+    text-decoration: none;
   }
   .chips {
     display: flex;

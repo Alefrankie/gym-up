@@ -2,13 +2,18 @@
   import { page } from '$app/state';
   import { muscleLoad } from '#lib/muscle-load';
   import { useWorkoutView } from '#lib/offline/workout-context';
+  import { sessionSummary } from '#lib/workout-math';
   import ExerciseRow from '#lib/components/ExerciseRow.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import OverflowMenu from '#lib/components/OverflowMenu.svelte';
+  import SaveBar from '#lib/components/SaveBar.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
 
   const view = useWorkoutView();
   const id = $derived(page.params.id ?? '');
   const exercises = $derived(view.snap?.exercises ?? []);
+  const done = $derived(exercises.reduce((n, e) => n + view.progress(e).done, 0));
+  const total = $derived(exercises.reduce((n, e) => n + view.progress(e).total, 0));
 
   async function cancel() {
     if (!confirm('¿Cancelar este entrenamiento? Se borra todo lo que hayas registrado en él.')) return;
@@ -17,112 +22,134 @@
 </script>
 
 <header class="bar">
-  <a class="back round" href="/dashboard" aria-label="Volver al inicio"><Icon name="left" size={20} /></a>
-  <h1>{view.snap?.dayName ?? 'Entrenamiento'}</h1>
-  {#if view.elapsed}
-    <span class="elapsed" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={14} />{view.elapsed}</span>
-  {:else}
-    <span></span>
+  <a class="round" href="/dashboard" aria-label="Volver al inicio"><Icon name="left" size={20} /></a>
+  {#if !view.isCompleted}
+    <OverflowMenu items={[{ label: 'Cancelar entrenamiento', icon: 'trash', danger: true, disabled: view.cancelling || view.finishing, onselect: cancel }]} />
   {/if}
 </header>
 
+<section class="head">
+  <div class="status">
+    {#if view.isCompleted}
+      <span class="done-label"><Icon name="check" size={14} /> Completado</span>
+    {:else}
+      <span class="live"><span class="dot"></span>En curso</span>
+    {/if}
+    {#if view.elapsed}<span class="time" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={14} />{view.elapsed}</span>{/if}
+  </div>
+  <h1>{view.snap?.dayName ?? 'Entrenamiento'}</h1>
+  {#if exercises.length}<p class="meta">{sessionSummary(exercises)}</p>{/if}
+  <div class="progress" aria-label={`${done} de ${total} series hechas`}><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></div>
+  <span class="muted count">{done} de {total} series hechas</span>
+</section>
+
 <TargetMuscles muscles={muscleLoad(exercises)} />
 
-<h2>{exercises.length} {exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</h2>
+<h2>Ejercicios</h2>
 <ul class="rows">
   {#each exercises as ex (ex.exerciseId)}
     <li><ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.progress(ex)} sets={view.doneSets(ex)} /></li>
   {/each}
 </ul>
 
-{#if view.isCompleted}
-  <p class="ok"><Icon name="check" size={16} /> Entrenamiento completado</p>
-{:else}
-  <button class="danger cancel" disabled={view.cancelling || view.finishing} onclick={cancel}>
-    <Icon name="trash" size={16} /> Cancelar entrenamiento
-  </button>
-  <div class="cta">
-    <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => view.finish()}>
-      {view.finishing ? 'Finalizando…' : 'Finalizar entrenamiento'}
-    </button>
-  </div>
+{#if !view.isCompleted}
+  <SaveBar dirty={false} saved={false} onsave={() => {}}>
+    {#snippet idle()}
+      <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => view.finish()}>
+        <Icon name="check" size={18} /> {view.finishing ? 'Terminando…' : 'Terminar entrenamiento'}
+      </button>
+    {/snippet}
+  </SaveBar>
 {/if}
 
 <style>
   .bar {
-    display: grid;
-    grid-template-columns: 40px 1fr auto;
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin: 0.25rem 0 1rem;
-  }
-  .bar h1 {
-    margin: 0;
-    font-size: var(--t-md);
-    font-weight: 600;
-    text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    justify-content: space-between;
+    margin: 0.25rem 0 0.5rem;
   }
   .round {
     display: grid;
     place-items: center;
     width: 40px;
     height: 40px;
-    padding: 0;
     border-radius: 50%;
     background: var(--surface);
     box-shadow: var(--shadow-card);
     color: var(--text);
   }
-  .elapsed {
-    display: inline-flex;
+  .head {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+  }
+  .status {
+    display: flex;
     align-items: center;
-    gap: 0.25rem;
-    min-height: 28px;
-    padding: 0 0.6rem;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    color: var(--accent-hi);
+    gap: 0.75rem;
     font-size: var(--t-sm);
     font-weight: 600;
   }
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--accent-hi);
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  .done-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--ok);
+  }
+  .time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-variant-numeric: tabular-nums;
+  }
+  h1 {
+    margin: 0;
+  }
+  .meta {
+    margin: 0;
+    font-size: var(--t-sm);
+    font-weight: 500;
+  }
+  .progress {
+    height: 4px;
+    margin-top: 0.4rem;
+    border-radius: 2px;
+    background: var(--raised);
+    overflow: hidden;
+  }
+  .progress span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition: width 300ms var(--ease);
+  }
+  .count {
+    font-size: var(--t-xs);
+  }
   .rows {
     list-style: none;
-    margin: 0 0 1rem;
+    margin: 0 0 6rem;
     padding: 0;
     display: grid;
-    gap: 0.5rem;
-  }
-  .cancel {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    width: 100%;
-    margin-bottom: 1rem;
-    font-size: var(--t-sm);
-  }
-  .ok {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: var(--t-sm);
-  }
-  .cta {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, transparent, var(--bg) 45%);
-    pointer-events: none;
-  }
-  .cta button {
-    display: block;
-    max-width: 22rem;
-    margin: 0 auto;
-    pointer-events: auto;
+    gap: 0.25rem;
   }
 </style>
