@@ -18,6 +18,21 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   InvalidRoutineDayError: 400,
   EmailAlreadyRegisteredError: 409,
   InvalidCredentialsError: 401,
+  NutritionEntryOwnershipError: 403,
+  InvalidPhotoError: 400,
+  AIUnrecognizedFoodError: 422,
+  AITimeoutError: 504,
+  MissingApiKeyError: 503,
+  InvalidCalorieGoalError: 400,
+  PhotoSizeExceededError: 413,
+  UnsupportedPhotoFormatError: 415,
+  CaptionTooLongError: 400,
+  EmptyPhotoBytesError: 400,
+  PhotoNotFoundError: 404,
+  DisplayNameRequiredError: 400,
+  DisplayNameTooLongError: 400,
+  InvalidRoutineTypeError: 400,
+  InvalidWeightUnitError: 400,
 };
 
 const ERROR_LABEL: Record<number, string> = {
@@ -26,7 +41,12 @@ const ERROR_LABEL: Record<number, string> = {
   403: 'Forbidden',
   404: 'Not Found',
   409: 'Conflict',
+  413: 'Payload Too Large',
+  415: 'Unsupported Media Type',
+  422: 'Unprocessable Entity',
   429: 'Too Many Requests',
+  503: 'Service Unavailable',
+  504: 'Gateway Timeout',
   500: 'Internal Server Error',
 };
 
@@ -53,6 +73,17 @@ export class DomainExceptionFilter implements ExceptionFilter {
     const status = STATUS_BY_ERROR_NAME[name];
     if (status && exception instanceof Error) {
       res.status(status).json({ statusCode: status, message: exception.message, error: ERROR_LABEL[status] });
+      return;
+    }
+
+    // Errors raised by Express middleware (for example body-parser's 413) carry their own HTTP status.
+    const middlewareStatus = (exception as { status?: unknown } | null)?.status;
+    if (typeof middlewareStatus === 'number' && middlewareStatus >= 400 && middlewareStatus < 500) {
+      res.status(middlewareStatus).json({
+        statusCode: middlewareStatus,
+        message: exception instanceof Error ? exception.message : 'Bad request',
+        error: ERROR_LABEL[middlewareStatus],
+      });
       return;
     }
 

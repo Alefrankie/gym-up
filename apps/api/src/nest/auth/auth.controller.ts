@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Headers,
   Inject,
   Optional,
@@ -14,14 +15,17 @@ import {
   loginRequestSchema,
   registerRequestSchema,
   type LoginRequest,
+  updateProfileRequestSchema,
   type RegisterRequest,
+  type UpdateProfileRequest,
   type SessionResponse,
   type UserDto,
 } from '@gym-up/contracts';
 import type { AuthService, Session, User } from '@/lib/contexts/auth/auth.types';
 import { AuthGuard, BearerToken, CurrentUser } from '../common/auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { toUserDto } from '../mappers';
+import { UpdateProfileUseCase } from '@/lib/contexts/workout-tracking/application/update-profile.use-case';
+import { profileToUserDto, toUserDto } from '../mappers';
 import { AUTH_SERVICE, RATE_LIMITER, type RateLimiter } from '../tokens';
 
 function toSessionResponse(s: Session): SessionResponse {
@@ -32,6 +36,7 @@ function toSessionResponse(s: Session): SessionResponse {
 export class AuthController {
   constructor(
     @Inject(AUTH_SERVICE) private readonly auth: AuthService,
+    @Inject(UpdateProfileUseCase) private readonly updateProfile: UpdateProfileUseCase,
     @Optional() @Inject(RATE_LIMITER) private readonly limiter?: RateLimiter,
   ) {}
 
@@ -72,5 +77,15 @@ export class AuthController {
   @UseGuards(AuthGuard)
   me(@CurrentUser() user: User): UserDto {
     return toUserDto(user);
+  }
+
+  /** Settings: display name, weight unit and routine type. */
+  @Patch('me')
+  @UseGuards(AuthGuard)
+  async updateMe(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(updateProfileRequestSchema)) body: UpdateProfileRequest,
+  ): Promise<UserDto> {
+    return profileToUserDto(await this.updateProfile.execute({ userId: user.id, ...body }));
   }
 }

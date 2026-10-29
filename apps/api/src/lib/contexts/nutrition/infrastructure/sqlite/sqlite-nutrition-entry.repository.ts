@@ -5,12 +5,10 @@
 // Per ADR-007 + ADR-011: implements, not extends.
 // Per ADR-012: consumes the Drizzle `db` instance.
 //
-// Storage (Round 1): local filesystem at `./uploads/nutrition/{userId}/{timestampMs}.{ext}`.
-// Round 6 swaps to Supabase Storage; the abstract contract stays the same.
+// Metadata only (ADR-027): the row holds the object key of the meal photo in `storagePath`; the bytes live in
+// the object store (`PhotoStorage`). Nothing here touches a filesystem, so the class runs inside a Worker.
 
 import { desc, eq, and, gte, lt } from 'drizzle-orm';
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
 import type { Db } from '@/lib/db/client';
 import {
   nutritionEntries,
@@ -22,21 +20,8 @@ import {
 } from '@/lib/contexts/nutrition/domain/nutrition-entry-repository';
 import type { NutritionEntryCreateDTO } from '@/lib/contexts/nutrition/domain/nutrition.types';
 
-const DEFAULT_UPLOADS_ROOT = resolve(process.cwd(), 'uploads', 'nutrition');
-
 export class SqliteNutritionEntryRepository {
-  private readonly uploadsRoot: string;
-
-  constructor(
-    private readonly db: Db,
-    options: { uploadsRoot?: string } = {},
-  ) {
-    this.uploadsRoot = options.uploadsRoot ?? DEFAULT_UPLOADS_ROOT;
-  }
-
-  private absolutePathFor(storagePath: string): string {
-    return join(this.uploadsRoot, storagePath);
-  }
+  constructor(private readonly db: Db) {}
 
   async findById(
     id: string,
@@ -91,20 +76,10 @@ export class SqliteNutritionEntryRepository {
       throw new NutritionEntryOwnershipError('(unsaved)', currentUserId);
     }
 
-    const id = crypto.randomUUID();
+    const id = input.id ?? crypto.randomUUID();
     const storagePath = input.storagePath;
     const photoDateMs = input.photoDate;
     const createdAt = input.createdAt ?? new Date(Math.floor(Date.now() / 1000) * 1000);
-
-    // Write bytes to disk first. On failure, the caller must clean up.
-    // We do NOT write a placeholder — the use case writes real bytes
-    // before calling create, so the file already exists on disk.
-    const absolutePath = this.absolutePathFor(storagePath);
-    mkdirSync(dirname(absolutePath), { recursive: true });
-    if (!existsSync(absolutePath)) {
-      // Placeholder for tests that call create without pre-writing bytes
-      writeFileSync(absolutePath, '');
-    }
 
     const rows = await this.db
       .insert(nutritionEntries)
@@ -133,11 +108,7 @@ export class SqliteNutritionEntryRepository {
     const entry = await this.findById(id, currentUserId);
     if (!entry) return;
 
-    // Remove file from disk
-    const absolutePath = this.absolutePathFor(entry.storagePath);
-    if (existsSync(absolutePath)) {
-      unlinkSync(absolutePath);
-    }
+    // The object is removed by the caller through PhotoStorage.
 
     // Remove DB row
     await this.db

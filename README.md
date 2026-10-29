@@ -20,6 +20,7 @@ pnpm typecheck   # all packages
 pnpm test        # all packages
 pnpm build       # all packages
 pnpm --filter @gym-up/app dev
+pnpm --filter @gym-up/app android:debug   # debug APK on the connected Android phone
 ```
 
 ## Notes

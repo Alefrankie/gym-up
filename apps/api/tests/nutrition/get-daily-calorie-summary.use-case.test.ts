@@ -31,7 +31,7 @@ describe('GetDailyCalorieSummaryUseCase', () => {
     const [u] = await handle.db.insert(profiles).values({ email: 'user-1@test.com', passwordHash: 'h', displayName: 'U1', routineType: 'hombre', weightUnit: 'kg' }).returning();
     userId = u.id;
     mkdirSync(TEST_UPLOADS, { recursive: true });
-    entryRepo = new SqliteNutritionEntryRepository(handle.db, { uploadsRoot: TEST_UPLOADS });
+    entryRepo = new SqliteNutritionEntryRepository(handle.db);
     goalRepo = new SqliteNutritionGoalRepository(handle.db);
     useCase = new GetDailyCalorieSummaryUseCase(entryRepo, goalRepo);
   });

@@ -135,6 +135,8 @@ export interface NutritionGoal {
  * Input for creating a nutrition entry (SaveNutritionEntryUseCase).
  */
 export interface NutritionEntryCreateDTO {
+  /** Client-generated id (ADR-025). Optional: the repository generates one when absent. */
+  id?: string;
   userId: string;
   storagePath: string;
   photoDate: number; // timestamp_ms

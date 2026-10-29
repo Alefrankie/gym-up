@@ -34,8 +34,11 @@ export const sessionResponseSchema = z.object({
 });
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 
-export const updateProfileRequestSchema = z.object({
-  displayName: z.string().trim().min(1).max(80).optional(),
-  weightUnit: weightUnitSchema.optional(),
-});
+export const updateProfileRequestSchema = z
+  .object({
+    displayName: z.string().trim().min(1).max(80).optional(),
+    weightUnit: weightUnitSchema.optional(),
+    routineType: routineTypeSchema.optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;

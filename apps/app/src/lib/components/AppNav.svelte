@@ -1,18 +1,19 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { session } from '#lib/session';
 
   const links = [
-    { href: '/dashboard', label: 'Inicio' },
-    { href: '/history', label: 'Historial' },
+    { href: '/dashboard', label: 'Inicio', match: ['/dashboard', '/workout'] },
+    { href: '/progress', label: 'Progreso', match: ['/progress'] },
+    { href: '/nutrition', label: 'Comida', match: ['/nutrition'] },
+    { href: '/family', label: 'Familia', match: ['/family'] },
+    { href: '/more', label: 'Más', match: ['/more', '/history', '/photos', '/settings'] },
   ];
 </script>
 
 <nav>
   {#each links as link}
-    <a href={link.href} class:active={page.url.pathname.startsWith(link.href)}>{link.label}</a>
+    <a href={link.href} class:active={link.match.some((m) => page.url.pathname.startsWith(m))}>{link.label}</a>
   {/each}
-  <button type="button" onclick={() => session.signOut()}>Salir</button>
 </nav>
 
 <style>
@@ -25,8 +26,7 @@
     background: var(--surface);
     border-top: 1px solid #334155;
   }
-  a,
-  button {
+  a {
     flex: 1;
     text-align: center;
     padding: 0.75rem 0;
