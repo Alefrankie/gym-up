@@ -66,7 +66,7 @@
     <legend class="muted">Músculos secundarios</legend>
     <div class="chips">
       {#each MUSCLE_GROUPS.filter((m) => m !== primaryMuscle) as m}
-        <button type="button" class="chip" class:on={secondary.includes(m)} onclick={() => toggleSecondary(m)}>
+        <button type="button" class="chip" class:on={secondary.includes(m)} aria-pressed={secondary.includes(m)} onclick={() => toggleSecondary(m)}>
           {MUSCLE_LABELS[m]}
         </button>
       {/each}
@@ -96,28 +96,19 @@
     padding: 0;
     margin: 0;
   }
+  legend {
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
   .chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-top: 0.4rem;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
   }
-  .chip {
-    padding: 0.35rem 0.7rem;
-    border-radius: 1rem;
-    font-size: 0.9rem;
-  }
-  .chip.on {
-    background: var(--accent);
-    color: #052e16;
-    border-color: var(--accent);
-  }
-  textarea {
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid #334155;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
+  .chips .chip {
+    cursor: pointer;
+    font-weight: 500;
   }
 </style>

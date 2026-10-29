@@ -6,6 +6,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
+  import Icon from '#lib/components/Icon.svelte';
   import ExerciseForm, { type ExerciseFormValue } from '#lib/components/ExerciseForm.svelte';
 
   const id = $derived(page.params.id ?? '');
@@ -57,7 +58,7 @@
 </script>
 
 <main>
-  <p class="muted"><a href={`/library/${id}`}>← Ejercicio</a></p>
+  <p><a class="back" href={`/library/${id}`}><Icon name="left" size={18} /> Ejercicio</a></p>
   <h1>Editar ejercicio</h1>
   {#if exercise}
     <ExerciseForm initial={exercise} {busy} {error} submitLabel="Guardar cambios" onsubmit={submit} />

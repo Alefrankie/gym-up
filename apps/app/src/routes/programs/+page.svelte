@@ -6,6 +6,7 @@
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
+  import Icon from '#lib/components/Icon.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
 
   let data = $state<ProgramListResponse | null>(null);
@@ -84,6 +85,9 @@
     [`${p.routineCount} rutinas`, p.level && (level[p.level] ?? p.level), p.goal && (goal[p.goal] ?? p.goal)]
       .filter(Boolean)
       .join(' · ');
+
+  const active = $derived(data?.mine.find((p) => p.id === data?.activeProgramId) ?? null);
+  const others = $derived(data?.mine.filter((p) => p.id !== data?.activeProgramId) ?? []);
 </script>
 
 <main>
@@ -91,24 +95,35 @@
   <SyncBanner />
   {#if stale}<p class="muted">Sin conexión: mostrando los últimos programas descargados.</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-  <p><a href="/library">Biblioteca de ejercicios</a></p>
 
   {#if !data && !error}
     <p class="muted">Cargando…</p>
   {:else if data}
-    <h2>Mis programas</h2>
-    {#if data.mine.length === 0}
-      <p class="muted">Aún no tienes programas propios. Adopta una plantilla o crea uno desde cero.</p>
-    {:else}
+    {#if active}
+      <a class="card hero current" href={`/programs/${active.id}`}>
+        <span class="badge">Programa activo</span>
+        <span class="name">{active.name}</span>
+        <span class="muted">{sub(active)}</span>
+        <span class="open">Ver y editar <Icon name="right" size={18} /></span>
+      </a>
+    {/if}
+
+    <a class="library" href="/library">
+      <Icon name="book" size={22} />
+      <span class="grow"><strong>Biblioteca de ejercicios</strong><span class="muted">Músculos, equipo y cómo se hace</span></span>
+      <Icon name="right" size={20} />
+    </a>
+
+    {#if others.length}
+      <h2>Mis programas</h2>
       <ul class="list">
-        {#each data.mine as p (p.id)}
-          <li class="row">
+        {#each others as p (p.id)}
+          <li>
             <a href={`/programs/${p.id}`}>
-              <strong>{p.name}{p.id === data.activeProgramId ? ' · activo' : ''}</strong>
-              <span class="muted">{sub(p)}</span>
+              <span class="grow"><strong>{p.name}</strong><span class="muted">{sub(p)}</span></span>
             </a>
-            {#if p.id !== data.activeProgramId && p.routineCount > 0}
-              <button disabled={busy} onclick={() => activate(p)}>Activar</button>
+            {#if p.routineCount > 0}
+              <button class="side" disabled={busy} onclick={() => activate(p)}>Activar</button>
             {/if}
           </li>
         {/each}
@@ -116,19 +131,19 @@
     {/if}
 
     <form class="new" onsubmit={create}>
-      <input required maxlength="60" placeholder="Nombre del nuevo programa" bind:value={newName} />
-      <button disabled={busy}>Crear</button>
+      <input required maxlength="60" placeholder="Nombre del nuevo programa" aria-label="Nombre del nuevo programa" bind:value={newName} />
+      <button disabled={busy}><Icon name="plus" size={18} /> Crear</button>
     </form>
 
     <h2>Plantillas</h2>
     <ul class="list">
       {#each data.templates as p (p.id)}
-        <li class="row">
+        <li>
           <a href={`/programs/${p.id}`}>
-            <strong>{p.name}</strong>
-            <span class="muted">{sub(p)}</span>
+            <Icon name="dumbbell" size={22} />
+            <span class="grow"><strong>{p.name}</strong><span class="muted">{sub(p)}</span></span>
           </a>
-          <button disabled={busy} onclick={() => adopt(p)}>Usar</button>
+          <button class="side" disabled={busy} onclick={() => adopt(p)}>Usar</button>
         </li>
       {/each}
     </ul>
@@ -138,16 +153,50 @@
 <AppNav />
 
 <style>
-  .row {
-    align-items: stretch;
+  .current {
+    display: grid;
+    gap: 0.35rem;
+    justify-items: start;
+    text-decoration: none;
+    color: var(--text);
   }
-  .row a {
+  .name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2rem;
+    line-height: 1.05;
+  }
+  .open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-top: 0.4rem;
+    color: var(--accent-hi);
+    font-weight: 600;
+  }
+  .library {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.8rem 0.9rem;
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    box-shadow: var(--shadow-card);
+    color: var(--text);
+    text-decoration: none;
+  }
+  .library .grow {
     flex: 1;
+    display: grid;
+  }
+  .side {
+    min-width: 4.6rem;
+    padding: 0 0.9rem;
   }
   .new {
     display: flex;
     gap: 0.5rem;
-    margin: 0 0 1.25rem;
+    margin: 1.2rem 0 0;
   }
   .new input {
     flex: 1;

@@ -5,6 +5,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
+  import Icon from '#lib/components/Icon.svelte';
   import ExerciseForm, { type ExerciseFormValue } from '#lib/components/ExerciseForm.svelte';
 
   let busy = $state(false);
@@ -35,7 +36,7 @@
 </script>
 
 <main>
-  <p class="muted"><a href="/library">← Biblioteca</a></p>
+  <p><a class="back" href="/library"><Icon name="left" size={18} /> Biblioteca</a></p>
   <h1>Nuevo ejercicio</h1>
   <ExerciseForm {busy} {error} submitLabel="Guardar ejercicio" onsubmit={submit} />
 </main>

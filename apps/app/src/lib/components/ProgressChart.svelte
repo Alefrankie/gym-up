@@ -15,20 +15,50 @@
   let canvas: HTMLCanvasElement | undefined = $state();
   let chart: Chart | undefined;
 
+  const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
   // Chart.js is used directly (ADR-027, replacing the React island of ADR-002): create once, then update in place.
   $effect(() => {
     if (!canvas) return;
     if (!chart) {
+      const accent = css('--accent');
+      const muted = css('--muted');
+      const line = css('--line');
       chart = new Chart(canvas, {
         type: 'line',
-        data: { labels: [...labels], datasets: [{ label, data: [...values], borderColor: '#22c55e', backgroundColor: '#22c55e33', fill: true, tension: 0.25, pointRadius: 3 }] },
+        data: {
+          labels: [...labels],
+          datasets: [
+            {
+              label,
+              data: [...values],
+              borderColor: accent,
+              borderWidth: 3,
+              backgroundColor: (ctx) => {
+                const area = ctx.chart.chartArea;
+                if (!area) return 'rgb(255 106 43 / 0.2)';
+                const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+                g.addColorStop(0, 'rgb(255 106 43 / 0.38)');
+                g.addColorStop(1, 'rgb(255 106 43 / 0)');
+                return g;
+              },
+              fill: true,
+              tension: 0.35,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: accent,
+              pointBorderColor: css('--surface'),
+              pointBorderWidth: 2,
+            },
+          ],
+        },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#94a3b8', maxTicksLimit: 6 }, grid: { color: '#1e293b' } },
-            y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, beginAtZero: true },
+            x: { ticks: { color: muted, maxTicksLimit: 6 }, grid: { display: false }, border: { display: false } },
+            y: { ticks: { color: muted }, grid: { color: line }, border: { display: false }, beginAtZero: true },
           },
         },
       });

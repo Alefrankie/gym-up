@@ -8,6 +8,9 @@
   import { sync } from '#lib/offline/sync.svelte';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
+  import { muscle } from '#lib/labels';
+  import Icon from '#lib/components/Icon.svelte';
+  import MuscleFigure from '#lib/components/MuscleFigure.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
 
   let today = $state<TodayWorkoutResponse | null>(null);
@@ -62,6 +65,9 @@
       busy = false;
     }
   }
+  const disp = (kg: number, u: 'kg' | 'lbs') => (u === 'lbs' ? Math.round(kg * 2.20462 * 10) / 10 : kg);
+  /** Distinct muscles the routine works, in order of appearance. */
+  const muscles = (t: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>) => [...new Set(t.exercises.map((e) => e.muscleGroup))].slice(0, 4);
 </script>
 
 <main>
@@ -73,45 +79,140 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if !today && !error}
-    <p class="muted">Cargando…</p>
+    <section class="card hero skeleton" aria-busy="true"><span class="muted">Cargando tu rutina…</span></section>
   {:else if today?.kind === 'no_routine'}
-    <p>Aún no tienes una rutina asignada.</p>
+    <section class="card hero">
+      <h2>Aún no tienes un programa</h2>
+      <p class="muted">Elige una plantilla o crea el tuyo y aquí verás qué toca hoy.</p>
+      <a class="cta" href="/programs">Ver programas <Icon name="right" size={18} /></a>
+    </section>
   {:else if today?.kind === 'rest_day'}
-    <h2>Hoy es día de descanso</h2>
-    <p class="muted">Tus días de rutina:</p>
-    <ul class="list">
-      {#each today.dayOptions as day}
-        <li><strong>{day.dayName}</strong> <span class="muted">{day.focus}</span></li>
-      {/each}
-    </ul>
-  {:else if today?.kind === 'workout_day'}
-    {@const t = today}
-    <section class="card">
-      {#if t.programName}<p class="muted">{t.programName}</p>{/if}
-      <h2>{t.routineDay.dayName}</h2>
-      <p class="muted">{t.routineDay.focus}</p>
+    <section class="card hero">
+      <h2>Hoy es día de descanso</h2>
+      <p class="muted">Tus rutinas:</p>
       <ul class="list">
-        {#each t.exercises as ex}
-          <li>
-            <strong>{ex.exerciseName}</strong>
-            <span class="muted">
-              {ex.targetSets} x {ex.targetRepsMin !== undefined && ex.targetRepsMax !== undefined && ex.targetRepsMin !== ex.targetRepsMax
-                ? `${ex.targetRepsMin}-${ex.targetRepsMax}`
-                : ex.targetReps}
-            </span>
-          </li>
+        {#each today.dayOptions as day}
+          <li><div class="row-body"><span class="grow"><strong>{day.dayName}</strong><span class="muted">{day.focus}</span></span></div></li>
         {/each}
       </ul>
-      {#if t.workoutStatus === 'completed' && !activeWorkoutId}
-        <p class="ok">Entrenamiento completado hoy</p>
+    </section>
+  {:else if today?.kind === 'workout_day'}
+    {@const t = today}
+    {@const done = t.workoutStatus === 'completed' && !activeWorkoutId}
+    <section class="card hero today">
+      <div class="top">
+        {#if t.programName}<span class="badge">{t.programName}</span>{/if}
+        <span class="muted">Rutina {t.dayNumber}</span>
+      </div>
+      <h2 class="name">{t.routineDay.dayName}</h2>
+      <p class="muted focus">{t.routineDay.focus}</p>
+      <div class="figs">
+        {#each muscles(t) as m}
+          <span class="fig"><MuscleFigure primary={m} size={34} /><span>{muscle(m)}</span></span>
+        {/each}
+      </div>
+      {#if done}
+        <p class="ok done"><Icon name="check" size={20} /> Entrenamiento completado hoy</p>
       {:else}
-        <button class="primary" disabled={busy} onclick={() => start(t)}>
+        <button class="primary go" disabled={busy} onclick={() => start(t)}>
+          <Icon name="bolt" size={22} />
           {t.workoutStatus === 'in_progress' || activeWorkoutId ? 'Continuar entrenamiento' : 'Empezar entrenamiento'}
         </button>
       {/if}
     </section>
+
+    <h2>Lo que toca</h2>
+    <ul class="list">
+      {#each t.exercises as ex (ex.id)}
+        <li>
+          <div class="row-body">
+            <MuscleFigure primary={ex.muscleGroup} size={24} />
+            <span class="grow">
+              <strong>{ex.exerciseName}</strong>
+              <span class="muted">
+                {ex.targetSets} × {ex.targetReps}
+              </span>
+            </span>
+            {#if ex.last}
+              <span class="last" title="La última vez">
+                <small>Última vez</small>
+                <b>{disp(ex.last.weight, t.weightUnit)} {t.weightUnit} × {ex.last.reps}</b>
+              </span>
+            {/if}
+          </div>
+        </li>
+      {/each}
+    </ul>
   {/if}
-  <p class="muted"><a href="/history">Ver historial de entrenamientos</a></p>
 </main>
 
 <AppNav />
+
+<style>
+  .today .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .name {
+    font-size: 2.6rem;
+    margin: 0.6rem 0 0.1rem;
+  }
+  .focus {
+    margin: 0 0 1rem;
+  }
+  .figs {
+    display: flex;
+    gap: 0.9rem;
+    margin-bottom: 1.1rem;
+  }
+  .fig {
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .go {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0;
+    min-height: 56px;
+  }
+  .done {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+  }
+  .last {
+    display: grid;
+    justify-items: end;
+    text-align: right;
+  }
+  .last small {
+    color: var(--muted);
+    font-size: 0.7rem;
+  }
+  .last b {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--ember);
+    white-space: nowrap;
+  }
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 700;
+  }
+  .skeleton {
+    min-height: 12rem;
+    display: grid;
+    place-items: center;
+  }
+</style>

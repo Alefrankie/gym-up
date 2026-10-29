@@ -7,6 +7,8 @@
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
   import { TYPE_LABELS, equipment, muscle } from '#lib/labels';
   import { session } from '#lib/session';
+  import Icon from '#lib/components/Icon.svelte';
+  import MuscleFigure from '#lib/components/MuscleFigure.svelte';
 
   const id = $derived(page.params.id ?? '');
   let exercise = $state<LibraryExerciseDto | null>(null);
@@ -28,7 +30,12 @@
   });
 
   const mine = $derived(exercise?.isCustom && exercise.ownerId === session.user?.id);
-  const steps = $derived((exercise?.instructions ?? '').split('\n').filter(Boolean));
+  const steps = $derived(
+    (exercise?.instructions ?? '')
+      .split('\n')
+      .map((s) => s.replace(/^\d+\.\s*/, '').trim())
+      .filter(Boolean),
+  );
 
   async function archive() {
     if (!confirm('¿Archivar este ejercicio? Seguirá apareciendo en tus entrenamientos anteriores.')) return;
@@ -45,33 +52,52 @@
 </script>
 
 <main>
-  <p class="muted"><a href="/library">← Biblioteca</a></p>
+  <p><a class="back" href="/library"><Icon name="left" size={18} /> Biblioteca</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if exercise}
     <h1>{exercise.name}</h1>
     {#if exercise.isArchived}<p class="muted">Archivado</p>{/if}
-    <section class="card">
-      <p><strong>Músculo principal:</strong> {muscle(exercise.primaryMuscle)}</p>
-      {#if exercise.secondaryMuscles.length}
-        <p><strong>Secundarios:</strong> {exercise.secondaryMuscles.map(muscle).join(', ')}</p>
-      {/if}
-      <p><strong>Equipo:</strong> {equipment(exercise.equipment)}</p>
-      <p><strong>Tipo:</strong> {TYPE_LABELS[exercise.exerciseType] ?? exercise.exerciseType}</p>
+
+    <section class="card hero figure">
+      <MuscleFigure
+        primary={exercise.primaryMuscle}
+        secondary={exercise.secondaryMuscles}
+        view="both"
+        size={96}
+        label={`Músculos trabajados: ${muscle(exercise.primaryMuscle)}`}
+      />
+      <dl>
+        <dt>Principal</dt>
+        <dd class="main">{muscle(exercise.primaryMuscle)}</dd>
+        {#if exercise.secondaryMuscles.length}
+          <dt>Secundarios</dt>
+          <dd>{exercise.secondaryMuscles.map(muscle).join(', ')}</dd>
+        {/if}
+        <dt>Equipo</dt>
+        <dd>{equipment(exercise.equipment)}</dd>
+        <dt>Registro</dt>
+        <dd>{TYPE_LABELS[exercise.exerciseType] ?? exercise.exerciseType}</dd>
+      </dl>
     </section>
+
     {#if steps.length}
-      <section class="card">
-        <h2>Cómo se hace</h2>
-        <ul class="steps">
-          {#each steps as s}<li>{s}</li>{/each}
-        </ul>
-      </section>
+      <h2>Cómo se hace</h2>
+      <ol class="steps">
+        {#each steps as s, i}
+          <li><span class="n">{i + 1}</span><span>{s}</span></li>
+        {/each}
+      </ol>
     {/if}
+
     {#if exercise.videoUrl}
       <p><a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">Ver vídeo</a></p>
     {/if}
+
     {#if mine && !exercise.isArchived}
-      <p><a href={`/library/${id}/edit`}>Editar ejercicio</a></p>
-      <button class="danger" disabled={busy} onclick={archive}>Archivar ejercicio</button>
+      <div class="actions">
+        <a class="edit" href={`/library/${id}/edit`}><Icon name="edit" size={18} /> Editar</a>
+        <button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={18} /> Archivar</button>
+      </div>
     {/if}
   {:else if !error}
     <p class="muted">Cargando…</p>
@@ -79,15 +105,81 @@
 </main>
 
 <style>
-  .steps {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 0.5rem;
+  .figure {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
-  .danger {
-    color: var(--danger);
-    border-color: var(--danger);
+  dl {
+    margin: 0;
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+  dt {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-top: 0.45rem;
+  }
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+  dd.main {
+    color: var(--accent-hi);
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .steps {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+  }
+  .steps li {
+    display: flex;
+    gap: 0.8rem;
+    align-items: flex-start;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+    box-shadow: var(--shadow-card);
+  }
+  .n {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-hi);
+    font-family: var(--font-display);
+    font-weight: 800;
+  }
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .actions > * {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+  .edit {
+    min-height: 48px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(180deg, var(--raised), var(--surface-hi));
+    box-shadow: var(--shadow-card);
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: none;
   }
 </style>

@@ -11,8 +11,10 @@
   } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
-  import { muscle } from '#lib/labels';
+  import { equipment as eqLabel, muscle } from '#lib/labels';
   import { session } from '#lib/session';
+  import Icon from '#lib/components/Icon.svelte';
+  import MuscleFigure from '#lib/components/MuscleFigure.svelte';
 
   const id = $derived(page.params.id ?? '');
 
@@ -21,9 +23,9 @@
     id?: string;
     exerciseId: string;
     exerciseName: string;
+    muscleGroup: string;
     targetSets: number;
-    targetRepsMin: number;
-    targetRepsMax: number;
+    targetReps: number;
     warmupSets: number;
     restSeconds: number | null;
     notes: string | null;
@@ -112,9 +114,9 @@
       key: crypto.randomUUID(),
       exerciseId: ex.id,
       exerciseName: ex.name,
+      muscleGroup: ex.primaryMuscle,
       targetSets: 3,
-      targetRepsMin: 8,
-      targetRepsMax: 12,
+      targetReps: 10,
       warmupSets: 0,
       restSeconds: null,
       notes: null,
@@ -125,9 +127,7 @@
   }
 
   const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  const matches = $derived(
-    library.filter((e) => !pickerQuery || norm(e.name).includes(norm(pickerQuery))).slice(0, 30),
-  );
+  const matches = $derived(library.filter((e) => !pickerQuery || norm(e.name).includes(norm(pickerQuery))).slice(0, 30));
 
   async function save() {
     busy = true;
@@ -144,8 +144,7 @@
             id: e.id,
             exerciseId: e.exerciseId,
             targetSets: e.targetSets,
-            targetRepsMin: e.targetRepsMin,
-            targetRepsMax: Math.max(e.targetRepsMin, e.targetRepsMax),
+            targetReps: e.targetReps,
             warmupSets: e.warmupSets,
             restSeconds: e.restSeconds,
             notes: e.notes,
@@ -195,13 +194,16 @@
 </script>
 
 <main>
-  <p class="muted"><a href="/programs">← Entrenar</a></p>
+  <p><a class="back" href="/programs"><Icon name="left" size={18} /> Entrenar</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !program && !error}
     <p class="muted">Cargando…</p>
   {:else if program}
     {#if editable}
-      <label>Nombre del programa <input maxlength="60" bind:value={name} oninput={touch} /></label>
+      <label class="pname">
+        Nombre del programa
+        <input maxlength="60" bind:value={name} oninput={touch} />
+      </label>
     {:else}
       <h1>{program.name}</h1>
       {#if program.description}<p class="muted">{program.description}</p>{/if}
@@ -209,43 +211,54 @@
     {/if}
 
     {#each draft as r, ri (r.key)}
-      <section class="card">
-        {#if editable}
-          <div class="head">
-            <input class="title" maxlength="60" aria-label="Nombre de la rutina" bind:value={r.name} oninput={touch} />
-            <button aria-label="Subir" disabled={ri === 0} onclick={() => move(draft, ri, -1)}>↑</button>
-            <button aria-label="Bajar" disabled={ri === draft.length - 1} onclick={() => move(draft, ri, 1)}>↓</button>
-            <button aria-label="Quitar rutina" onclick={() => removeRoutine(ri)}>✕</button>
-          </div>
-          <input placeholder="Enfoque (ej. Pecho + Tríceps)" maxlength="80" bind:value={r.focus} oninput={touch} />
-        {:else}
-          <h2>{ri + 1}. {r.name}</h2>
-          <p class="muted">{r.focus}</p>
-        {/if}
+      <section class="card routine">
+        <header>
+          <span class="num">{ri + 1}</span>
+          {#if editable}
+            <div class="titles">
+              <input class="title" maxlength="60" aria-label="Nombre de la rutina" bind:value={r.name} oninput={touch} />
+              <input class="focus" placeholder="Enfoque (ej. Pecho y tríceps)" maxlength="80" aria-label="Enfoque" bind:value={r.focus} oninput={touch} />
+            </div>
+            <div class="tools">
+              <button class="icon ghost" aria-label="Subir rutina" disabled={ri === 0} onclick={() => move(draft, ri, -1)}><Icon name="up" size={20} /></button>
+              <button class="icon ghost" aria-label="Bajar rutina" disabled={ri === draft.length - 1} onclick={() => move(draft, ri, 1)}><Icon name="down" size={20} /></button>
+              <button class="icon ghost" aria-label="Quitar rutina" onclick={() => removeRoutine(ri)}><Icon name="trash" size={20} /></button>
+            </div>
+          {:else}
+            <div class="titles">
+              <h2>{r.name}</h2>
+              <span class="muted">{r.focus}</span>
+            </div>
+          {/if}
+        </header>
 
         <ul class="exlist">
           {#each r.exercises as e, ei (e.key)}
             <li>
-              <div class="line">
+              <MuscleFigure primary={e.muscleGroup} size={24} />
+              <div class="body">
                 <strong>{e.exerciseName}</strong>
                 {#if editable}
-                  <span class="mini">
-                    <button aria-label="Subir ejercicio" disabled={ei === 0} onclick={() => move(r.exercises, ei, -1)}>↑</button>
-                    <button aria-label="Bajar ejercicio" disabled={ei === r.exercises.length - 1} onclick={() => move(r.exercises, ei, 1)}>↓</button>
-                    <button aria-label="Quitar ejercicio" onclick={() => { r.exercises.splice(ei, 1); touch(); }}>✕</button>
-                  </span>
+                  <div class="targets">
+                    <label>
+                      Series
+                      <input type="number" inputmode="numeric" min="1" max={PROGRAM_LIMITS.maxSets} bind:value={e.targetSets} oninput={touch} />
+                    </label>
+                    <label>
+                      Reps
+                      <input type="number" inputmode="numeric" min="1" max={PROGRAM_LIMITS.maxReps} bind:value={e.targetReps} oninput={touch} />
+                    </label>
+                  </div>
+                {:else}
+                  <span class="muted">{e.targetSets} × {e.targetReps}</span>
                 {/if}
               </div>
               {#if editable}
-                <div class="targets">
-                  <label>Series <input type="number" min="1" max={PROGRAM_LIMITS.maxSets} bind:value={e.targetSets} oninput={touch} /></label>
-                  <label>Reps mín <input type="number" min="1" max={PROGRAM_LIMITS.maxReps} bind:value={e.targetRepsMin} oninput={touch} /></label>
-                  <label>Reps máx <input type="number" min="1" max={PROGRAM_LIMITS.maxReps} bind:value={e.targetRepsMax} oninput={touch} /></label>
+                <div class="mini">
+                  <button class="icon ghost" aria-label="Subir ejercicio" disabled={ei === 0} onclick={() => move(r.exercises, ei, -1)}><Icon name="up" size={18} /></button>
+                  <button class="icon ghost" aria-label="Bajar ejercicio" disabled={ei === r.exercises.length - 1} onclick={() => move(r.exercises, ei, 1)}><Icon name="down" size={18} /></button>
+                  <button class="icon ghost" aria-label="Quitar ejercicio" onclick={() => { r.exercises.splice(ei, 1); touch(); }}><Icon name="x" size={18} /></button>
                 </div>
-              {:else}
-                <span class="muted">
-                  {e.targetSets} x {e.targetRepsMin === e.targetRepsMax ? e.targetRepsMin : `${e.targetRepsMin}-${e.targetRepsMax}`}
-                </span>
               {/if}
             </li>
           {/each}
@@ -254,85 +267,181 @@
         {#if editable}
           {#if pickerFor === ri}
             <div class="picker">
-              <input placeholder="Buscar ejercicio" bind:value={pickerQuery} />
+              <div class="search">
+                <Icon name="search" size={20} />
+                <input placeholder="Buscar ejercicio" aria-label="Buscar ejercicio" bind:value={pickerQuery} />
+              </div>
               <ul class="list">
                 {#each matches as ex (ex.id)}
                   <li>
                     <button class="pick" onclick={() => pick(ri, ex)}>
-                      <strong>{ex.name}</strong> <span class="muted">{muscle(ex.primaryMuscle)}</span>
+                      <MuscleFigure primary={ex.primaryMuscle} secondary={ex.secondaryMuscles} size={22} />
+                      <span class="grow"><strong>{ex.name}</strong><span class="muted">{muscle(ex.primaryMuscle)} · {eqLabel(ex.equipment)}</span></span>
+                      <Icon name="plus" size={20} />
                     </button>
                   </li>
                 {/each}
               </ul>
-              <button onclick={() => (pickerFor = null)}>Cancelar</button>
+              <button class="ghost" onclick={() => (pickerFor = null)}>Cancelar</button>
             </div>
           {:else}
-            <button disabled={r.exercises.length >= PROGRAM_LIMITS.exercises} onclick={() => (pickerFor = ri)}>+ Añadir ejercicio</button>
+            <button class="add" disabled={r.exercises.length >= PROGRAM_LIMITS.exercises} onclick={() => (pickerFor = ri)}>
+              <Icon name="plus" size={18} /> Añadir ejercicio
+            </button>
           {/if}
         {/if}
       </section>
     {/each}
 
     {#if editable}
-      <button disabled={draft.length >= PROGRAM_LIMITS.routines} onclick={addRoutine}>+ Añadir rutina</button>
-      <button class="primary" disabled={busy || !dirty || !name.trim()} onclick={save}>Guardar programa</button>
-      {#if saved}<p class="ok">Guardado</p>{/if}
-      <p><button class="danger" disabled={busy} onclick={archive}>Archivar programa</button></p>
+      <button class="add" disabled={draft.length >= PROGRAM_LIMITS.routines} onclick={addRoutine}><Icon name="plus" size={18} /> Añadir rutina</button>
+      {#if dirty || saved}
+        <div class="savebar">
+          {#if saved}<span class="ok"><Icon name="check" size={18} /> Guardado</span>{/if}
+          {#if dirty}<button class="primary" disabled={busy || !name.trim()} onclick={save}>Guardar cambios</button>{/if}
+        </div>
+      {/if}
+      <p><button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={18} /> Archivar programa</button></p>
     {/if}
   {/if}
 </main>
 
 <style>
-  .head {
+  .pname {
+    margin: 0.5rem 0 1rem;
+  }
+  .routine header {
     display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.8rem;
+  }
+  .num {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    color: var(--accent-ink);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.2rem;
+  }
+  .titles {
+    flex: 1 1 10rem;
+    min-width: 0;
+    display: grid;
     gap: 0.4rem;
-    margin-bottom: 0.5rem;
   }
-  .card > input {
-    width: 100%;
+  .titles h2 {
+    margin: 0;
   }
-  .head .title {
-    flex: 1;
-    font-weight: 600;
+  .title {
+    font-weight: 700;
+  }
+  .focus {
+    min-height: 40px;
+    font-size: 0.92rem;
+  }
+  .tools {
+    flex: 1 0 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -0.2rem;
   }
   .exlist {
     list-style: none;
     padding: 0;
-    margin: 0.75rem 0;
+    margin: 0 0 0.8rem;
     display: grid;
-    gap: 0.75rem;
-  }
-  .line {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     gap: 0.5rem;
   }
-  .mini {
+  .exlist li {
     display: flex;
-    gap: 0.25rem;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    box-shadow: 0 2px 5px rgb(0 0 0 / 0.35) inset;
   }
-  .mini button,
-  .head button {
-    padding: 0.4rem 0.6rem;
+  .body {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 0.3rem;
   }
   .targets {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .targets label {
+    flex: 1;
+    font-size: 0.78rem;
+  }
+  .targets input {
+    min-height: 44px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  .mini {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-    margin-top: 0.4rem;
-    font-size: 0.85rem;
+  }
+  .mini .icon {
+    min-height: 36px;
+    height: 36px;
+  }
+  .add {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    color: var(--accent-hi);
   }
   .picker {
     display: grid;
     gap: 0.5rem;
   }
+  .search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    color: var(--muted);
+  }
+  .search :global(svg) {
+    position: absolute;
+    left: 0.8rem;
+    pointer-events: none;
+  }
+  .search input {
+    flex: 1;
+    padding-left: 2.6rem;
+  }
   .pick {
     width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
     text-align: left;
   }
-  .danger {
-    color: var(--danger);
-    border-color: var(--danger);
+  .pick .grow {
+    flex: 1;
+    display: grid;
+  }
+  .savebar {
+    position: sticky;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    display: grid;
+    gap: 0.4rem;
+    justify-items: center;
+  }
+  .savebar .primary {
+    margin-top: 0;
   }
 </style>

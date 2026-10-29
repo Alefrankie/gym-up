@@ -19,6 +19,9 @@
   } from '#lib/offline/workout-session';
   import { cancelRestEnd, scheduleRestEnd, vibrateRestEnd } from '#lib/notify';
   import { session } from '#lib/session';
+  import { muscle } from '#lib/labels';
+  import Icon from '#lib/components/Icon.svelte';
+  import MuscleFigure from '#lib/components/MuscleFigure.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
 
   const KG_TO_LBS = 2.20462;
@@ -36,6 +39,11 @@
   const isCompleted = $derived(snap?.status === 'completed');
   const toDisplay = (kg: number, u: 'kg' | 'lbs') => (u === 'lbs' ? Math.round(kg * KG_TO_LBS * 10) / 10 : kg);
 
+  const ago = (iso: string) => {
+    const days = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86_400_000));
+    return days === 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`;
+  };
+
   /** Sets shown per exercise: the target, or more if the workout already has more. */
   function setNumbers(ex: RoutineExerciseDto): number[] {
     const used = Object.keys(snap?.rows ?? {})
@@ -50,7 +58,13 @@
       const n = Math.max(ex.targetSets, 0);
       for (let i = 1; i <= n; i++) {
         const k = rowKey(ex.exerciseId, i);
-        s.rows[k] ??= { id: crypto.randomUUID(), reps: ex.targetReps, weight: 0, completed: false };
+        s.rows[k] ??= {
+          id: crypto.randomUUID(),
+          reps: ex.targetReps,
+          // Start from what you lifted last time: the number to beat is already in the box.
+          weight: ex.last ? toDisplay(ex.last.weight, s.unit) : 0,
+          completed: false,
+        };
       }
     }
   }
@@ -196,7 +210,7 @@
 </script>
 
 <main>
-  <p><a href="/dashboard">← Inicio</a></p>
+  <p><a class="back" href="/dashboard"><Icon name="left" size={18} /> Inicio</a></p>
   <h1>{snap?.dayName ?? 'Entrenamiento'}</h1>
   <SyncBanner />
   {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -204,16 +218,32 @@
 
   {#if rest > 0}
     <div class="rest" role="timer">
-      Descanso {Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}
-      <button type="button" onclick={() => { rest = 0; clearInterval(timer); void cancelRestEnd(); }}>Omitir</button>
+      <span class="clock"><Icon name="timer" size={22} /> Descanso {Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}</span>
+      <button type="button" class="skip" onclick={() => { rest = 0; clearInterval(timer); void cancelRestEnd(); }}>Omitir</button>
     </div>
   {/if}
 
   {#if snap}
     {#each snap.exercises as ex (ex.exerciseId)}
       <section class="card">
-        <h2>{ex.exerciseName}</h2>
-        <p class="muted">{ex.muscleGroup}{ex.targetSets ? ` · ${ex.targetSets} x ${ex.targetReps}` : ''}</p>
+        <header>
+          <MuscleFigure primary={ex.muscleGroup} size={30} />
+          <div class="titles">
+            <h2>{ex.exerciseName}</h2>
+            <span class="muted">{muscle(ex.muscleGroup)}{ex.targetSets ? ` · objetivo ${ex.targetSets} × ${ex.targetReps}` : ''}</span>
+          </div>
+        </header>
+        {#if ex.last}
+          <p class="last">
+            <Icon name="history" size={18} />
+            <span>
+              {ago(ex.last.date) === 'hoy' ? 'Hoy' : ago(ex.last.date)[0]!.toUpperCase() + ago(ex.last.date).slice(1)}:
+              <strong>{toDisplay(ex.last.weight, unit)} {unit} × {ex.last.reps}</strong>
+            </span>
+          </p>
+        {:else}
+          <p class="last none">Primera vez con este ejercicio</p>
+        {/if}
         <div class="sets">
           {#each setNumbers(ex) as n (n)}
             {@const r = snap.rows[rowKey(ex.exerciseId, n)]}
@@ -226,19 +256,19 @@
                   onchange={() => edited(ex.exerciseId, n)}
                   aria-label="Peso ({unit})"
                 />
-                <span class="muted">{unit}</span>
+                <span class="unit">{unit}</span>
                 <input
                   type="number" inputmode="numeric" min="1" max="100"
                   bind:value={r.reps} disabled={isCompleted}
                   onchange={() => edited(ex.exerciseId, n)}
                   aria-label="Repeticiones"
                 />
-                <span class="muted">reps</span>
+                <span class="unit">reps</span>
                 <button
                   type="button" class="check" disabled={isCompleted}
                   onclick={() => commit(ex.exerciseId, n, !r.completed)}
                   aria-label={r.completed ? 'Desmarcar serie' : 'Completar serie'}
-                >{r.completed ? '✓' : '○'}</button>
+                ><Icon name="check" size={22} /></button>
               </div>
             {/if}
           {/each}
@@ -255,3 +285,86 @@
     {/if}
   {/if}
 </main>
+
+<style>
+  .rest {
+    gap: 0.75rem;
+  }
+  .clock {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.4rem;
+  }
+  .skip {
+    min-height: 40px;
+    padding: 0 0.9rem;
+    background: rgb(28 13 5 / 0.18);
+    box-shadow: none;
+    color: var(--accent-ink);
+  }
+  section header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  section h2 {
+    margin: 0;
+  }
+  .titles {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .last {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.8rem 0 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--ember);
+  }
+  .last strong {
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+  .last.none {
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .n {
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.2rem;
+    text-align: center;
+  }
+  .unit {
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .set input {
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.15rem;
+  }
+  .check {
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    box-shadow: 0 0 0 1px var(--line) inset, 0 2px 4px rgb(0 0 0 / 0.35) inset;
+    color: var(--muted);
+  }
+  .set.done .check {
+    background: linear-gradient(180deg, #a9dc83, var(--ok));
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.4) inset, 0 8px 16px -8px rgb(143 203 107 / 0.7);
+    color: #12220a;
+  }
+</style>

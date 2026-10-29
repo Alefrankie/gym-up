@@ -6,6 +6,7 @@
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
+  import Icon from '#lib/components/Icon.svelte';
 
   let history = $state<WorkoutHistoryResponse | null>(null);
   let page = $state(1);
@@ -44,17 +45,22 @@
   {#if !history && !error}
     <p class="muted">Cargando…</p>
   {:else if history && history.items.length === 0}
-    <p class="muted">Todavía no hay entrenamientos.</p>
+    <section class="card empty">
+      <Icon name="dumbbell" size={32} />
+      <p>Todavía no hay entrenamientos.</p>
+      <a href="/dashboard">Empieza el de hoy</a>
+    </section>
   {:else if history}
     <ul class="list">
       {#each history.items as item}
         <li>
           <a href={`/workout/${item.id}`}>
-            <strong>{item.routineDayName}</strong>
-            <span class="muted">
-              {fmt(item.workoutDate)} · {item.exerciseCount} ejercicios · {Math.round(item.totalVolume)} kg
-              {item.status === 'in_progress' ? ' · en curso' : ''}
+            <span class="ico"><Icon name="dumbbell" size={20} /></span>
+            <span class="grow">
+              <strong>{item.routineDayName} {#if item.status === 'in_progress'}<span class="badge">En curso</span>{/if}</strong>
+              <span class="muted meta">{fmt(item.workoutDate)} · {item.exerciseCount} ejercicios</span>
             </span>
+            <span class="vol"><b>{Math.round(item.totalVolume)}</b> kg</span>
           </a>
         </li>
       {/each}
@@ -70,3 +76,43 @@
 </main>
 
 <AppNav />
+
+<style>
+  .ico {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent-hi);
+    flex: none;
+  }
+  .meta {
+    font-size: 0.88rem;
+  }
+  .vol {
+    color: var(--muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .vol b {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: var(--text);
+  }
+  .empty {
+    display: grid;
+    justify-items: center;
+    gap: 0.4rem;
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--muted);
+  }
+  .empty p {
+    margin: 0;
+  }
+  .pager {
+    margin-top: 0.5rem;
+  }
+</style>

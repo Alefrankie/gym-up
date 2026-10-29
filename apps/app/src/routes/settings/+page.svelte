@@ -6,6 +6,7 @@
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
+  import Icon from '#lib/components/Icon.svelte';
 
   let displayName = $state('');
   let weightUnit = $state<'kg' | 'lbs'>('kg');
@@ -52,34 +53,39 @@
 <main>
   <h1>Ajustes</h1>
   <SyncBanner />
-  <form onsubmit={save}>
-    <label>
-      Nombre
-      <input bind:value={displayName} maxlength="80" required />
-    </label>
-    <label>
-      Unidad de peso
-      <select bind:value={weightUnit}>
-        <option value="kg">kilogramos (kg)</option>
-        <option value="lbs">libras (lbs)</option>
-      </select>
-    </label>
-    <label>
-      Rutina
-      <select bind:value={routineType}>
-        <option value="hombre">Hombre</option>
-        <option value="mujer">Mujer</option>
-      </select>
-    </label>
-    {#if message}<p class="ok" role="status">{message}</p>{/if}
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <button class="primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>
-  </form>
+  <section class="card">
+    <h2 class="first">Perfil</h2>
+    <form onsubmit={save}>
+      <label>
+        Nombre
+        <input bind:value={displayName} maxlength="80" required />
+      </label>
+      <label>
+        Unidad de peso
+        <select bind:value={weightUnit}>
+          <option value="kg">kilogramos (kg)</option>
+          <option value="lbs">libras (lbs)</option>
+        </select>
+      </label>
+      <label>
+        Rutina
+        <select bind:value={routineType}>
+          <option value="hombre">Hombre</option>
+          <option value="mujer">Mujer</option>
+        </select>
+      </label>
+      {#if message}<p class="ok" role="status">{message}</p>{/if}
+      {#if error}<p class="error" role="alert">{error}</p>{/if}
+      <button class="primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>
+    </form>
+  </section>
 
   <section class="card">
-    <h2>Cuenta</h2>
-    <p class="muted">{session.user?.email}</p>
-    <button type="button" onclick={() => session.signOut()}>Cerrar sesión</button>
+    <h2 class="first">Cuenta</h2>
+    <p class="muted email">{session.user?.email}</p>
+    <button type="button" class="out" onclick={() => session.signOut()}>
+      <Icon name="logout" size={20} /> Cerrar sesión
+    </button>
   </section>
 
   <p class="muted small">Servidor: {API_URL}</p>
@@ -88,6 +94,17 @@
 <AppNav />
 
 <style>
+  .first {
+    margin-top: 0;
+  }
+  .email {
+    overflow-wrap: anywhere;
+  }
+  .out {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
   .small {
     font-size: 0.8rem;
     word-break: break-all;

@@ -27,6 +27,8 @@
     "wrangler": "^4.154.0"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
     "@gym-up/contracts": "workspace:*",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-notification": "~2.8.0",
