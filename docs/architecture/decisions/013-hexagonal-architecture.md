@@ -92,11 +92,10 @@ src/lib/contexts/<context>/
   application/
     *.use-case.ts                 ← one file per use case
   infrastructure/
-    supabase/                     ← Supabase adapters (production)
-    sqlite/                       ← SQLite adapters (dev/tests)
+    sqlite/                       ← SQLite adapters (D1 in production, in-memory SQLite in tests)
     [ai|storage|...]/             ← other adapter categories as needed
   ui/
-    *.svelte | *.tsx | *.astro   ← context-specific components
+    *.svelte                     ← context-specific components (in apps/app since ADR-027)
 ```
 
 ## Rationale

@@ -2,204 +2,97 @@
 
 Parent: [./readme.md](./readme.md) · Up: [../README.md](../README.md)
 
+> **Updated 2026-10-29.** The app was migrated from Astro + Supabase + Vercel to a NestJS API on Cloudflare Workers, a SvelteKit static SPA and Tauri 2 for Android. Decision and rationale: [ADR-027](./decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md). Order of work: [mobile migration plan](../planning/mobile-migration-plan.md). The Astro app is preserved at the git tag `pre-migration` (`git show pre-migration:src/pages/dashboard.astro`).
+
 ## Topology
 
 ```mermaid
 graph TD
-    Browser -->|HTTP| Vercel
-    Vercel -->|Astro SSR| Pages[Pages]
-    Pages -->|Supabase JS SDK| Supabase
-    Supabase -->|Auth| Auth[Supabase Auth]
-    Supabase -->|DB| Postgres[Supabase Postgres]
-    Supabase -->|Storage| Storage[Supabase Storage]
-    Postgres -->|RLS| Data[User Data]
-    Storage -->|RLS| Photos[Private Photos]
+    Phone[Android app<br/>Tauri 2 WebView] -->|HTTPS + bearer token| API
+    Browser[Web browser] -->|static SPA| Web[Workers static assets]
+    Browser -->|HTTPS + bearer token| API
+    Phone -.bundled SPA.-> SPA[SvelteKit static build]
+    Web --> SPA
+    API[NestJS API<br/>Cloudflare Worker] --> D1[(D1 SQLite)]
+    API -.planned.-> R2[(R2 private photos)]
+    API -.planned.-> Gemini[Gemini Vision and text]
 ```
+
+The SPA is the same build for the web and for the Tauri WebView. There is no server-side rendering: the only server is the API.
 
 ## Rendering Strategy
 
-| Page | Mode | Reason |
-|------|------|--------|
-| Landing (`/`) | Static | No dynamic data, fast load |
-| Login/Register | Static | Forms only |
-| Dashboard (`/dashboard`) | SSR | Today's workout, user-specific |
-| Workout (`/workout/[id]`) | SSR | Dynamic exercise logging |
-| History (`/history`) | SSR | User-specific workout list |
-| Progress (`/progress`) | SSR | Charts from user data |
-| Photos (`/photos`) | SSR | Private photo gallery |
-| Family (`/family`) | SSR | Multi-user data |
-| Settings (`/settings`) | SSR | User profile/settings |
+Everything renders in the browser (`ssr = false`, `adapter-static` with an `index.html` fallback). Pages load data from the API and cache it for offline use.
 
-Astro in SSR mode with `@astrojs/vercel` adapter. Per [ADR-001](./decisions/001-supabase-client-side.md).
+| Route | State |
+|-------|-------|
+| `/login`, `/register` | Implemented |
+| `/dashboard` (today's workout, start or continue) | Implemented |
+| `/workout/[id]` (log sets, rest timer, finish; works offline) | Implemented |
+| `/history` | Implemented |
+| `/progress`, `/photos`, `/nutrition`, `/family`, `/settings` | Planned (migration plan, Phase 3 and the Phase 2 modules) |
 
 ## Tech Stack
 
 | Layer | Choice | Decision |
 |-------|--------|----------|
-| Language | TypeScript 7 | — |
-| Frontend | Astro (SSR + islands) | — |
-| Backend/DB | Supabase (Postgres, Auth, Storage, RLS) | [ADR-001](./decisions/001-supabase-client-side.md) |
-| Hosting | Vercel | — |
-| Auth | Supabase Auth (email/password) | — |
-| Charts | Chart.js via React island | [ADR-002](./decisions/002-chartjs-react-island.md) |
-| Storage | Supabase Storage (progress photos) | [ADR-005](./decisions/005-private-photos.md) |
-| Test data | @faker-js/faker + Object Mothers | [ADR-009](./decisions/009-object-mothers.md) |
+| Language | TypeScript 7 (api, contracts). TypeScript 6 in `apps/app`, because SvelteKit 3 needs the TypeScript JS API | [ADR-027](./decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md) |
+| Frontend | SvelteKit 3 + Svelte 5 (static SPA) | ADR-027 |
+| Mobile shell | Tauri 2 (Android first) | ADR-027 |
+| API | NestJS 12 on the Express adapter, built with SWC, running in a Cloudflare Worker | ADR-027 |
+| Database | Cloudflare D1 (SQLite), Drizzle ORM | [ADR-012](./decisions/012-drizzle-orm.md), ADR-027 |
+| Auth | Email and password, opaque bearer session token, argon2id WASM | ADR-027 section 7 |
+| Shared contracts | zod 4 schemas in `packages/contracts` | ADR-027 |
+| Monorepo | pnpm workspaces + Turborepo | ADR-027 |
+| Offline | IndexedDB outbox, local-first workouts, read-through cache | [mobile plan, Phase 4](../planning/mobile-migration-plan.md) |
+| Charts | Chart.js used directly from Svelte (planned) | supersedes [ADR-002](./decisions/002-chartjs-react-island.md) |
+| Photos | Cloudflare R2, presigned URLs (planned) | supersedes the storage part of [ADR-005](./decisions/005-private-photos.md) |
+| Test data | Object Mothers, real SQLite in memory, no mocks | [ADR-009](./decisions/009-object-mothers.md) |
 
 ## Project Structure
 
-File naming: **kebab-case** throughout. All TypeScript files in domain layer use `[context].types.ts`, `[context].constants.ts`, etc.
-
-The project follows **hexagonal architecture (ports and adapters)** organized per feature context. Each context under `src/lib/contexts/` is a self-contained module:
-
-```
-src/lib/contexts/<context>/
-  <context>.composition.ts   ← wires concrete adapters based on STORAGE_BACKEND
-  domain/                     ← business rules, entities, ports (abstract classes)
-  application/                ← use cases, orchestration (depends only on domain)
-  infrastructure/             ← adapters: supabase/ and sqlite/ subfolders
-  ui/                         ← context-specific components (Astro, Svelte, React)
-```
-
-**Dependency flow:** `domain → application → infrastructure ← composition`. Domain never imports from application, infrastructure, or UI. Application imports only domain ports. Infrastructure implements domain ports. The composition file at the context root wires everything together.
-
-→ Full layer rules: [contexts/readme.md](./contexts/readme.md)
-→ ADR-007: Repository pattern — [decisions/007-repository-pattern.md](./decisions/007-repository-pattern.md)
-→ ADR-010: Per-context composition — [decisions/010-per-context-composition.md](./decisions/010-per-context-composition.md)
-→ ADR-013: Hexagonal architecture — [decisions/013-hexagonal-architecture.md](./decisions/013-hexagonal-architecture.md)
+File naming: **kebab-case** throughout. See [File Naming Conventions](#file-naming-conventions).
 
 ```
 gym-up/
-├── src/
-│   ├── pages/
-│   │   ├── index.astro
-│   │   ├── login.astro
-│   │   ├── register.astro
-│   │   ├── dashboard.astro
-│   │   ├── workout/[id].astro
-│   │   ├── history.astro
-│   │   ├── progress.astro
-│   │   ├── photos.astro
-│   │   ├── family.astro
-│   │   └── settings.astro
-│   ├── components/
-│   │   ├── exercise-card.astro
-│   │   ├── workout-summary.astro
-│   │   ├── rest-timer.svelte             ← Svelte islands for interactive
-│   │   ├── progress-chart.tsx            ← React island for charts
-│   │   ├── photo-gallery.svelte
-│   │   ├── photo-upload.svelte
-│   │   ├── family-member-card.svelte
-│   │   └── navigation.astro
-│   ├── lib/
-│   │   ├── supabase.ts
-│   │   ├── sqlite.ts
-│   │   ├── config.ts                    ← useSupabase, supabaseClient, sqliteDb
-│   │   ├── storage/                     ← Shared storage abstractions
-│   │   │   ├── key-value.storage.ts      ← abstract KeyValueStorage class
-│   │   │   ├── browser-key-value.storage.ts
-│   │   │   └── sqlite-key-value.storage.ts
-│   │   └── contexts/                     ← per-context composition (ADR-010)
-│   │       ├── auth/
-│   │       │   ├── auth.composition.ts
-│   │       │   ├── domain/
-│   │       │   │   ├── auth.types.ts          ← types for auth context
-│   │       │   │   ├── auth.constants.ts      ← enums as const + derived types
-│   │       │   │   ├── entities/
-│   │       │   │   │   └── session.entity.ts
-│   │       │   │   └── ports/
-│   │       │   │       ├── auth-port.ts        ← abstract class
-│   │       │   │       └── session-port.ts
-│   │       │   ├── application/
-│   │       │   │   ├── register-user.use-case.ts
-│   │       │   │   ├── login-user.use-case.ts
-│   │       │   │   └── logout-user.use-case.ts
-│   │       │   ├── infrastructure/
-│   │       │   │   ├── supabase/
-│   │       │   │   │   ├── supabase-auth.adapter.ts
-│   │       │   │   │   └── supabase-session.adapter.ts
-│   │       │   │   └── sqlite/
-│   │       │   │       ├── sqlite-auth.adapter.ts
-│   │       │   │       └── sqlite-session.adapter.ts
-│   │       │   └── ui/
-│   │       │       └── auth-form.svelte
-│   │       ├── user/
-│   │       │   ├── user.composition.ts
-│   │       │   ├── domain/
-│   │       │   │   ├── user.types.ts
-│   │       │   │   ├── user.constants.ts
-│   │       │   │   ├── entities/
-│   │       │   │   │   └── profile.entity.ts
-│   │       │   │   └── ports/
-│   │       │   │       ├── profile-repository.ts
-│   │       │   │       └── nutrition-goal-repository.ts
-│   │       │   ├── application/
-│   │       │   │   ├── get-profile.use-case.ts
-│   │       │   │   ├── update-display-name.use-case.ts
-│   │       │   │   ├── update-routine-type.use-case.ts
-│   │       │   │   ├── update-weight-unit.use-case.ts
-│   │       │   │   └── set-calorie-goal.use-case.ts
-│   │       │   ├── infrastructure/
-│   │       │   │   ├── supabase/
-│   │       │   │   │   ├── supabase-profile.repository.ts
-│   │       │   │   │   └── supabase-nutrition-goal.repository.ts
-│   │       │   │   └── sqlite/
-│   │       │   │       ├── sqlite-profile.repository.ts
-│   │       │   │       └── sqlite-nutrition-goal.repository.ts
-│   │       │   └── ui/
-│   │       │       └── settings-form.svelte
-│   │       ├── workout-tracking/
-│   │       │   ├── workout-tracking.composition.ts
-│   │       │   ├── domain/
-│   │       │   │   ├── workout-tracking.types.ts
-│   │       │   │   ├── workout-tracking.constants.ts
-│   │       │   │   ├── entities/
-│   │       │   │   │   ├── workout.entity.ts
-│   │       │   │   │   ├── workout-entry.entity.ts
-│   │       │   │   │   ├── routine.entity.ts
-│   │       │   │   │   ├── routine-day.entity.ts
-│   │       │   │   │   ├── routine-exercise.entity.ts
-│   │       │   │   │   └── exercise.entity.ts
-│   │       │   │   └── ports/
-│   │       │   │       ├── workout-repository.ts
-│   │       │   │       ├── workout-entry-repository.ts
-│   │       │   │       ├── routine-repository.ts
-│   │       │   │       └── exercise-repository.ts
-│   │       │   ├── application/
-│   │       │   │   ├── get-today-workout.use-case.ts
-│   │       │   │   ├── start-workout.use-case.ts
-│   │       │   │   ├── resume-workout.use-case.ts
-│   │       │   │   ├── log-set.use-case.ts
-│   │       │   │   ├── complete-workout.use-case.ts
-│   │       │   │   └── get-workout-history.use-case.ts
-│   │       │   ├── infrastructure/
-│   │       │   │   ├── supabase/
-│   │       │   │   └── sqlite/
-│   │       │   └── ui/
-│   │       │       ├── exercise-card.svelte
-│   │       │       ├── rest-timer.svelte
-│   │       │       └── workout-summary.svelte
-│   │       ├── progress/
-│   │       ├── public-view/
-│   │       ├── private-photos/
-│   │       └── nutrition/
-│   ├── test/                            ← NO MOCKS (ADR-009)
-│   │   ├── setup.ts                     ← createTestDb() helper
-│   │   └── mothers/                     ← Object Mothers with @faker-js/faker
-│   │       ├── profile.mother.ts
-│   │       ├── workout.mother.ts
-│   │       ├── workout-entry.mother.ts
-│   │       ├── progress-photo.mother.ts
-│   │       ├── nutrition-entry.mother.ts
-│   │       └── routine.mother.ts
-│   ├── types/
-│   │   └── index.ts
-│   └── layouts/
-│       └── layout.astro
-├── supabase/
-│   └── migrations/
-│       └── 001_initial_schema.sql
-└── public/
+  turbo.json  pnpm-workspace.yaml  tsconfig.base.json
+  apps/
+    api/                          NestJS API (Cloudflare Worker) and the domain code
+      db/                         Drizzle schema, migrations, seed (db/seed.sql is generated)
+      src/
+        lib/contexts/<context>/   hexagonal modules: domain/, application/, infrastructure/sqlite/
+        nest/                     controllers, modules, guards, pipes (the HTTP adapter)
+        worker.ts                 Cloudflare entry point (lazy boot of Nest)
+        worker/                   Worker-only adapters (argon2 hasher)
+        vendor/argon2-wasm-edge/  vendored, patched argon2 (see its README)
+      tests/                      unit tests per context + tests/nest/api.e2e.test.ts
+      wrangler.jsonc              Worker, D1 binding, bundler aliases
+    app/                          SvelteKit SPA + Tauri
+      src/routes/                 login, register, dashboard, workout/[id], history
+      src/lib/api/                typed fetch client, token store, errors
+      src/lib/offline/            IndexedDB wrapper, outbox, sync loop, cache, workout snapshots
+      src/lib/components/         AppNav, SyncBanner
+      src-tauri/                  Tauri 2 project, with the generated Android Studio project
+      wrangler.jsonc              serves build/ from Workers static assets
+  packages/
+    contracts/                    zod request and response schemas shared by api and app
 ```
+
+Implemented contexts under `apps/api/src/lib/contexts/`: `auth`, `workout-tracking`, `progress`, `private-photos`, `public-view`, `nutrition`. Only `auth` and `workout-tracking` have Nest modules so far; the others are ported module by module (migration plan, Phase 2).
+
+## Hexagonal Layering in `apps/api`
+
+Per [ADR-013](./decisions/013-hexagonal-architecture.md), each context is layered and dependencies point inward:
+
+```
+nest/ (controllers, guards, pipes)  ->  application/ (use cases)  ->  domain/ (entities, ports)
+                                                  ^
+infrastructure/sqlite/ (Drizzle repositories) ----+  implements the ports
+```
+
+- `domain/` and `application/` do not import Nest, Drizzle or any runtime. They are plain classes.
+- Repositories take the database handle as a constructor argument (`Db` type in `src/lib/db/client.ts`), so the same code runs on D1 in a Worker and on in-memory `better-sqlite3` in tests.
+- Domain errors are plain `Error` subclasses mapped to HTTP statuses by `nest/common/domain-exception.filter.ts` (by `name`, because several contexts define their own `WorkoutNotFoundError`).
 
 ## File Naming Conventions
 
@@ -211,8 +104,8 @@ gym-up/
 | Entity | `[name].entity.ts` | `workout.entity.ts` |
 | Port (abstract class) | `[name]-port.ts` or `[name]-repository.ts` | `workout-repository.ts` |
 | Use case | `[verb-noun].use-case.ts` | `start-workout.use-case.ts` |
-| Repository impl | `[storage]-[entity].repository.ts` | `supabase-workout.repository.ts` |
-| Adapter impl | `[storage]-[port].adapter.ts` | `supabase-auth.adapter.ts` |
+| Repository impl | `[storage]-[entity].repository.ts` | `sqlite-workout.repository.ts` |
+| Adapter impl | `[storage]-[port].adapter.ts` | `gemini-vision.adapter.ts` |
 | UI component | `[name].svelte` or `[name].tsx` | `rest-timer.svelte` |
 | Test mother | `[entity].mother.ts` | `workout.mother.ts` |
 | Object Mother file (kebab-case) | `[entity].mother.ts` | `workout.mother.ts` |
@@ -265,75 +158,44 @@ export type WeightUnit = (typeof WeightUnits)[keyof typeof WeightUnits];
 
 ## Repository Pattern
 
-Per [ADR-007](./decisions/007-repository-pattern.md), every entity has:
-- An **abstract class** defining the contract
-- A **Supabase** implementation (production)
-- A **SQLite** implementation (tests, e2e)
+Per [ADR-007](./decisions/007-repository-pattern.md) and [ADR-011](./decisions/011-implements-not-extends.md), every entity has an **abstract class** that defines the contract and concrete classes that `implement` it. Today there is one implementation per entity, over SQLite (`Sqlite*Repository`), used both on D1 and in tests. Use cases depend on the abstract class. No mocks: tests use real implementations with test data from Object Mothers ([ADR-009](./decisions/009-object-mothers.md)).
 
-Use cases depend on the abstract class. No mocks — only real implementations with test data via Object Mothers. Per [ADR-009](./decisions/009-object-mothers.md).
+## Wiring: Nest Modules
 
-## Per-Context Composition
-
-Per [ADR-010](./decisions/010-per-context-composition.md), each context has its own composition file. No central root.
+[ADR-010](./decisions/010-per-context-composition.md) (per-context composition files) is replaced by **one Nest module per context**. The module binds the plain domain classes with factory providers, so the domain stays free of decorators:
 
 ```ts
-// src/lib/contexts/workout-tracking/workout-tracking.composition.ts
-import { useSupabase, supabaseClient, sqliteDb } from '@/lib/config';
-import { SupabaseWorkoutRepository } from './infrastructure/supabase/SupabaseWorkoutRepository';
-import { SqliteWorkoutRepository } from './infrastructure/sqlite/SqliteWorkoutRepository';
-import { StartWorkoutUseCase } from './application/StartWorkoutUseCase';
-
-const workoutRepo: WorkoutRepository = useSupabase
-  ? new SupabaseWorkoutRepository(supabaseClient)
-  : new SqliteWorkoutRepository(sqliteDb);
-
-export const startWorkoutUseCase = new StartWorkoutUseCase(workoutRepo);
+// apps/api/src/nest/workouts/workouts.module.ts (abridged)
+@Module({
+  controllers: [WorkoutsController],
+  providers: [
+    { provide: WorkoutRepository, useFactory: (db: Db) => new SqliteWorkoutRepository(db), inject: [DB] },
+    { provide: LogSetUseCase, useFactory: (w: WorkoutRepository) => new LogSetUseCase(w), inject: [WorkoutRepository] },
+  ],
+})
+export class WorkoutsModule {}
 ```
 
-```ts
-// src/pages/dashboard.astro
----
-import { startWorkoutUseCase } from '@/lib/contexts/workout-tracking/workout-tracking.composition';
-const today = await startWorkoutUseCase.getToday(userId);
----
-```
+Environment-specific dependencies (the D1 handle, the password hasher, the rate limiter) are supplied by the entry point through `AppModule.register({ db, hasher, rateLimiter })`: `src/worker.ts` in production, `tests/nest/api.e2e.test.ts` in tests. Constructor injection always uses an explicit `@Inject(token)`.
 
-### Implementation per entity
+## Client-Side Storage
 
-| Entity | Abstract class | Supabase impl | SQLite impl |
-|--------|----------------|---------------|-------------|
-| Profile | `ProfileRepository` | `SupabaseProfileRepository` | `SqliteProfileRepository` |
-| Workout | `WorkoutRepository` | `SupabaseWorkoutRepository` | `SqliteWorkoutRepository` |
-| WorkoutEntry | `WorkoutEntryRepository` | `SupabaseWorkoutEntryRepository` | `SqliteWorkoutEntryRepository` |
-| Routine | `RoutineRepository` | `SupabaseRoutineRepository` | `SqliteRoutineRepository` |
-| Exercise | `ExerciseRepository` | `SupabaseExerciseRepository` | `SqliteExerciseRepository` |
-| Photo | `PhotoRepository` | `SupabasePhotoRepository` | `SqlitePhotoRepository` |
-| PhotoStorage | `PhotoStorageAdapter` | `SupabasePhotoStorageAdapter` | `LocalPhotoStorageAdapter` |
-| NutritionEntry | `NutritionEntryRepository` | `SupabaseNutritionEntryRepository` | `SqliteNutritionEntryRepository` |
-| NutritionGoal | `NutritionGoalRepository` | `SupabaseNutritionGoalRepository` | `SqliteNutritionGoalRepository` |
-| KeyValue | `KeyValueStorage` | `BrowserKeyValueStorage` | `SqliteKeyValueStorage` |
+Ephemeral and offline state lives in IndexedDB (`apps/app/src/lib/offline/idb.ts`), not in `localStorage`:
 
-## KeyValueStorage
+| Store | Holds |
+|-------|-------|
+| `outbox` | Commands waiting to reach the server (ordered by `seq`) |
+| `failed` | Commands the server rejected, kept for retry or discard |
+| `kv` | `cache:<path>` copies of GET responses, `session:<id>` workout snapshots, `active-workout` pointer |
 
-Per [ADR-008](./decisions/008-key-value-storage.md), ephemeral state (drafts, timer, UI prefs) uses `KeyValueStorage` abstract class. Browser uses `window.localStorage`, tests use SQLite `key_value` table.
-
-```ts
-// src/lib/storage/key-value.storage.ts
-abstract class KeyValueStorage {
-  abstract get<T>(key: string): T | null;
-  abstract set<T>(key: string, value: T): void;
-  abstract delete(key: string): void;
-  abstract has(key: string): boolean;
-  abstract clear(): void;
-}
-```
+The session token is the only value in `localStorage` (`gymup.token`), behind the `TokenStore` interface so the Tauri build can move it to secure storage.
 
 ## Test Pattern
 
 Per [ADR-009](./decisions/009-object-mothers.md), tests use Object Mothers with `@faker-js/faker`. **NO MOCKS** — only fakes (real implementations).
 
 ```ts
-// src/test/contexts/workout-tracking/StartWorkoutUseCase.test.ts
+// apps/api/tests/workout-tracking/start-workout.use-case.test.ts
 import { faker } from '@faker-js/faker';
 import { WorkoutMother } from '@/test/mothers/WorkoutMother';
 import { createTestDb } from '@/test/setup';
@@ -409,43 +271,16 @@ export const HealthRules = {
 
 ---
 
-## Interactive Components — Astro Islands
+## Frontend
 
-Per [ADR-002](./decisions/002-chartjs-react-island.md), interactive components are **Astro islands** — rendered with React or Svelte, hydrated only when needed. Astro is the framework, islands are the interaction layer.
+SvelteKit 3 with Svelte 5 runes. Options live in `vite.config.ts` (SvelteKit 3 rejects `svelte.config.js`), the `$lib` alias is `#lib` (package.json `imports`), and `tsconfig.json` extends `$app/tsconfig`. Every API call goes through `src/lib/api/client.ts`: bearer token, a 10 s timeout, responses validated with the `packages/contracts` schemas, and a `NetworkError` that is distinct from `ApiRequestError`, so the offline logic can tell "no signal" from "rejected".
 
-### When to use each
-
-| Framework | Use for |
-|-----------|---------|
-| **React** | Charts (Chart.js), forms with complex state, rich interactions |
-| **Svelte** | Lightweight components, simple interactivity, less JS payload |
-| **Astro** | Static layouts, SSR pages, non-interactive content |
-
-### Example: Rest Timer (Svelte)
-
-```astro
----
-// src/components/rest-timer.astro
-import RestTimerSvelte from './rest-timer.svelte';
----
-<RestTimerSvelte client:visible defaultSeconds={90} />
-```
-
-### Example: Progress Chart (React)
-
-```astro
----
-// src/components/progress-chart.astro
-import ProgressChartReact from './progress-chart.tsx';
----
-<ProgressChartReact client:visible data={chartData} type="weight" />
-```
+Live workouts are **local-first**: the snapshot and every set are written to IndexedDB before reaching the server, and an outbox sends them in order with exponential backoff (details in the migration plan, Phase 4). The API upserts by client-generated id, so replaying a command never duplicates data (ADR-025, amended by ADR-027 section 5).
 
 ## Deployment
 
-**Full guide:** [../deployment/vercel.md](../deployment/vercel.md) (TODO)
-
-- Astro with `@astrojs/vercel` adapter
-- Dev / local: `STORAGE_BACKEND=sqlite` (no external services needed)
-- Prod: `STORAGE_BACKEND=supabase` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-- Supabase free tier (500MB DB, 1GB storage)
+- **API:** `pnpm --filter @gym-up/api deploy` builds with SWC and runs `wrangler deploy`. D1: `pnpm --filter @gym-up/api d1:migrate:remote` and `d1:seed:remote`.
+- **Web:** `pnpm --filter @gym-up/app deploy:web` builds the SPA and serves it from Workers static assets (`apps/app/wrangler.jsonc`).
+- **Android:** `pnpm tauri android build` in `apps/app`. Windows needs Developer Mode enabled (symlinks); see the migration plan, Phase 5.
+- **Local:** `pnpm --filter @gym-up/api dev:worker` runs the API on `localhost:8787` with a local D1 (`d1:migrate:local`, `d1:seed:local`); `pnpm --filter @gym-up/app dev` runs the SPA.
+- **Configuration:** the SPA reads `VITE_API_URL` (`.env.development`, `.env.production`). The API allows CORS for the Tauri origins plus the origins in `EXTRA_ORIGINS`.

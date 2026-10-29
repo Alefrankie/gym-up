@@ -5,7 +5,7 @@
 
 Gym workout tracking web app. Two predefined routines (male/female), per-user logging, progress charts, public family visibility, private progress photos, AI nutrition analysis.
 
-**Stack:** Astro + Supabase + Vercel. Email/password auth. RLS-enforced data isolation.
+**Stack:** NestJS API on Cloudflare Workers (D1, R2 planned) + SvelteKit static SPA + Tauri 2 (Android), in a pnpm/Turborepo monorepo. Email/password auth with a bearer session token; data isolation is enforced in the API (ownership checks per use case). See [ADR-027](architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md) and the [mobile migration plan](planning/mobile-migration-plan.md).
 
 This index is the single entry point. Every other document is reachable from here in ≤ 2 clicks. Cross-references between documents use relative links; no content is duplicated — each fact lives in exactly one file.
 

@@ -209,7 +209,7 @@ export const calculateMemberStatsUseCase = new CalculateMemberStatsUseCase(worko
 
 - `FamilyMemberCard` — card with name, routine, stats.
 
-### Interactive components (Astro islands)
+### Interactive components (Svelte)
 
 - `FamilyMemberCard.svelte` — Svelte island, card with hover effect.
 

@@ -317,7 +317,7 @@ export const setCalorieGoalUseCase = new SetCalorieGoalUseCase(goalRepo);
   - `calorie_goal` — number input (optional)
 - Save button. Logout button.
 
-### Interactive components (Astro islands)
+### Interactive components (Svelte)
 
 - `SettingsForm.svelte` — Svelte island, form with client-side validation and save.
 

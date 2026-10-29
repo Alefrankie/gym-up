@@ -295,7 +295,7 @@ export const deletePhotoUseCase = new DeletePhotoUseCase(photoRepo, photoStorage
 - `PhotoUpload` — file picker + compression + upload.
 - `PhotoGallery` — grid view with signed URLs, delete option.
 
-### Interactive components (Astro islands)
+### Interactive components (Svelte)
 
 - `PhotoUpload.svelte` — Svelte island, file picker + compression + upload.
 - `PhotoGallery.svelte` — Svelte island, grid with click-to-fullscreen.
