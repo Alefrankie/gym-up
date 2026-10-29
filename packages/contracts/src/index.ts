@@ -5,3 +5,5 @@ export * from './photos';
 export * from './nutrition';
 export * from './progress';
 export * from './family';
+export * from './library';
+export * from './programs';

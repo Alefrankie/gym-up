@@ -7,6 +7,8 @@ import { PhotosModule } from './photos/photos.module';
 import { AI_PORT, DB, PASSWORD_HASHER, PHOTO_STORAGE, RATE_LIMITER, type RateLimiter } from './tokens';
 import type { AIAnalysisPort } from '@/lib/contexts/nutrition/domain/ports/ai-analysis.port';
 import type { PhotoStorage } from '@/lib/contexts/private-photos/domain/photo-storage';
+import { LibraryModule } from './library/library.module';
+import { ProgramsModule } from './programs/programs.module';
 import { FamilyModule } from './family/family.module';
 import { ProgressModule } from './progress/progress.module';
 import { WorkoutsModule } from './workouts/workouts.module';
@@ -37,7 +39,7 @@ export class AppModule {
     return {
       module: AppModule,
       global: true,
-      imports: [AuthModule, WorkoutsModule, ProgressModule, FamilyModule, PhotosModule, NutritionModule],
+      imports: [AuthModule, WorkoutsModule, ProgressModule, FamilyModule, PhotosModule, NutritionModule, LibraryModule, ProgramsModule],
       providers: [
         { provide: DB, useValue: deps.db },
         { provide: PASSWORD_HASHER, useValue: deps.hasher },

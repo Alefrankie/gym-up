@@ -23,5 +23,5 @@ export abstract class ExerciseQueryRepository {
    * Return the distinct exercises the user has logged in any
    * completed workout, ordered by name ASC.
    */
-  abstract getLoggedExercises(userId: string): Promise<Exercise[]>;
+  abstract getLoggedExercises(userId: string): Promise<Array<Pick<Exercise, "id" | "name" | "muscleGroup">>>;
 }

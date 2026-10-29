@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { Db } from '@/lib/db/client';
 import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
-import { GetTodayWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/get-today-workout.use-case';
 import { GetWorkoutDetailUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-detail.use-case';
 import { GetWorkoutHistoryUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-history.use-case';
 import { LogSetUseCase } from '@/lib/contexts/workout-tracking/application/log-set.use-case';
@@ -10,6 +9,7 @@ import { RoutineRepository } from '@/lib/contexts/workout-tracking/domain/routin
 import { WorkoutRepository } from '@/lib/contexts/workout-tracking/domain/workout.repository';
 import { SqliteRoutineRepository } from '@/lib/contexts/workout-tracking/infrastructure/sqlite/sqlite-routine.repository';
 import { SqliteWorkoutRepository } from '@/lib/contexts/workout-tracking/infrastructure/sqlite/sqlite-workout.repository';
+import { ProgramsModule } from '../programs/programs.module';
 import { DB } from '../tokens';
 import { WorkoutsController } from './workouts.controller';
 
@@ -18,6 +18,7 @@ import { WorkoutsController } from './workouts.controller';
  * Nest decorators and are bound here with factories (ADR-011: abstract classes as tokens).
  */
 @Module({
+  imports: [ProgramsModule],
   controllers: [WorkoutsController],
   providers: [
     { provide: WorkoutRepository, useFactory: (db: Db) => new SqliteWorkoutRepository(db), inject: [DB] },
@@ -31,11 +32,6 @@ import { WorkoutsController } from './workouts.controller';
     { provide: CompleteWorkoutUseCase, useFactory: (w: WorkoutRepository) => new CompleteWorkoutUseCase(w), inject: [WorkoutRepository] },
     { provide: GetWorkoutDetailUseCase, useFactory: (w: WorkoutRepository) => new GetWorkoutDetailUseCase(w), inject: [WorkoutRepository] },
     { provide: GetWorkoutHistoryUseCase, useFactory: (w: WorkoutRepository) => new GetWorkoutHistoryUseCase(w), inject: [WorkoutRepository] },
-    {
-      provide: GetTodayWorkoutUseCase,
-      useFactory: (routines: RoutineRepository, workouts: WorkoutRepository) => new GetTodayWorkoutUseCase(routines, workouts),
-      inject: [RoutineRepository, WorkoutRepository],
-    },
   ],
 })
 export class WorkoutsModule {}

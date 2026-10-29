@@ -24,7 +24,7 @@ import {
 } from '@gym-up/contracts';
 import type { User } from '@/lib/contexts/auth/auth.types';
 import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
-import { GetTodayWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/get-today-workout.use-case';
+import { GetNextWorkoutUseCase } from '@/lib/contexts/routines/application/get-next-workout.use-case';
 import { GetWorkoutDetailUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-detail.use-case';
 import { GetWorkoutHistoryUseCase } from '@/lib/contexts/workout-tracking/application/get-workout-history.use-case';
 import { LogSetUseCase } from '@/lib/contexts/workout-tracking/application/log-set.use-case';
@@ -42,7 +42,7 @@ export class WorkoutsController {
     @Inject(StartWorkoutUseCase) private readonly startWorkout: StartWorkoutUseCase,
     @Inject(LogSetUseCase) private readonly logSet: LogSetUseCase,
     @Inject(CompleteWorkoutUseCase) private readonly completeWorkout: CompleteWorkoutUseCase,
-    @Inject(GetTodayWorkoutUseCase) private readonly getToday: GetTodayWorkoutUseCase,
+    @Inject(GetNextWorkoutUseCase) private readonly getToday: GetNextWorkoutUseCase,
     @Inject(GetWorkoutDetailUseCase) private readonly getDetail: GetWorkoutDetailUseCase,
     @Inject(GetWorkoutHistoryUseCase) private readonly getHistory: GetWorkoutHistoryUseCase,
   ) {}
@@ -50,19 +50,8 @@ export class WorkoutsController {
   /** What the dashboard shows for today. */
   @Get('today')
   async today(@CurrentUser() user: User): Promise<TodayWorkoutResponse> {
-    const result = await this.getToday.execute({
-      userId: user.id,
-      routineType: user.routineType,
-      weightUnit: user.weightUnit,
-    });
+    const result = await this.getToday.execute({ userId: user.id, routineType: user.routineType });
     if (result.kind === 'no_routine') return { kind: 'no_routine' };
-    if (result.kind === 'rest_day') {
-      return {
-        kind: 'rest_day',
-        dayOptions: result.dayOptions.map((d) => ({ ...d })),
-        weightUnit: result.weightUnit,
-      };
-    }
     return {
       kind: 'workout_day',
       routineDay: {
@@ -77,13 +66,18 @@ export class WorkoutsController {
         exerciseName: e.exercise.name,
         muscleGroup: e.exercise.muscleGroup,
         targetSets: e.targetSets,
-        targetReps: e.targetReps,
+        targetReps: e.targetRepsMax ?? e.targetReps,
+        targetRepsMin: e.targetRepsMin ?? e.targetReps,
+        targetRepsMax: e.targetRepsMax ?? e.targetReps,
+        warmupSets: e.warmupSets,
+        restSeconds: e.restSeconds,
         exerciseOrder: e.exerciseOrder,
       })),
       workoutStatus: result.workoutStatus,
       existingWorkoutId: result.existingWorkoutId,
-      weightUnit: result.weightUnit,
+      weightUnit: user.weightUnit,
       dayNumber: result.dayNumber,
+      programName: result.programName,
     };
   }
 

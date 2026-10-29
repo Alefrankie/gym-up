@@ -107,6 +107,10 @@ export const routineExerciseSchema = z.object({
   targetSets: z.number().int(),
   targetReps: z.number().int(),
   exerciseOrder: z.number().int(),
+  targetRepsMin: z.number().int().optional(),
+  targetRepsMax: z.number().int().optional(),
+  warmupSets: z.number().int().optional(),
+  restSeconds: z.number().int().nullable().optional(),
 });
 export type RoutineExerciseDto = z.infer<typeof routineExerciseSchema>;
 
@@ -132,6 +136,7 @@ export const todayWorkoutResponseSchema = z.discriminatedUnion('kind', [
     existingWorkoutId: z.string().nullable(),
     weightUnit: weightUnitSchema,
     dayNumber: z.number().int(),
+    programName: z.string().optional(),
   }),
 ]);
 export type TodayWorkoutResponse = z.infer<typeof todayWorkoutResponseSchema>;

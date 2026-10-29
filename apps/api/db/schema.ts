@@ -42,6 +42,7 @@ export const profiles = sqliteTable('profiles', {
   weightUnit: text('weight_unit', { enum: ['kg', 'lbs'] })
     .notNull()
     .default('kg'),
+  activeProgramId: text('active_program_id'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -61,6 +62,15 @@ export const exercises = sqliteTable('exercises', {
     .$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull().unique(),
   muscleGroup: text('muscle_group').notNull(),
+  secondaryMuscles: text('secondary_muscles').notNull().default('[]'),
+  equipment: text('equipment').notNull().default('other'),
+  exerciseType: text('exercise_type').notNull().default('weight_reps'),
+  instructions: text('instructions'),
+  videoUrl: text('video_url'),
+  /** NULL = system exercise; otherwise the profile that created it (ADR-017). */
+  ownerId: text('owner_id'),
+  isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull().default(0),
 });
 
 export type Exercise = typeof exercises.$inferSelect;
@@ -75,7 +85,18 @@ export const routines = sqliteTable('routines', {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
-  type: text('type', { enum: ['hombre', 'mujer'] }).notNull(),
+  type: text('type', { enum: ['hombre', 'mujer', 'neutral'] }).notNull(),
+  /** NULL = seeded template; otherwise the owner of the program (ADR-018). */
+  ownerId: text('owner_id'),
+  sourceTemplateId: text('source_template_id'),
+  description: text('description'),
+  isTemplate: integer('is_template', { mode: 'boolean' }).notNull().default(false),
+  level: text('level'),
+  goal: text('goal'),
+  daysPerWeek: integer('days_per_week'),
+  isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull().default(0),
+  updatedAt: integer('updated_at').notNull().default(0),
 });
 
 export type Routine = typeof routines.$inferSelect;
@@ -96,6 +117,7 @@ export const routineDays = sqliteTable('routine_days', {
   dayNumber: integer('day_number').notNull(),
   dayName: text('day_name').notNull(),
   focus: text('focus').notNull(),
+  notes: text('notes'),
 });
 
 export type RoutineDay = typeof routineDays.$inferSelect;
@@ -118,6 +140,11 @@ export const routineExercises = sqliteTable('routine_exercises', {
   targetSets: integer('target_sets').notNull().default(4),
   targetReps: integer('target_reps').notNull().default(10),
   exerciseOrder: integer('exercise_order').notNull(),
+  targetRepsMin: integer('target_reps_min'),
+  targetRepsMax: integer('target_reps_max'),
+  warmupSets: integer('warmup_sets').notNull().default(0),
+  restSeconds: integer('rest_seconds'),
+  notes: text('notes'),
 });
 
 export type RoutineExercise = typeof routineExercises.$inferSelect;

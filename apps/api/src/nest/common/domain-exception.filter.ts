@@ -33,6 +33,13 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   DisplayNameTooLongError: 400,
   InvalidRoutineTypeError: 400,
   InvalidWeightUnitError: 400,
+  ExerciseNotFoundError: 404,
+  ExerciseOwnershipError: 403,
+  ExerciseNameTakenError: 409,
+  ProgramNotFoundError: 404,
+  ProgramOwnershipError: 403,
+  ProgramLimitError: 409,
+  InvalidProgramError: 400,
 };
 
 const ERROR_LABEL: Record<number, string> = {
