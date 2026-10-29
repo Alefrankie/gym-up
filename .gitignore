@@ -50,3 +50,12 @@ coverage/
 *.tsbuildinfo
 
 
+
+# Monorepo
+.turbo/
+.svelte-kit/
+.wrangler/
+build/
+src-tauri-target/
+apps/app/src-tauri/target/
+apps/app/src-tauri/gen/android/.gradle/

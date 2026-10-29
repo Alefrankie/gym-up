@@ -1,44 +1,19 @@
 {
   "name": "gym-up",
+  "private": true,
   "type": "module",
   "version": "0.0.1",
-  "private": true,
   "description": "Workout tracker with routines, progress, and family sharing",
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "typecheck": "tsc --noEmit --ignoreDeprecations 5.0",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx db/seed.ts",
-    "db:studio": "drizzle-kit studio"
-  },
-  "dependencies": {
-    "@astrojs/check": "0.9.9",
-    "@astrojs/react": "^4.4.0",
-    "@astrojs/vercel": "11.0.3",
-    "@supabase/supabase-js": "^2.112.4",
-    "argon2": "^0.45.1",
-    "astro": "7.1.3",
-    "better-sqlite3": "13.0.1",
-    "chart.js": "^4.5.1",
-    "drizzle-orm": "0.45.2",
-    "react": "^19.2.0",
-    "react-chartjs-2": "^5.3.1",
-    "react-dom": "^19.2.0",
-    "typescript": "~5.9.3"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint"
   },
   "devDependencies": {
-    "@types/argon2": "^0.14.1",
-    "@types/better-sqlite3": "7.6.13",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "drizzle-kit": "0.31.10",
-    "happy-dom": "^20.11.2",
-    "tsx": "^4.23.1",
-    "vitest": "4.1.10"
+    "turbo": "^2.11.10",
+    "typescript": "^7.0.2"
   }
 }
