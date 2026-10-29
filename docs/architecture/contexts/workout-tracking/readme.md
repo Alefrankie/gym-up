@@ -418,9 +418,9 @@ export const completeWorkoutUseCase = new CompleteWorkoutUseCase(workoutRepo, en
 - `WorkoutSummary` — post-workout summary (exercises, sets, volume, duration).
 - `RestTimer` — countdown between sets (90s default).
 
-### Interactive components (Astro islands)
+### Interactive components (Svelte)
 
-Per Astro's island architecture, interactive components are hydrated as needed:
+The Astro island versions of these components were removed in Phase 1 of the mobile migration (see the `pre-migration` git tag); they are rewritten as Svelte components in `apps/app` as each page is ported. Planned components (the live workout screen already exists as `apps/app/src/routes/workout/[id]/+page.svelte`):
 
 - `ExerciseCard.svelte` — Svelte island, set logging with auto-save.
 - `RestTimer.svelte` — Svelte island, countdown timer (lightweight, ~3KB).

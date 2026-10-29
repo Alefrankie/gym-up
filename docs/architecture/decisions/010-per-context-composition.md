@@ -2,13 +2,17 @@
 id: ADR-010
 title: Per-Context Composition Files
 type: decision
-status: accepted
+status: superseded
 date: 2026-07-21
 ---
 
 # ADR-010: Per-Context Composition Files
 
 ## Status
+
+Superseded by [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) on 2026-10-29: composition files and `STORAGE_BACKEND` are replaced by one Nest module per context with factory providers (see [system.md](../system.md#wiring-nest-modules)). The original decision is kept below for history.
+
+_Original status:_
 
 Accepted
 

@@ -2,6 +2,8 @@
 
 Parent: [../readme.md](../readme.md) · Phase: MVP
 
+> **Historical record (2026-10-29).** These rounds were implemented on the Astro + SQLite/Supabase app, which was removed in Phase 1 of the [mobile migration](../../planning/mobile-migration-plan.md). File names such as `*.astro`, the Supabase rounds and `STORAGE_BACKEND` describe that app, not the current code. It is preserved at the git tag `pre-migration`. For the current architecture see [system.md](../../architecture/system.md) and [ADR-027](../../architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md).
+
 ## Purpose
 
 Rounds turn Phase 1 decisions into small implementation sub-phases that can be built and tested independently.

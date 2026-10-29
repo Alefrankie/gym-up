@@ -481,9 +481,9 @@ export const getDailyCalorieSummaryUseCase = new GetDailyCalorieSummaryUseCase(n
 - `DailyCalorieBar` — progress bar showing consumed vs goal.
 - `NutritionHistory` — list of past meals with thumbnails.
 
-### Interactive components (Astro islands)
+### Interactive components (Svelte)
 
-Per Astro's island architecture, interactive components are hydrated as needed:
+The Astro island versions of these components were removed in Phase 1 of the mobile migration (see the `pre-migration` git tag); they are rewritten as Svelte components in `apps/app` as each page is ported. Planned components:
 
 - `MealPhotoCapture.svelte` — Svelte island, file picker + compression (lightweight, minimal JS).
 - `NutritionResult.svelte` — Svelte island, edit/display macros (simple state).

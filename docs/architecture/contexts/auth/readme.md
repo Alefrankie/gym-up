@@ -342,7 +342,7 @@ export const logoutUserUseCase = new LogoutUserUseCase(authPort, sessionPort);
   - Client-side validation before submit.
   - Error display inline.
 
-### Interactive components (Astro islands)
+### Interactive components (Svelte)
 
 - `AuthForm.svelte` — Svelte island, form with client-side validation.
 

@@ -2,7 +2,7 @@
 id: ADR-027
 title: Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2
 type: decision
-status: proposed
+status: accepted
 date: 2026-10-29
 ---
 
@@ -12,7 +12,7 @@ Parent: [./readme.md](./readme.md) · Up: [../../README.md](../../README.md)
 
 ## Status
 
-Proposed. The product owner decided on 2026-10-29: NestJS, SvelteKit SPA, Tauri 2, a Turborepo monorepo, remote push notifications **out of scope** for the first release, and Phase 2 features **built directly in the new stack**. Authentication stays simple (email and password, no OAuth). **Cloudflare is the platform** (Workers for the API and web, D1 database, R2 photos); Supabase is dropped. The Phase 0 deploy checks in [Cloudflare evaluation](#cloudflare-evaluation) can still send us to a fallback. Items under [Open questions](#open-questions) are not settled and block the phases that depend on them. Execution order is in the [migration plan](../../planning/mobile-migration-plan.md).
+Accepted on 2026-10-29 and implemented through Phase 4 of the migration plan (monorepo, API on Workers, Svelte app, offline workouts). The product owner decided on 2026-10-29: NestJS, SvelteKit SPA, Tauri 2, a Turborepo monorepo, remote push notifications **out of scope** for the first release, and Phase 2 features **built directly in the new stack**. Authentication stays simple (email and password, no OAuth). **Cloudflare is the platform** (Workers for the API and web, D1 database, R2 photos); Supabase is dropped. The Phase 0 deploy checks in [Cloudflare evaluation](#cloudflare-evaluation) can still send us to a fallback. Items under [Open questions](#open-questions) that are still open (token storage in the Tauri build) block only Phase 5. Execution order is in the [migration plan](../../planning/mobile-migration-plan.md).
 
 ## Context
 

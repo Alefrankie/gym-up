@@ -4,8 +4,8 @@ Parent: [../readme.md](../readme.md) · Up: [../../README.md](../README.md)
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [ADR-001](./001-supabase-client-side.md) | Supabase Client-side SDK | ✅ Accepted |
-| [ADR-002](./002-chartjs-react-island.md) | Chart.js via React Island | ✅ Accepted |
+| [ADR-001](./001-supabase-client-side.md) | Supabase Client-side SDK | ⛔ Superseded by [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) |
+| [ADR-002](./002-chartjs-react-island.md) | Chart.js via React Island | ⛔ Superseded by [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) |
 | [ADR-003](./003-routines-seed-data.md) | Routines as Seed Data | ✅ Accepted |
 | [ADR-004](./004-rls-visibility.md) | RLS: write own, read all | ✅ Accepted |
 | [ADR-005](./005-private-photos.md) | Private Progress Photos | ✅ Accepted |
@@ -13,9 +13,9 @@ Parent: [../readme.md](../readme.md) · Up: [../../README.md](../README.md)
 | [ADR-007](./007-repository-pattern.md) | Repository Pattern — Abstract Class, Dual Impls | ✅ Accepted |
 | [ADR-008](./008-key-value-storage.md) | KeyValueStorage Abstraction | ✅ Accepted |
 | [ADR-009](./009-object-mothers.md) | Object Mothers Test Pattern with @faker-js/faker | ✅ Accepted |
-| [ADR-010](./010-per-context-composition.md) | Per-Context Composition Files | ✅ Accepted |
+| [ADR-010](./010-per-context-composition.md) | Per-Context Composition Files | ⛔ Superseded by [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) (Nest modules) |
 | [ADR-011](./011-implements-not-extends.md) | Abstract Classes as Interfaces (implements, not extends) | ✅ Accepted |
 | [ADR-012](./012-drizzle-orm.md) | Drizzle ORM as SQLite/Postgres Abstraction | ✅ Accepted |
 | [ADR-013](./013-hexagonal-architecture.md) | Hexagonal Architecture (Ports and Adapters) per Context | ✅ Accepted |
 | [ADR-014](./014-ai-nutrition-analysis.md) | AI Nutrition Analysis — Google Gemini Vision Provider | ✅ Accepted |
-| [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) | Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2 | 📝 Proposed |
+| [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) | Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2 | ✅ Accepted (2026-10-29) |

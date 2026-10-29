@@ -226,7 +226,7 @@ export const getCalendarDataUseCase = new GetCalendarDataUseCase(progressRepo);
 - Calendar grid component.
 - Streak counter.
 
-### Interactive components (Astro islands)
+### Interactive components (Svelte)
 
 - `ProgressChart.tsx` — React island, Chart.js rendering (per [ADR-002](../decisions/002-chartjs-react-island.md)).
 - `ExerciseSelector.svelte` — Svelte island, dropdown with state.
