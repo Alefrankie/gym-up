@@ -3,6 +3,8 @@ import type { Db } from '@/lib/db/client';
 import type { PasswordHasher } from '@/lib/contexts/auth/auth.types';
 import { AuthModule } from './auth/auth.module';
 import { DB, PASSWORD_HASHER, RATE_LIMITER, type RateLimiter } from './tokens';
+import { FamilyModule } from './family/family.module';
+import { ProgressModule } from './progress/progress.module';
 import { WorkoutsModule } from './workouts/workouts.module';
 
 @Controller()
@@ -27,7 +29,7 @@ export class AppModule {
     return {
       module: AppModule,
       global: true,
-      imports: [AuthModule, WorkoutsModule],
+      imports: [AuthModule, WorkoutsModule, ProgressModule, FamilyModule],
       providers: [
         { provide: DB, useValue: deps.db },
         { provide: PASSWORD_HASHER, useValue: deps.hasher },

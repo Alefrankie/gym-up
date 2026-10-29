@@ -56,6 +56,8 @@ Port `domain` and `application` code unchanged; write Nest controllers, provider
 | 2.5 | `nutrition` | Gemini adapter ([ADR-014](../architecture/decisions/014-ai-nutrition-analysis.md)); key only in API env. Rate limit. |
 | 2.6 | `public-view` | Family feed and member pages; respects RLS-equivalent rules ([ADR-004](../architecture/decisions/004-rls-visibility.md)). |
 
+**Status (2026-10-29):** 2.1 `auth`, 2.2 `workout-tracking` (today, history, start, detail, upsert set, complete), 2.3 `progress` (streak, calendar, logged exercises, exercise history) and 2.6 `public-view` (family list and member detail) are done, deployed and covered by end-to-end tests over real HTTP (19). Pending: 2.4 `private-photos` (needs R2 enabled on the Cloudflare account) and 2.5 `nutrition` (needs a Gemini API key as a Worker secret, and the image compression, which used `sharp`, moves to the client).
+
 Per module: contract tests against `packages/contracts`, OpenAPI published, and the moved use-case tests of that context passing.
 
 Deploy the API to the chosen platform as soon as 2.1 and 2.2 exist, so the app is always tested against a real server.
@@ -80,6 +82,8 @@ Build in the browser first. Tauri is not involved yet.
 | 3.6 | Family and member | `family`, `family/[user_id]`, `family-member-card` | M |
 | 3.7 | Photos | `photos`, `photo-gallery`, `photo-upload` | M |
 | 3.8 | Nutrition | `nutrition`, `meal-photo-capture`, `nutrition-result`, `nutrition-history`, `daily-calorie-bar` | M |
+
+**Status (2026-10-29):** done: 3.1 login and register, 3.3 history, 3.4 dashboard, 3.5 progress (Chart.js used directly), 3.6 family and member detail, plus the workout screen (Phase 4). Pending: 3.2 settings, 3.7 photos, 3.8 nutrition.
 
 Exit: all pages except the workout screen work in the browser against the Nest API.
 

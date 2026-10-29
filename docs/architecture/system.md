@@ -30,7 +30,9 @@ Everything renders in the browser (`ssr = false`, `adapter-static` with an `inde
 | `/dashboard` (today's workout, start or continue) | Implemented |
 | `/workout/[id]` (log sets, rest timer, finish; works offline) | Implemented |
 | `/history` | Implemented |
-| `/progress`, `/photos`, `/nutrition`, `/family`, `/settings` | Planned (migration plan, Phase 3 and the Phase 2 modules) |
+| `/progress` (streak, 28-day calendar, per-exercise chart) | Implemented |
+| `/family`, `/family/[id]` | Implemented |
+| `/photos`, `/nutrition`, `/settings` | Planned (migration plan, Phase 3 and the Phase 2 modules) |
 
 ## Tech Stack
 
@@ -45,7 +47,7 @@ Everything renders in the browser (`ssr = false`, `adapter-static` with an `inde
 | Shared contracts | zod 4 schemas in `packages/contracts` | ADR-027 |
 | Monorepo | pnpm workspaces + Turborepo | ADR-027 |
 | Offline | IndexedDB outbox, local-first workouts, read-through cache | [mobile plan, Phase 4](../planning/mobile-migration-plan.md) |
-| Charts | Chart.js used directly from Svelte (planned) | supersedes [ADR-002](./decisions/002-chartjs-react-island.md) |
+| Charts | Chart.js used directly from Svelte | supersedes [ADR-002](./decisions/002-chartjs-react-island.md) |
 | Photos | Cloudflare R2, presigned URLs (planned) | supersedes the storage part of [ADR-005](./decisions/005-private-photos.md) |
 | Test data | Object Mothers, real SQLite in memory, no mocks | [ADR-009](./decisions/009-object-mothers.md) |
 
@@ -78,7 +80,7 @@ gym-up/
     contracts/                    zod request and response schemas shared by api and app
 ```
 
-Implemented contexts under `apps/api/src/lib/contexts/`: `auth`, `workout-tracking`, `progress`, `private-photos`, `public-view`, `nutrition`. Only `auth` and `workout-tracking` have Nest modules so far; the others are ported module by module (migration plan, Phase 2).
+Implemented contexts under `apps/api/src/lib/contexts/`: `auth`, `workout-tracking`, `progress`, `private-photos`, `public-view`, `nutrition`. `auth`, `workout-tracking`, `progress` and `public-view` (served as `/family`) have Nest modules; `private-photos` and `nutrition` are next (migration plan, Phase 2).
 
 ## Hexagonal Layering in `apps/api`
 
