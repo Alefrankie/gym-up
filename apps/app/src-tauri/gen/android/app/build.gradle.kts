@@ -14,6 +14,16 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// GYM_UP_SIGNING_CONFIG_START
+val gymUpSigningProperties = Properties().apply {
+    val path = System.getenv("GYM_UP_ANDROID_SIGNING_PROPERTIES")
+    if (path != null) file(path).takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val gymUpHasSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all {
+    !gymUpSigningProperties.getProperty(it).isNullOrBlank()
+}
+// GYM_UP_SIGNING_CONFIG_END
+
 android {
     compileSdk = 37
     namespace = "com.gymup.app"
@@ -24,6 +34,16 @@ android {
         targetSdk = 37
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    if (gymUpHasSigning) {
+        signingConfigs {
+            create("gymUpRelease") {
+                storeFile = file(gymUpSigningProperties.getProperty("storeFile"))
+                storePassword = gymUpSigningProperties.getProperty("storePassword")
+                keyAlias = gymUpSigningProperties.getProperty("keyAlias")
+                keyPassword = gymUpSigningProperties.getProperty("keyPassword")
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -40,6 +60,7 @@ android {
             }
         }
         getByName("release") {
+            if (gymUpHasSigning) signingConfig = signingConfigs.getByName("gymUpRelease")
             optimization {
                enable = true
             }
