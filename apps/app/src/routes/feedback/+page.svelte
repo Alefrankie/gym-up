@@ -46,6 +46,14 @@
     } catch { error = t('feedback.saveError'); }
   }
 
+  async function remove(item: FeedbackItemDto) {
+    if (!confirm(t('feedback.deleteConfirm', { title: item.title }))) return;
+    try {
+      await api(`/feedback/${item.id}`, { method: 'DELETE' });
+      items = items.filter((entry) => entry.id !== item.id);
+    } catch { error = t('feedback.deleteError'); }
+  }
+
   const statuses = ['open', 'planned', 'in_progress', 'resolved'] as const;
 </script>
 
@@ -78,6 +86,7 @@
           {#if item.description}<p class="description">{item.description}</p>{/if}
           <div class="foot"><span class="muted">{t('feedback.author', { name: item.authorName })}</span>
             {#if canManage}<label class="status-control"><span>{t('feedback.ownStatus')}</span><select value={item.status} onchange={(e) => setStatus(item, e.currentTarget.value as FeedbackItemDto['status'])}>{#each statuses as status}<option value={status}>{t(`feedback.status.${status}` as Parameters<typeof t>[0])}</option>{/each}</select></label>{/if}
+            {#if item.canDelete}<button type="button" class="delete" onclick={() => remove(item)}>{t('feedback.delete')}</button>{/if}
           </div>
         </article>
       {/each}
@@ -101,6 +110,7 @@
   .status.done { color: var(--accent-hi); }
   .resolved { opacity: .8; }
   .foot { border-top: 1px solid var(--line); padding-top: .65rem; font-size: var(--t-sm); }
+  .delete { min-height: 40px; padding: .25rem .6rem; background: none; border: 1px solid var(--line-strong); border-radius: 99px; color: var(--danger); font-size: var(--t-xs); }
   .status-control { display: flex; align-items: center; gap: .4rem; font-size: var(--t-xs); }
   .status-control select { min-height: 40px; padding: .25rem .5rem; }
   .empty { text-align: center; padding: 1.5rem 1rem; }

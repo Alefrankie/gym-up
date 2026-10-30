@@ -9,6 +9,7 @@ export const feedbackItemSchema = z.object({
   category: feedbackCategorySchema,
   status: feedbackStatusSchema,
   authorName: z.string(),
+  canDelete: z.boolean().default(false),
   createdAt: z.number(),
   updatedAt: z.number(),
 });

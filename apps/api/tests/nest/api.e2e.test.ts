@@ -215,6 +215,30 @@ describe('workouts', () => {
     expect((await http('DELETE', `/workouts/${done}`, { token: owner.token })).status).toBe(409);
   });
 
+  it('lets the author or the admin delete feedback, and only the admin change its status', async () => {
+    const author = await register('fb-author@example.com');
+    const other = await register('fb-other@example.com');
+    const admin = await register('alefrank.m@gmail.com');
+    const create = (token: string) =>
+      http('POST', '/feedback', { token, body: { title: 'Sent by mistake', description: '', category: 'idea' } });
+
+    const mine = (await create(author.token)).json as { id: string; canDelete: boolean };
+    expect(mine.canDelete).toBe(true);
+    const list = (await http('GET', '/feedback', { token: other.token })).json as { items: { id: string; canDelete: boolean }[]; canManage: boolean };
+    expect(list.canManage).toBe(false);
+    expect(list.items.find((i) => i.id === mine.id)?.canDelete).toBe(false);
+
+    expect((await http('PATCH', `/feedback/${mine.id}/status`, { token: author.token, body: { status: 'resolved' } })).status).toBe(403);
+    expect((await http('PATCH', `/feedback/${mine.id}/status`, { token: admin.token, body: { status: 'resolved' } })).status).toBe(200);
+
+    expect((await http('DELETE', `/feedback/${mine.id}`, { token: other.token })).status).toBe(403);
+    expect((await http('DELETE', `/feedback/${mine.id}`, { token: author.token })).status).toBe(204);
+    expect((await http('DELETE', `/feedback/${mine.id}`, { token: author.token })).status).toBe(404);
+
+    const theirs = (await create(other.token)).json as { id: string };
+    expect((await http('DELETE', `/feedback/${theirs.id}`, { token: admin.token })).status).toBe(204);
+  });
+
   it('removes a set and moves the later sets up one number', async () => {
     const s = await register('remove-set@example.com');
     const other = await register('remove-set-other@example.com');
