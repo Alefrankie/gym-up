@@ -3,6 +3,7 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { t } from '#lib/i18n';
+  import Icon from './Icon.svelte';
 
   /**
    * The floating bottom action of an editor: the save button while there are unsaved changes, then the
@@ -44,8 +45,9 @@
 {#if dirty || flash || idle}
   <div class="bar" transition:fly={{ y: 24, duration: 220, easing: cubicOut }}>
     {#if dirty}
-      <button class="primary" disabled={busy || disabled} onclick={onsave} in:fade={{ duration: 150 }}>
-        {#if busy}<span class="spinner" aria-hidden="true"></span>{/if}
+      <!-- White, not orange: saving must never look like the screen's own action (e.g. "Start routine"). -->
+      <button class="primary save" disabled={busy || disabled} onclick={onsave} in:fade={{ duration: 150 }}>
+        {#if busy}<span class="spinner" aria-hidden="true"></span>{:else}<Icon name="check" size={18} />{/if}
         {busy ? t('common.saving') : label}
       </button>
     {:else if flash}
@@ -112,6 +114,13 @@
     to {
       transform: rotate(360deg);
     }
+  }
+  .save {
+    background: var(--text);
+    color: var(--bg);
+  }
+  .save:active:not(:disabled) {
+    background: #ffffff;
   }
   .bar :global(.primary) {
     display: inline-flex;
