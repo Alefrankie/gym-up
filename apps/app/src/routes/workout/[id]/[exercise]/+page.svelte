@@ -66,12 +66,13 @@
   </div>
 
   <h2>{t('workout.sets')}</h2>
-  <div class="table" role="group" aria-label={t('workout.sets')}>
+  <div class="table" class:editable={!view.isCompleted} role="group" aria-label={t('workout.sets')}>
     <div class="heads">
       <span>{t('workout.set')}</span>
       <span>{t('workout.reps')}</span>
       <span>{view.unit.toUpperCase()}</span>
       <span></span>
+      {#if !view.isCompleted}<span></span>{/if}
     </div>
     {#each view.setNumbers(ex) as n (n)}
       {@const r = view.row(ex.exerciseId, n)}
@@ -108,6 +109,15 @@
             onclick={() => view.commit(ex.exerciseId, n, !r.completed)}
             aria-label={r.completed ? t('workout.uncheckSet', { n }) : t('workout.checkSet', { n })}
           ><Icon name="check" size={18} /></button>
+          {#if !view.isCompleted}
+            <button
+              type="button"
+              class="del"
+              disabled={view.setNumbers(ex).length <= 1}
+              onclick={() => { if (!r.completed || confirm(t('workout.removeSetConfirm', { n }))) view.removeSet(ex, n); }}
+              aria-label={t('workout.removeSet', { n })}
+            ><Icon name="trash" size={16} /></button>
+          {/if}
         </div>
       {/if}
     {/each}
@@ -220,6 +230,19 @@
     grid-template-columns: 48px 1fr 1fr 48px;
     gap: 0.5rem;
     align-items: center;
+  }
+  .table.editable .heads,
+  .table.editable .set {
+    grid-template-columns: 48px 1fr 1fr 48px 36px;
+  }
+  .set .del {
+    min-height: 40px;
+    background: none;
+    border: 0;
+    color: var(--faint);
+  }
+  .set .del:disabled {
+    opacity: 0.3;
   }
   .heads {
     color: var(--faint);

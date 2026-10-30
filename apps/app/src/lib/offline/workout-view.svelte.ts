@@ -204,6 +204,7 @@ export class WorkoutView {
     if (!snap) return;
     try {
       const detail = await api(`/workouts/${this.#id}`, { schema: workoutDetailSchema, timeoutMs: 6000 });
+      if (await sync.outbox.hasPendingRemoval(this.#id)) return;
       const pending = await sync.outbox.pendingSetIds(this.#id);
       for (const e of detail.entries) {
         const k = rowKey(e.exerciseId, e.setNumber);
@@ -352,6 +353,29 @@ export class WorkoutView {
       completed: false,
     };
     await saveSnapshot(snap);
+  }
+
+  /** Removes one set from this session; later sets move up one number, here and on the server. Works with no signal. */
+  async removeSet(ex: RoutineExerciseDto, n: number) {
+    const snap = this.snap;
+    if (!snap) return;
+    const nums = this.setNumbers(ex);
+    const last = nums[nums.length - 1] ?? 0;
+    if (nums.length <= 1 || n < 1 || n > last) return;
+    for (let k = n; k < last; k++) {
+      const next = snap.rows[rowKey(ex.exerciseId, k + 1)];
+      if (next) snap.rows[rowKey(ex.exerciseId, k)] = next;
+      else delete snap.rows[rowKey(ex.exerciseId, k)];
+    }
+    delete snap.rows[rowKey(ex.exerciseId, last)];
+    snap.exercises = snap.exercises.map((e) =>
+      e.exerciseId === ex.exerciseId
+        ? { ...e, targetSets: Math.min(e.targetSets, last - 1), sets: e.sets ? e.sets.filter((_, i) => i !== n - 1) : e.sets }
+        : e,
+    );
+    await saveSnapshot(snap);
+    await sync.enqueue({ type: 'remove-set', workoutId: this.#id, exerciseId: ex.exerciseId, setNumber: n });
+    restTimer.stopNag();
   }
 
   /** Cancels the workout in progress: nothing of it is kept, here or on the server. Works with no signal. */
