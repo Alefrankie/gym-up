@@ -27,7 +27,7 @@
       {#if appUpdates.permissionRequired}
         <p>{t('update.permission')}</p>
       {/if}
-      {#if appUpdates.error}<p class="error" role="alert">{t('update.downloadError')}</p>{/if}
+      {#if appUpdates.error}<p class="error" role="alert">{appUpdates.errorDetail || t('update.downloadError')}</p>{/if}
     </div>
     <div class="actions">
       {#if !appUpdates.downloading}

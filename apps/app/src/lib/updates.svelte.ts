@@ -24,6 +24,8 @@ class AppUpdates {
   downloaded = $state(0);
   downloadSize = $state(0);
   permissionRequired = $state(false);
+  installedVersion = $state('');
+  errorDetail = $state('');
 
   get progressPercent() {
     return this.downloadSize > 0 ? Math.min(100, Math.floor((this.downloaded / this.downloadSize) * 100)) : null;
@@ -40,6 +42,7 @@ class AppUpdates {
     this.error = false;
     try {
       const installed = await invoke<InstalledVersion>('plugin:apk-installer|get_installed_version');
+      this.installedVersion = installed.versionName;
       const response = await fetch(new URL('/update.json', UPDATE_BASE_URL), {
         cache: 'no-store',
         signal: AbortSignal.timeout(12_000),
@@ -73,7 +76,8 @@ class AppUpdates {
     if (!manifest || this.downloading) return;
 
     try {
-      const allowed = await invoke<boolean>('plugin:apk-installer|can_install_packages');
+      // The plugin resolves { allowed }, not a bare boolean.
+      const { allowed } = await invoke<{ allowed: boolean }>('plugin:apk-installer|can_install_packages');
       if (!allowed) {
         this.permissionRequired = true;
         await invoke('plugin:apk-installer|open_install_settings');
@@ -82,6 +86,7 @@ class AppUpdates {
 
       this.permissionRequired = false;
       this.error = false;
+      this.errorDetail = '';
       this.downloading = true;
       this.downloaded = 0;
       this.downloadSize = 0;
@@ -102,8 +107,9 @@ class AppUpdates {
       } finally {
         await unlisten?.unregister();
       }
-    } catch {
+    } catch (error) {
       this.error = true;
+      this.errorDetail = typeof error === 'string' ? error : error instanceof Error ? error.message : '';
     } finally {
       this.downloading = false;
     }

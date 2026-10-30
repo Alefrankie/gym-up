@@ -4,12 +4,14 @@
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import { appUpdates } from '#lib/updates.svelte';
   import type { ComponentProps } from 'svelte';
 
   type IconName = ComponentProps<typeof Icon>['name'];
 
   onMount(() => {
     void session.require();
+    void appUpdates.check(true);
   });
 
   const links: Array<{ href: string; title: MessageKey; hint: MessageKey; icon: IconName }> = [
@@ -39,6 +41,40 @@
       </li>
     {/each}
   </ul>
+
+  {#if appUpdates.supported}
+    <section class="card updates">
+      <strong>{t('update.check')}</strong>
+      <p class="muted hint">
+        {#if appUpdates.installedVersion}{t('update.installed', { version: appUpdates.installedVersion })} · {/if}
+        {#if appUpdates.checking}
+          {t('update.checking')}
+        {:else if appUpdates.available}
+          {t('update.description', { version: appUpdates.available.version })}
+        {:else if appUpdates.checked && !appUpdates.error}
+          {t('update.current')}
+        {/if}
+      </p>
+      {#if appUpdates.error}
+        <p class="error" role="alert">{appUpdates.errorDetail || t('update.error')}</p>
+      {/if}
+      <div class="update-actions">
+        {#if appUpdates.available}
+          <button type="button" class="primary" disabled={appUpdates.downloading} onclick={() => appUpdates.install()}>
+            {appUpdates.downloading
+              ? appUpdates.progressPercent !== null
+                ? t('update.progress', { percent: appUpdates.progressPercent })
+                : t('update.downloading')
+              : t('update.install')}
+          </button>
+        {/if}
+        <button type="button" class:primary={!appUpdates.available} disabled={appUpdates.checking} onclick={() => appUpdates.check(true)}>
+          {appUpdates.checking ? t('update.checking') : t('update.check')}
+        </button>
+      </div>
+      {#if appUpdates.permissionRequired}<p class="muted hint">{t('update.permission')}</p>{/if}
+    </section>
+  {/if}
 </main>
 
 <AppNav />
@@ -56,5 +92,15 @@
   }
   .hint {
     font-size: var(--t-sm);
+  }
+  .updates {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .update-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 </style>
