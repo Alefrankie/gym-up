@@ -74,6 +74,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-apk-installer",
+ "tauri-plugin-coach-voice",
  "tauri-plugin-log",
  "tauri-plugin-notification",
 ]
@@ -3572,6 +3573,17 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-apk-installer"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "tauri-plugin-coach-voice"
 version = "0.1.0"
 dependencies = [
  "serde",

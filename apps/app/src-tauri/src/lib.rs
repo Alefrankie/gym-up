@@ -4,6 +4,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![is_release_build])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_apk_installer::init())
+        .plugin(tauri_plugin_coach_voice::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

@@ -63,6 +63,7 @@
   /** First visit: asks once whether the Coach should talk; the answer is remembered and editable in Settings. */
   function answerVoice(on: boolean) {
     coachVoice.set(on);
+    if (on) coachVoice.prewarm();
     if (on) speakHomeOnce(quote);
   }
 

@@ -11,7 +11,8 @@
   import Icon from '#lib/components/Icon.svelte';
   import { i18n, t, type LocalePreference } from '#lib/i18n';
   import { appUpdates } from '#lib/updates.svelte';
-  import { coachSay } from '#lib/coach/coach.svelte';
+  import { coachLine } from '#lib/coach/coach.svelte';
+  import { nudge } from '#lib/nudge.svelte';
   import { coachVoice } from '#lib/coach/voice.svelte';
 
   let displayName = $state('');
@@ -39,6 +40,22 @@
   });
 
   /** Coach settings save as soon as they change; gymrat asks first because it swears. */
+  /** Says a Home line now and reports how it went, instead of failing in silence. */
+  let voiceSaid = $state(false);
+  async function testVoice() {
+    voiceSaid = false;
+    const line = coachLine('home');
+    if (!line) return;
+    nudge.show(line.text, 4000);
+    voiceSaid = await coachVoice.test(line.text, line.locale);
+  }
+
+  function setVoice(on: boolean) {
+    coachVoice.set(on);
+    voiceSaid = false;
+    if (on) coachVoice.prewarm();
+  }
+
   async function saveCoach(patch: Pick<UpdateProfileRequest, 'coachTone' | 'addressForm'>) {
     coachMessage = null;
     coachError = null;
@@ -166,14 +183,36 @@
         <span class="field">{t('coach.voice')}</span>
         <div class="lang two" role="radiogroup" aria-label={t('coach.voice')}>
           {#each [true, false] as on (on)}
-            <button type="button" role="radio" aria-checked={coachVoice.enabled === on} class:on={coachVoice.enabled === on} onclick={() => coachVoice.set(on)}>
+            <button type="button" role="radio" aria-checked={coachVoice.enabled === on} class:on={coachVoice.enabled === on} onclick={() => setVoice(on)}>
               {on ? t('coach.voiceOn') : t('coach.voiceOff')}
             </button>
           {/each}
         </div>
         <p class="muted hint">{t('coach.voiceHint')}</p>
         {#if coachVoice.enabled}
-          <button type="button" class="test" onclick={() => coachSay('home')}><Icon name="bolt" size={16} /> {t('coach.voiceTest')}</button>
+          <button type="button" class="test" disabled={coachVoice.busy} onclick={testVoice}>
+            <Icon name="bolt" size={16} /> {coachVoice.busy ? t('coach.voicePreparing') : t('coach.voiceTest')}
+          </button>
+          {@const d = coachVoice.download}
+          {#if d?.phase === 'download'}
+            <p class="muted hint" role="status">
+              {d.totalMb ? t('coach.voiceDownloadMb', { loaded: d.loadedMb ?? 0, total: d.totalMb, percent: d.percent ?? 0 }) : t('coach.voiceDownload')}
+            </p>
+            {#if d.percent !== null}<progress max="100" value={d.percent}></progress>{/if}
+          {:else if d?.phase === 'load'}
+            <p class="muted hint" role="status">{t('coach.voiceLoading')}</p>
+          {:else if coachVoice.problem?.kind === 'noVoice'}
+            <p class="error" role="alert">{t('coach.voiceNone')}</p>
+          {:else if coachVoice.problem?.kind === 'failed'}
+            <p class="error" role="alert">{t('coach.voiceFailed', { message: coachVoice.problem.message })}</p>
+          {:else if coachVoice.problem?.kind === 'notMale'}
+            <p class="muted hint" role="status">{t('coach.voiceNotMale')}</p>
+          {:else if d?.phase === 'ready' || voiceSaid}
+            <p class="ok" role="status">{t('coach.voiceReady')}</p>
+          {/if}
+          {#if coachVoice.inApp && (coachVoice.problem?.kind === 'noVoice' || coachVoice.problem?.kind === 'notMale' || coachVoice.problem?.kind === 'failed')}
+            <button type="button" class="test" onclick={() => coachVoice.openSystemSettings()}>{t('coach.voiceSystemSettings')}</button>
+          {/if}
         {/if}
       </div>
     </div>
@@ -262,6 +301,11 @@
   }
   .lang.two {
     grid-template-columns: repeat(2, 1fr);
+  }
+  progress {
+    width: 100%;
+    margin-top: 0.4rem;
+    accent-color: var(--accent);
   }
   .test {
     display: inline-flex;

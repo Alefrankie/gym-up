@@ -1,0 +1,3 @@
+[default]
+description = "Default permissions for the plugin"
+permissions = ["allow-status", "allow-speak", "allow-stop", "allow-open-settings"]
