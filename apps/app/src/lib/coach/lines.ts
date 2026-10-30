@@ -4,7 +4,7 @@ import { WORKOUT_LINES, type WorkoutEvent } from './lines-workout';
 /**
  * Everything the Coach says, hand-written per tone, language and moment. Nothing is generated live.
  *
- * - `{exercise}`, `{weight}`, `{reps}`, `{restSeconds}`, `{name}` are filled in; a line that needs a value nobody
+ * - `{exercise}`, `{weight}`, `{reps}`, `{prevWeight}`, `{prevReps}`, `{restSeconds}`, `{name}` are filled in; a line that needs a value nobody
  *   passed is skipped.
  * - `{m|f|neutral}` picks the words that agree with how the user wants to be addressed ("cansado|cansada|sin energía").
  * - `am()`, `pm()`, `night()` lines only show at that time of day.
@@ -18,7 +18,7 @@ import { WORKOUT_LINES, type WorkoutEvent } from './lines-workout';
 /** In the app and on lowering the weight; the workout reactions live in `lines-workout.ts`. */
 export type AppEvent = 'home' | 'weightDrop' | 'restLong';
 export type CoachEvent = AppEvent | WorkoutEvent;
-export const COACH_EVENTS: readonly CoachEvent[] = ['home', 'weightDrop', 'restLong', 'setDone', 'progressUp', 'pr', 'restHalf', 'restEnd', 'finish'];
+export const COACH_EVENTS: readonly CoachEvent[] = ['home', 'weightDrop', 'restLong', 'setDone', 'setDrop', 'progressUp', 'pr', 'restHalf', 'restEnd', 'finish'];
 
 export type CoachLocale = 'es' | 'en';
 export type TimeOfDay = 'morning' | 'afternoon' | 'night';

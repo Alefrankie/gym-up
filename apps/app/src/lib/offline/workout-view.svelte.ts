@@ -281,18 +281,26 @@ export class WorkoutView {
     }
   }
 
-  /** A record beats a better-than-last-time set, which beats a plain "set done". */
+  /** A record beats a better-than-last-time set, then a set worse than the previous one today, then "set done". */
   #reactToSet(ex: RoutineExerciseDto, n: number) {
     const r = this.row(ex.exerciseId, n);
     if (!r) return;
     const rec = ex.last?.record;
+    const earlier = this.doneSets(ex).filter((s) => s.n !== n);
+    const previous = earlier.filter((s) => s.n < n && s.type !== 'warmup').at(-1) ?? null;
     const reaction = reactToSet(
       { weight: r.weight, reps: r.reps, type: r.type },
       this.lastSetFor(ex, n),
       rec ? { weight: toDisplay(rec.weight, this.unit), reps: rec.reps } : null,
-      this.doneSets(ex).filter((s) => s.n !== n),
+      earlier,
+      previous,
     );
-    coachSay(reaction, { exercise: ex.exerciseName, weight: `${r.weight} ${this.unit}`, reps: r.reps });
+    coachSay(reaction, {
+      exercise: ex.exerciseName,
+      weight: `${r.weight} ${this.unit}`,
+      reps: r.reps,
+      ...(previous ? { prevWeight: `${previous.weight} ${this.unit}`, prevReps: previous.reps } : {}),
+    });
   }
 
   /** Marks a set as warm-up, drop set, to failure or normal; a completed set is re-sent. */

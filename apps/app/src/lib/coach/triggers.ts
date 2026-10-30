@@ -4,7 +4,7 @@ import type { CoachEvent } from './lines';
 /** At most one Coach line every this many milliseconds during a workout... */
 export const LIMIT_MS = 20_000;
 /** ...except for these, which always speak: they answer something the user just did or must not miss. */
-export const URGENT: ReadonlySet<CoachEvent> = new Set<CoachEvent>(['pr', 'progressUp', 'restEnd', 'finish', 'weightDrop']);
+export const URGENT: ReadonlySet<CoachEvent> = new Set<CoachEvent>(['pr', 'progressUp', 'setDrop', 'restEnd', 'finish', 'weightDrop']);
 
 export class Limiter {
   #last = Number.NEGATIVE_INFINITY;
@@ -24,14 +24,16 @@ interface SetLike {
   type?: SetType;
 }
 
-export type SetReaction = 'pr' | 'progressUp' | 'setDone';
+export type SetReaction = 'pr' | 'progressUp' | 'setDrop' | 'setDone';
 
 const beats = (a: SetLike, b: { weight: number; reps: number }) => a.weight > b.weight || (a.weight === b.weight && a.reps > b.reps);
 
 /**
- * What the Coach says when a set is ticked, all weights in the same unit:
+ * What the Coach says when a set is ticked, all weights in the same unit, in this order of preference:
  * - `pr`: beats the all-time best (and anything heavier already done today),
  * - `progressUp`: beats the same set of last session (heavier, or more reps at no less weight),
+ * - `setDrop`: fewer reps or less weight than the previous working set of the exercise today (drop sets are meant
+ *   to go lower and are left alone),
  * - `setDone` otherwise. Warm-ups are always `setDone`.
  */
 export function reactToSet(
@@ -39,6 +41,7 @@ export function reactToSet(
   last: { weight: number; reps: number } | null,
   record: { weight: number; reps: number } | null,
   earlierToday: SetLike[] = [],
+  previous: SetLike | null = null,
 ): SetReaction {
   if (set.type === 'warmup' || set.weight <= 0 && set.reps <= 0) return 'setDone';
   if (record) {
@@ -46,5 +49,6 @@ export function reactToSet(
     if (beats(set, best)) return 'pr';
   }
   if (last && (set.weight > last.weight || (set.reps > last.reps && set.weight >= last.weight))) return 'progressUp';
+  if (set.type !== 'drop' && previous && previous.type !== 'warmup' && (set.reps < previous.reps || set.weight < previous.weight)) return 'setDrop';
   return 'setDone';
 }

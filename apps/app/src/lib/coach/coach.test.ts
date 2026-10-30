@@ -52,7 +52,7 @@ describe('coach catalog', () => {
   });
 
   it('only uses known placeholders and complete gender forms', () => {
-    const known = new Set(['exercise', 'weight', 'reps', 'restSeconds', 'name']);
+    const known = new Set(['exercise', 'weight', 'reps', 'prevWeight', 'prevReps', 'restSeconds', 'name']);
     for (const { text } of all()) {
       for (const v of lineVars(text)) expect(known.has(v), text).toBe(true);
       for (const m of text.matchAll(/\{([^{}]*\|[^{}]*)\}/g)) {

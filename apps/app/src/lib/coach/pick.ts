@@ -1,8 +1,8 @@
 import type { AddressForm, CoachTone } from '@gym-up/contracts';
 import { LINES, type CoachEvent, type CoachLocale, type Line, type TimeOfDay } from './lines';
 
-/** Values the lines can drop in: `{exercise}`, `{weight}`, `{reps}`, `{restSeconds}`, `{name}`. */
-export type CoachVars = Partial<Record<'exercise' | 'weight' | 'reps' | 'restSeconds' | 'name', string | number>>;
+/** Values the lines can drop in: `{exercise}`, `{weight}`, `{reps}`, `{prevWeight}`, `{prevReps}` (the previous set today), `{restSeconds}`, `{name}`. */
+export type CoachVars = Partial<Record<'exercise' | 'weight' | 'reps' | 'prevWeight' | 'prevReps' | 'restSeconds' | 'name', string | number>>;
 
 export interface PickOptions {
   tone: CoachTone;
