@@ -71,7 +71,7 @@
 {/snippet}
 
 {#if href}
-  <a class="row" {href}>{@render inner()}</a>
+  <a class="row" {href} draggable="false">{@render inner()}</a>
 {:else if onclick}
   <button type="button" class="row" {onclick}>{@render inner()}</button>
 {:else}

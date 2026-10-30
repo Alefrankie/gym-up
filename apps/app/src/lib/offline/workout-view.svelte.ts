@@ -378,6 +378,35 @@ export class WorkoutView {
     restTimer.stopNag();
   }
 
+  /**
+   * New order for an exercise's sets, given as the old set numbers in their new order. The server keys sets by
+   * (exercise, number), so every slot whose content changed is re-sent: completed sets as completed, others un-completed.
+   */
+  async reorderSets(ex: RoutineExerciseDto, order: number[]) {
+    const snap = this.snap;
+    if (!snap) return;
+    const before = order.map((_, i) => snap.rows[rowKey(ex.exerciseId, i + 1)]);
+    const moved = order.map((n) => snap.rows[rowKey(ex.exerciseId, n)]);
+    moved.forEach((r, i) => {
+      if (r) snap.rows[rowKey(ex.exerciseId, i + 1)] = r;
+    });
+    await saveSnapshot(snap);
+    for (let i = 0; i < moved.length; i++) {
+      const now = moved[i];
+      const was = before[i];
+      if (!now || now === was) continue;
+      if (now.completed || was?.completed) await this.#send(ex.exerciseId, i + 1, now, now.completed);
+    }
+  }
+
+  #send(exerciseId: string, setNumber: number, r: WorkoutSnapshot['rows'][string], completed: boolean) {
+    return sync.enqueue({
+      type: 'upsert-set',
+      workoutId: this.#id,
+      set: { id: r.id, exerciseId, setNumber, reps: r.reps, weight: r.weight, weightUnit: this.snap!.unit, completed, notes: null, setType: r.type ?? 'normal' },
+    });
+  }
+
   /** Cancels the workout in progress: nothing of it is kept, here or on the server. Works with no signal. */
   async cancel(): Promise<void> {
     if (!this.snap || this.isCompleted) return;

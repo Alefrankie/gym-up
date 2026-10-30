@@ -165,6 +165,7 @@
       onpointercancel={reset}
       onclickcapture={(e) => suppressClick && (e.stopPropagation(), e.preventDefault())}
       oncontextmenu={(e) => e.preventDefault()}
+      ondragstart={(e) => e.preventDefault()}
     >
       {#if swipeKey === k}
         <span class="act remove" class:on={swipeX > COMMIT} style:opacity={swipeX > 0 ? 1 : 0}><Icon name="trash" size={22} /> {t('plan.delete')}</span>
@@ -194,6 +195,11 @@
     touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* Rows that are links (workout exercises): a long press must hold the row, not start the browser's link drag. */
+  li :global(a) {
+    -webkit-user-drag: none;
     -webkit-touch-callout: none;
   }
   .face {

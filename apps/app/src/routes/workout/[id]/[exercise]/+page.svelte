@@ -11,6 +11,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
   import SetTypeCell from '#lib/components/SetTypeCell.svelte';
+  import SortableRows from '#lib/components/SortableRows.svelte';
 
   const view = useWorkoutView();
   let finishing = $state(false);
@@ -26,6 +27,12 @@
     const days = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86_400_000));
     return days === 0 ? t('common.today') : days === 1 ? t('common.yesterday') : tn('workout.daysAgo', days);
   };
+
+  function removeSet(n: number) {
+    if (!ex) return;
+    const r = view.row(ex.exerciseId, n);
+    if (!r?.completed || confirm(t('workout.removeSetConfirm', { n }))) void view.removeSet(ex, n);
+  }
 
   function go(delta: number) {
     const next = exercises[index + delta];
@@ -66,15 +73,21 @@
   </div>
 
   <h2>{t('workout.sets')}</h2>
-  <div class="table" class:editable={!view.isCompleted} role="group" aria-label={t('workout.sets')}>
+  <div class="table" role="group" aria-label={t('workout.sets')}>
     <div class="heads">
       <span>{t('workout.set')}</span>
       <span>{t('workout.reps')}</span>
       <span>{view.unit.toUpperCase()}</span>
       <span></span>
-      {#if !view.isCompleted}<span></span>{/if}
     </div>
-    {#each view.setNumbers(ex) as n (n)}
+    <SortableRows
+      items={view.setNumbers(ex).map((n) => ({ n, id: view.row(ex.exerciseId, n)?.id ?? `${n}` }))}
+      key={(s) => s.id}
+      disabled={view.isCompleted}
+      onreorder={(next) => view.reorderSets(ex, next.map((s) => s.n))}
+      onremove={view.isCompleted || view.setNumbers(ex).length <= 1 ? undefined : (s) => removeSet(s.n)}
+    >
+      {#snippet row({ n })}
       {@const r = view.row(ex.exerciseId, n)}
       {#if r}
         <div class="set" class:done={r.completed} class:active={active === n}>
@@ -109,18 +122,10 @@
             onclick={() => view.commit(ex.exerciseId, n, !r.completed)}
             aria-label={r.completed ? t('workout.uncheckSet', { n }) : t('workout.checkSet', { n })}
           ><Icon name="check" size={18} /></button>
-          {#if !view.isCompleted}
-            <button
-              type="button"
-              class="del"
-              disabled={view.setNumbers(ex).length <= 1}
-              onclick={() => { if (!r.completed || confirm(t('workout.removeSetConfirm', { n }))) view.removeSet(ex, n); }}
-              aria-label={t('workout.removeSet', { n })}
-            ><Icon name="trash" size={16} /></button>
-          {/if}
         </div>
       {/if}
-    {/each}
+      {/snippet}
+    </SortableRows>
     {#if !view.isCompleted}
       <button type="button" class="addset" onclick={() => view.addSet(ex)}><Icon name="plus" size={16} /> {t('workout.addSet')}</button>
     {/if}
@@ -230,19 +235,6 @@
     grid-template-columns: 48px 1fr 1fr 48px;
     gap: 0.5rem;
     align-items: center;
-  }
-  .table.editable .heads,
-  .table.editable .set {
-    grid-template-columns: 48px 1fr 1fr 48px 36px;
-  }
-  .set .del {
-    min-height: 40px;
-    background: none;
-    border: 0;
-    color: var(--faint);
-  }
-  .set .del:disabled {
-    opacity: 0.3;
   }
   .heads {
     color: var(--faint);
