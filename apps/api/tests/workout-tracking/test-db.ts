@@ -31,7 +31,8 @@ const DDL = `
     weight_unit TEXT NOT NULL DEFAULT 'kg',
     body_weight_kg REAL,
     coach_tone TEXT NOT NULL DEFAULT 'normal',
-    address_form TEXT NOT NULL DEFAULT 'neutral',
+    address_form TEXT NOT NULL DEFAULT 'm',
+    address_form_chosen INTEGER NOT NULL DEFAULT 0,
     active_program_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   );

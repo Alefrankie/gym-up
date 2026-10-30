@@ -42,7 +42,7 @@ export function coachLine(event: CoachEvent, vars: CoachVars = {}): PickedLine |
   if (typeof vars.exercise === 'string') filled.exercise = (locale === 'es' && exerciseNameEs(vars.exercise)) || vars.exercise;
   const line = pickLine(event, {
     tone,
-    addressForm: session.user?.addressForm ?? 'neutral',
+    addressForm: session.user?.addressForm ?? 'm',
     locale,
     vars: filled,
     recent: readHistory(event),

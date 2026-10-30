@@ -57,7 +57,7 @@ describe('coach catalog', () => {
       for (const v of lineVars(text)) expect(known.has(v), text).toBe(true);
       for (const m of text.matchAll(/\{([^{}]*\|[^{}]*)\}/g)) {
         const parts = m[1]!.split('|');
-        expect(parts.length, text).toBe(3);
+        expect(parts.length, text).toBe(2);
         expect(parts.every((p) => p.trim().length > 0), text).toBe(true);
       }
     }
@@ -124,7 +124,7 @@ describe('rendering the whole catalog', () => {
   it('never leaves a placeholder, a gender alternative or a raw token, for any address form', () => {
     const vars = { exercise: 'Sentadilla', weight: '40 kg', reps: 8, prevWeight: '45 kg', prevReps: 10, restSeconds: 90, name: 'Ana' };
     for (const { tone, locale, text } of all()) {
-      for (const form of ['m', 'f', 'neutral'] as const) {
+      for (const form of ['m', 'f'] as const) {
         const out = render(text, form, vars);
         expect(/[{}|]/.test(out), `${tone}/${locale}/${form}: ${out}`).toBe(false);
         expect(/neutral/i.test(out), `${tone}/${locale}/${form}: ${out}`).toBe(false);
@@ -134,21 +134,21 @@ describe('rendering the whole catalog', () => {
 });
 
 describe('render', () => {
-  it('picks the address form, falling back to neutral', () => {
-    const tpl = 'Estás {cansado|cansada|sin energía}.';
+  it('picks the address form, falling back to the other one when a form is missing', () => {
+    const tpl = 'Estás {cansado|cansada}.';
     expect(render(tpl, 'm')).toBe('Estás cansado.');
     expect(render(tpl, 'f')).toBe('Estás cansada.');
-    expect(render(tpl, 'neutral')).toBe('Estás sin energía.');
-    expect(render('Hola {chamo||pana}', 'f')).toBe('Hola pana');
+    expect(render('Hola {|chama}', 'm')).toBe('Hola chama');
+    expect(render('Hola {chamo|}', 'f')).toBe('Hola chamo');
   });
 
   it('fills in values', () => {
-    expect(render('{exercise} con {weight}, {name}', 'neutral', { exercise: 'Sentadilla', weight: '40 kg', name: 'Ana' })).toBe('Sentadilla con 40 kg, Ana');
+    expect(render('{exercise} con {weight}, {name}', 'm', { exercise: 'Sentadilla', weight: '40 kg', name: 'Ana' })).toBe('Sentadilla con 40 kg, Ana');
   });
 });
 
 describe('pickLine', () => {
-  const base = { addressForm: 'neutral' as const, locale: 'es' as const, now: noon };
+  const base = { addressForm: 'm' as const, locale: 'es' as const, now: noon };
 
   it('picks from the chosen tone and event', () => {
     for (const tone of TONES) {

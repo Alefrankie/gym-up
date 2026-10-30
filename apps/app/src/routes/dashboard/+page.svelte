@@ -5,6 +5,7 @@
   import { cubicOut } from 'svelte/easing';
   import {
     calendarResponseSchema,
+    userSchema,
     programDetailDtoSchema,
     programListResponseSchema,
     todayWorkoutResponseSchema,
@@ -13,7 +14,7 @@
     type TodayWorkoutResponse,
     type WorkoutHistoryItemDto,
   } from '@gym-up/contracts';
-  import { ApiRequestError, NetworkError } from '#lib/api/client';
+  import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { longDate } from '#lib/dates';
   import { muscleLoad } from '#lib/muscle-load';
   import { cachedGet } from '#lib/offline/cache';
@@ -62,6 +63,18 @@
   const dateLabel = longDate().replace(/^./, (c) => c.toUpperCase());
 
   /** First visit: asks once whether the Coach should talk; the answer is remembered and editable in Settings. */
+  /** Users who never picked how the Coach addresses them get asked once (as a man or as a woman). */
+  let addressError = $state(false);
+  async function answerAddress(form: 'm' | 'f') {
+    addressError = false;
+    try {
+      await session.set(await api('/auth/me', { method: 'PATCH', body: { addressForm: form }, schema: userSchema }));
+      quote = coachLine('home');
+    } catch {
+      addressError = true;
+    }
+  }
+
   function answerVoice(on: boolean) {
     coachVoice.set(on);
     if (on) coachVoice.prewarm();
@@ -174,6 +187,16 @@
     <p class="date">{dateLabel}</p>
     <h1>{session.user ? t('home.helloName', { name: session.user.displayName.split(' ')[0]! }) : t('home.hello')}</h1>
     {#if quote}<p class="quote">“{quote.text}”</p>{/if}
+    {#if session.user && !session.user.addressFormChosen}
+      <div class="ask" role="group" aria-label={t('coach.askAddress')}>
+        <p><strong>{t('coach.askAddress')}</strong><span class="muted">{t('coach.askAddressHint')}</span></p>
+        {#if addressError}<p class="error" role="alert">{t('settings.offline')}</p>{/if}
+        <div class="ask-actions">
+          <button type="button" class="primary" onclick={() => answerAddress('m')}>{t('coach.address.m')}</button>
+          <button type="button" class="primary" onclick={() => answerAddress('f')}>{t('coach.address.f')}</button>
+        </div>
+      </div>
+    {/if}
     {#if session.user && coachVoice.pref === null}
       <div class="ask" role="group" aria-label={t('coach.askVoice')}>
         <p><strong>{t('coach.askVoice')}</strong><span class="muted">{t('coach.askVoiceHint')}</span></p>

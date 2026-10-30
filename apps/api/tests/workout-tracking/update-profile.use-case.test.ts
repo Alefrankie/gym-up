@@ -131,16 +131,18 @@ describe('UpdateProfileUseCase — validation', () => {
 });
 
 describe('UpdateProfileUseCase — coach settings', () => {
-  it('defaults to normal tone and neutral address form', async () => {
+  it('defaults to normal tone, addressed as a man until the user picks', async () => {
     const p = await repo.findById(userId);
     expect(p?.coachTone).toBe('normal');
-    expect(p?.addressForm).toBe('neutral');
+    expect(p?.addressForm).toBe('m');
+    expect(p?.addressFormChosen).toBe(false);
   });
 
   it('persists coachTone and addressForm', async () => {
     const updated = await useCase.execute({ userId, coachTone: 'gymrat', addressForm: 'f' });
     expect(updated.coachTone).toBe('gymrat');
     expect(updated.addressForm).toBe('f');
+    expect(updated.addressFormChosen).toBe(true);
     const again = await repo.findById(userId);
     expect(again?.coachTone).toBe('gymrat');
     expect(again?.addressForm).toBe('f');

@@ -26,8 +26,8 @@ export interface PickedLine {
 }
 
 const VAR = /\{(\w+)\}/g;
-// `{m|f|neutral}`: the words that agree with how the user wants to be addressed.
-const GENDER = /\{([^{}|]*)\|([^{}|]*)\|([^{}|]*)\}/g;
+// `{m|f}`: the words that agree with how the user wants to be addressed.
+const GENDER = /\{([^{}|]*)\|([^{}|]*)\}/g;
 
 export function timeOfDay(d: Date): TimeOfDay {
   const h = d.getHours();
@@ -41,11 +41,11 @@ export const lineText = (l: Line): string => (typeof l === 'string' ? l : l.text
 /** Names a line needs; it is only picked when all of them are known. */
 export const lineVars = (text: string): string[] => [...text.replaceAll(GENDER, '').matchAll(VAR)].map((m) => m[1]!);
 
-/** Fills in the gender words (exact form, else neutral) and the values. */
+/** Fills in the gender words (the user's form, else the other one) and the values. */
 export function render(template: string, addressForm: AddressForm, vars: CoachVars = {}): string {
-  const i = addressForm === 'm' ? 0 : addressForm === 'f' ? 1 : 2;
+  const i = addressForm === 'f' ? 1 : 0;
   return template
-    .replaceAll(GENDER, (...m: string[]) => m[1 + i] || m[3] || m[1]!)
+    .replaceAll(GENDER, (...m: string[]) => m[1 + i] || m[2 - i]!)
     .replaceAll(VAR, (whole, key: string) => {
       const v = vars[key as keyof CoachVars];
       return v === undefined ? whole : String(v);

@@ -24,7 +24,7 @@ export const coachRecordingMetaSchema = z.object({
   locale: z.enum(['es', 'en']),
   event: z.string().min(1).max(40),
   /** The address form this rendering is for, or null when the line reads the same for everyone. */
-  form: z.enum(['m', 'f', 'neutral']).nullable(),
+  form: z.enum(['m', 'f']).nullable(),
   text: z.string().trim().min(1).max(300),
 });
 export type CoachRecordingMeta = z.infer<typeof coachRecordingMetaSchema>;

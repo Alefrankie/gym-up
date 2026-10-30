@@ -24,8 +24,8 @@ export type RoutineType = z.infer<typeof routineTypeSchema>;
 export const coachToneSchema = z.enum(['flower', 'normal', 'hard', 'gymrat']);
 export type CoachTone = z.infer<typeof coachToneSchema>;
 
-/** How the coach addresses the user in Spanish (grammatical gender). */
-export const addressFormSchema = z.enum(['f', 'm', 'neutral']);
+/** How the coach addresses the user in Spanish (grammatical gender): as a man or as a woman. */
+export const addressFormSchema = z.enum(['m', 'f']);
 export type AddressForm = z.infer<typeof addressFormSchema>;
 
 /** ISO-8601 timestamp as sent over the wire. */

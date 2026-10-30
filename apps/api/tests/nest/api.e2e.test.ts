@@ -160,14 +160,16 @@ describe('settings (PATCH /auth/me)', () => {
   it('defaults and persists the coach tone and address form', async () => {
     const s = await register('settings3@example.com');
     const before = await http('GET', '/auth/me', { token: s.token });
-    expect(before.json).toMatchObject({ coachTone: 'normal', addressForm: 'neutral' });
-    const r = await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'hard', addressForm: 'm' } });
+    expect(before.json).toMatchObject({ coachTone: 'normal', addressForm: 'm', addressFormChosen: false });
+    const r = await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'hard', addressForm: 'f' } });
     expect(r.status).toBe(200);
-    expect(userSchema.parse(r.json)).toMatchObject({ coachTone: 'hard', addressForm: 'm' });
+    expect(userSchema.parse(r.json)).toMatchObject({ coachTone: 'hard', addressForm: 'f', addressFormChosen: true });
     const me = await http('GET', '/auth/me', { token: s.token });
-    expect(me.json).toMatchObject({ coachTone: 'hard', addressForm: 'm' });
+    expect(me.json).toMatchObject({ coachTone: 'hard', addressForm: 'f', addressFormChosen: true });
     expect((await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'savage' } })).status).toBe(400);
     expect((await http('PATCH', '/auth/me', { token: s.token, body: { addressForm: 'x' } })).status).toBe(400);
+    // "Sin género" is gone: only as a man or as a woman.
+    expect((await http('PATCH', '/auth/me', { token: s.token, body: { addressForm: 'neutral' } })).status).toBe(400);
   });
 });
 

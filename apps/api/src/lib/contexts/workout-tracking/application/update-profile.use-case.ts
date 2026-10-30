@@ -28,7 +28,7 @@ const VALID_ROUTINE_TYPES = ['hombre', 'mujer'] as const;
 const VALID_WEIGHT_UNITS = ['kg', 'lbs'] as const;
 
 const VALID_COACH_TONES = ['flower', 'normal', 'hard', 'gymrat'] as const;
-const VALID_ADDRESS_FORMS = ['f', 'm', 'neutral'] as const;
+const VALID_ADDRESS_FORMS = ['m', 'f'] as const;
 
 type RoutineType = (typeof VALID_ROUTINE_TYPES)[number];
 type WeightUnit = (typeof VALID_WEIGHT_UNITS)[number];
@@ -119,7 +119,7 @@ export class UpdateProfileUseCase {
       throw new InvalidAddressFormError(input.addressForm);
     }
 
-    const patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg' | 'coachTone' | 'addressForm'>> = {};
+    const patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg' | 'coachTone' | 'addressForm' | 'addressFormChosen'>> = {};
     if (input.displayName !== undefined) {
       patch.displayName = input.displayName.trim();
     }
@@ -137,6 +137,7 @@ export class UpdateProfileUseCase {
     }
     if (input.addressForm !== undefined) {
       patch.addressForm = input.addressForm;
+      patch.addressFormChosen = true;
     }
 
     return this.profileRepository.update(userId, patch);

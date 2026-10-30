@@ -49,9 +49,13 @@ export const profiles = sqliteTable('profiles', {
     .notNull()
     .default('normal'),
   /** How the coach addresses the user in Spanish (grammatical gender). */
-  addressForm: text('address_form', { enum: ['f', 'm', 'neutral'] })
+  // The column's SQL default is still the old 'neutral' (SQLite cannot change it in place), so new rows get 'm'
+  // from here; migration 0016 moved existing rows to 'm' or 'f'.
+  addressForm: text('address_form', { enum: ['m', 'f'] })
     .notNull()
-    .default('neutral'),
+    .$defaultFn(() => 'm'),
+  /** Whether the user picked the address form (Home asks once until they do). */
+  addressFormChosen: integer('address_form_chosen', { mode: 'boolean' }).notNull().default(false),
   activeProgramId: text('active_program_id'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()

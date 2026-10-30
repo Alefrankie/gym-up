@@ -25,7 +25,7 @@
   let error = $state<string | null>(null);
   let busy = $state(false);
   let coachTone = $state<CoachTone>('normal');
-  let addressForm = $state<AddressForm>('neutral');
+  let addressForm = $state<AddressForm>('m');
   let coachMessage = $state<string | null>(null);
   let coachError = $state<string | null>(null);
 
@@ -77,7 +77,7 @@
   async function saveCoach(patch: Pick<UpdateProfileRequest, 'coachTone' | 'addressForm'>) {
     coachMessage = null;
     coachError = null;
-    const before = { coachTone: session.user?.coachTone ?? 'normal', addressForm: session.user?.addressForm ?? 'neutral' };
+    const before = { coachTone: session.user?.coachTone ?? 'normal', addressForm: session.user?.addressForm ?? 'm' };
     if (patch.coachTone === 'gymrat' && before.coachTone !== 'gymrat' && !confirm(t('coach.gymratConfirm'))) {
       coachTone = before.coachTone;
       return;
@@ -194,10 +194,9 @@
         {t('coach.addressForm')}
         <Select
           bind:value={addressForm}
-          options={(['f', 'm', 'neutral'] as const).map((v) => ({ value: v, label: t(`coach.address.${v}`) }))}
+          options={(['m', 'f'] as const).map((v) => ({ value: v, label: t(`coach.address.${v}`) }))}
           onchange={(v) => saveCoach({ addressForm: v })}
         />
-        <span class="muted hint">{t('coach.addressHint')}</span>
       </label>
       <div>
         <span class="field">{t('coach.voice')}</span>

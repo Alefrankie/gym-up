@@ -133,6 +133,7 @@ export class LocalAuthService implements AuthService {
         bodyWeightKg: profiles.bodyWeightKg,
         coachTone: profiles.coachTone,
         addressForm: profiles.addressForm,
+        addressFormChosen: profiles.addressFormChosen,
         createdAt: profiles.createdAt,
       })
       .from(profiles)
@@ -178,6 +179,7 @@ export class LocalAuthService implements AuthService {
         bodyWeightKg: user.bodyWeightKg,
         coachTone: user.coachTone,
         addressForm: user.addressForm,
+        addressFormChosen: user.addressFormChosen,
         createdAt: user.createdAt,
       },
       expiresAt,
@@ -213,6 +215,7 @@ export class LocalAuthService implements AuthService {
         bodyWeightKg: profiles.bodyWeightKg,
         coachTone: profiles.coachTone,
         addressForm: profiles.addressForm,
+        addressFormChosen: profiles.addressFormChosen,
         createdAt: profiles.createdAt,
       })
       .from(profiles)
@@ -233,6 +236,7 @@ export class LocalAuthService implements AuthService {
       bodyWeightKg: user.bodyWeightKg,
       coachTone: user.coachTone,
       addressForm: user.addressForm,
+      addressFormChosen: user.addressFormChosen,
       createdAt: user.createdAt,
     };
   }

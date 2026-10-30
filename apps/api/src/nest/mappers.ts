@@ -18,7 +18,8 @@ export function toUserDto(u: User): UserDto {
     weightUnit: u.weightUnit,
     bodyWeightKg: u.bodyWeightKg ?? null,
     coachTone: u.coachTone ?? 'normal',
-    addressForm: u.addressForm ?? 'neutral',
+    addressForm: u.addressForm === 'f' ? 'f' : 'm',
+    addressFormChosen: u.addressFormChosen ?? false,
     isAdmin: isAdmin(u),
     createdAt: iso(u.createdAt),
   };
@@ -33,7 +34,8 @@ export function profileToUserDto(p: Profile): UserDto {
     weightUnit: p.weightUnit,
     bodyWeightKg: p.bodyWeightKg ?? null,
     coachTone: p.coachTone,
-    addressForm: p.addressForm,
+    addressForm: p.addressForm === 'f' ? 'f' : 'm',
+    addressFormChosen: p.addressFormChosen,
     isAdmin: isAdmin(p),
     createdAt: iso(p.createdAt),
   };

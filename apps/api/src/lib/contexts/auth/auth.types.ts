@@ -19,6 +19,7 @@ export interface User {
   bodyWeightKg?: number | null;
   coachTone?: Profile['coachTone'];
   addressForm?: Profile['addressForm'];
+  addressFormChosen?: boolean;
   createdAt: Date;
 }
 

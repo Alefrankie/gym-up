@@ -13,7 +13,7 @@ describe('studio lines', () => {
 
   it('records a line once per address form only when the form changes the words', () => {
     const gendered = lines.filter((l) => l.text.startsWith('Vas a terminar el entreno'));
-    expect(gendered.map((l) => l.form).sort()).toEqual(['f', 'm', 'neutral']);
+    expect(gendered.map((l) => l.form).sort()).toEqual(['f', 'm']);
     expect(lines.find((l) => l.text === 'Hoy no se negocia. Se entrena.')?.form).toBeNull();
   });
 

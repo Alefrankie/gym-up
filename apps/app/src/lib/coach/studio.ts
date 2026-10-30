@@ -16,8 +16,8 @@ export interface StudioLine {
 export const STUDIO_SLOT = 'main';
 
 const TONES: CoachTone[] = ['gymrat', 'flower', 'normal', 'hard'];
-const FORMS: AddressForm[] = ['m', 'f', 'neutral'];
-const GENDER = /\{[^{}|]*\|[^{}|]*\|[^{}|]*\}/;
+const FORMS: AddressForm[] = ['m', 'f'];
+const GENDER = /\{[^{}|]*\|[^{}|]*\}/;
 
 /**
  * Every line the Coach can say without filling in a name, weight or exercise, rendered once per address form when
@@ -35,7 +35,7 @@ export function studioLines(): StudioLine[] {
           if (lineVars(template).length) continue;
           const forms = GENDER.test(template) ? FORMS : [null];
           for (const form of forms) {
-            const text = render(template, form ?? 'neutral');
+            const text = render(template, form ?? 'm');
             const key = `${tone}|${locale}|${event}|${text}`;
             if (seen.has(key)) continue;
             seen.add(key);

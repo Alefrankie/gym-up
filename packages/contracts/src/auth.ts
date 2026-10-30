@@ -25,7 +25,9 @@ export const userSchema = z.object({
   /** For calorie estimates; null until set. */
   bodyWeightKg: z.number().nullable().optional(),
   coachTone: coachToneSchema.default('normal'),
-  addressForm: addressFormSchema.default('neutral'),
+  addressForm: addressFormSchema.default('m'),
+  /** False until the user picks how the Coach addresses them (Home asks once). */
+  addressFormChosen: z.boolean().default(false),
   /** Can manage feedback and record the Coach's lines in the voice studio. */
   isAdmin: z.boolean().default(false),
   createdAt: isoDateSchema,
