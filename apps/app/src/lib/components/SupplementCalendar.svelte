@@ -7,7 +7,12 @@
    * A month of supplements: each day shows one coloured dot per supplement taken, so a missed creatine
    * day stands out at a glance. Months go back as far as the history the API sends (about two).
    */
-  let { items, today }: { items: SupplementDto[]; today: string } = $props();
+  let {
+    items,
+    today,
+    selected = null,
+    onpick,
+  }: { items: SupplementDto[]; today: string; selected?: string | null; onpick?: (day: string) => void } = $props();
 
   const COLORS = ['var(--accent)', 'var(--info)', 'var(--ok)', 'var(--ember)', '#c792ea', '#f07178'];
   const colorOf = (i: number) => COLORS[i % COLORS.length]!;
@@ -50,10 +55,21 @@
     {#each t('supplements.weekdays').split(',') as l, i (i)}<span class="wd">{l}</span>{/each}
     {#each cells as c, i (c?.key ?? `pad-${i}`)}
       {#if c}
-        <span class="day" class:today={c.key === today} class:future={c.future} class:full={c.taken.length === items.length && items.length > 0}>
+        <button
+          type="button"
+          class="day"
+          class:today={c.key === today}
+          class:future={c.future}
+          class:picked={c.key === selected}
+          class:full={c.taken.length === items.length && items.length > 0}
+          disabled={c.future || !onpick}
+          aria-pressed={c.key === selected}
+          aria-label={t('supplements.pickDay', { day: c.num })}
+          onclick={() => onpick?.(c.key)}
+        >
           <span class="num">{c.num}</span>
           <span class="dots">{#each c.taken as ti (ti)}<i style:background={colorOf(ti)}></i>{/each}</span>
-        </span>
+        </button>
       {:else}
         <span></span>
       {/if}
@@ -105,8 +121,19 @@
     align-content: center;
     gap: 3px;
     aspect-ratio: 1;
+    min-height: 0;
+    padding: 0;
+    border: 0;
     border-radius: 10px;
     background: var(--surface-hi);
+    color: inherit;
+  }
+  .day:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+  .day.picked {
+    box-shadow: 0 0 0 2px var(--text) inset;
   }
   .day.full {
     box-shadow: 0 0 0 1.5px var(--accent) inset;

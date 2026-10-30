@@ -37,13 +37,16 @@
     return [...byDay].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, names]) => ({ day, names }));
   });
 
-  async function toggle(id: string, taken: boolean) {
+  async function toggle(id: string, taken: boolean, day = today) {
     if (!list) return;
     // A plain copy: IndexedDB cannot store Svelte's reactive proxies.
-    const next = withMark($state.snapshot(list), id, taken);
+    const next = withMark($state.snapshot(list), id, taken, day);
     list = next;
-    void persistMark(next, id, taken);
+    void persistMark(next, id, taken, day);
   }
+
+  /** A day picked on the calendar, to fill in what was taken on days already gone. */
+  let picked = $state<string | null>(null);
 
   async function add(event: SubmitEvent) {
     event.preventDefault();
@@ -101,7 +104,21 @@
     </ul>
 
     <h2>{t('supplements.calendar')}</h2>
-    <SupplementCalendar items={list.items} today={list.day} />
+    <p class="muted hint">{t('supplements.calendarHint')}</p>
+    <SupplementCalendar items={list.items} today={list.day} selected={picked} onpick={(d) => (picked = picked === d ? null : d)} />
+    {#if picked}
+      {@const day = picked}
+      <section class="pick" aria-label={relativeDay(day, list.day)}>
+        <strong class="when">{relativeDay(day, list.day)}</strong>
+        {#each list.items as s (s.id)}
+          {@const on = s.days.includes(day)}
+          <button type="button" class="pick-row" aria-pressed={on} onclick={() => toggle(s.id, !on, day)}>
+            <span class="tick small" class:on>{#if on}<Icon name="check" size={14} />{/if}</span>
+            {s.name}
+          </button>
+        {/each}
+      </section>
+    {/if}
 
     {#if history.length}
       <h2>{t('supplements.dayByDay')}</h2>
@@ -192,6 +209,37 @@
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
+  }
+  .hint {
+    margin: -0.25rem 0 0.75rem;
+    font-size: var(--t-sm);
+  }
+  .pick {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 16px;
+    background: var(--surface);
+  }
+  .pick .when {
+    text-transform: capitalize;
+  }
+  .pick-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 48px;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: inherit;
+    text-align: left;
+  }
+  .tick.small {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
   }
   .log {
     list-style: none;
