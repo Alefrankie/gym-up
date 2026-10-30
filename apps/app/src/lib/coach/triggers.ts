@@ -6,6 +6,9 @@ export const LIMIT_MS = 20_000;
 /** ...except for these, which always speak: they answer something the user just did or must not miss. */
 export const URGENT: ReadonlySet<CoachEvent> = new Set<CoachEvent>(['pr', 'progressUp', 'setDrop', 'restEnd', 'finish', 'weightDrop']);
 
+/** The Coach speaks during workouts only; the Home line of the day stays text (no voice when the app opens). */
+export const speaksAloud = (event: CoachEvent): boolean => event !== 'home';
+
 export class Limiter {
   #last = Number.NEGATIVE_INFINITY;
   constructor(private readonly gapMs = LIMIT_MS) {}

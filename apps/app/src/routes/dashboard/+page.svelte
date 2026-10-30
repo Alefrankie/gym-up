@@ -33,7 +33,7 @@
   import WeekDays from '#lib/components/WeekDays.svelte';
   import LogDaySheet from '#lib/components/LogDaySheet.svelte';
   import WorkoutHistoryRow from '#lib/components/WorkoutHistoryRow.svelte';
-  import { coachLine, speakHomeOnce } from '#lib/coach/coach.svelte';
+  import { coachLine, speakSample } from '#lib/coach/coach.svelte';
   import { coachVoice } from '#lib/coach/voice.svelte';
   import { coachRecordings } from '#lib/coach/recordings.svelte';
   import type { PickedLine } from '#lib/coach/pick';
@@ -78,13 +78,14 @@
   function answerVoice(on: boolean) {
     coachVoice.set(on);
     if (on) coachVoice.prewarm();
-    if (on) speakHomeOnce(quote);
+    // Only on the tap: a sample so the user hears what they turned on.
+    if (on) speakSample(quote);
   }
 
   onMount(async () => {
     if (!(await session.require())) return;
+    // The line of the day is text only: the Coach does not talk when the app opens.
     quote = coachLine('home');
-    speakHomeOnce(quote);
     // Lines recorded in the voice studio for this tone, ready before the workout (and offline).
     if (coachVoice.enabled && session.user) void coachRecordings.prefetch(session.user.coachTone);
     // A workout under way takes the top card; then today's routine would only repeat it.

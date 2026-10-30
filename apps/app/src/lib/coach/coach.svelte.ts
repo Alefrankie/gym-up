@@ -4,7 +4,7 @@ import { nudge } from '#lib/nudge.svelte';
 import { session } from '#lib/session';
 import type { CoachEvent } from './lines';
 import { pickLine, type CoachVars, type PickedLine } from './pick';
-import { Limiter } from './triggers';
+import { Limiter, speaksAloud } from './triggers';
 import { coachVoice } from './voice.svelte';
 
 /** Lines of the same event not repeated while others are left. */
@@ -59,7 +59,7 @@ const limiter = new Limiter();
 export function coachSay(event: CoachEvent, vars: CoachVars = {}): PickedLine | null {
   if (!limiter.allow(event)) return null;
   const line = coachLine(event, vars);
-  if (line) coachAnnounce(line);
+  if (line) coachAnnounce(line, { speak: speaksAloud(event) });
   return line;
 }
 
@@ -69,10 +69,7 @@ export function coachAnnounce(line: PickedLine, opts: { speak?: boolean } = {}) 
   if (opts.speak !== false) void coachVoice.speak(line.text, line.locale);
 }
 
-/** Says the Home line once per app start (browsers may block speech before the first tap; then it stays silent). */
-let homeSpoken = false;
-export function speakHomeOnce(line: PickedLine | null) {
-  if (!line || homeSpoken || !coachVoice.enabled) return;
-  homeSpoken = true;
-  void coachVoice.speak(line.text, line.locale);
+/** Says a line the user asked to hear (the sample after answering "Sí" to the voice question on Home). */
+export function speakSample(line: PickedLine | null) {
+  if (line && coachVoice.enabled) void coachVoice.speak(line.text, line.locale);
 }

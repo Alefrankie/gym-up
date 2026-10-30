@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { LIMIT_MS, Limiter, reactToSet } from './triggers';
+import { COACH_EVENTS } from './lines';
+import { LIMIT_MS, Limiter, reactToSet, speaksAloud } from './triggers';
+
+describe('speaksAloud', () => {
+  it('keeps the Home line of the day silent and speaks every workout reaction', () => {
+    expect(speaksAloud('home')).toBe(false);
+    for (const e of COACH_EVENTS.filter((e) => e !== 'home')) expect(speaksAloud(e), e).toBe(true);
+  });
+});
 
 describe('Limiter', () => {
   it('lets one line through every ~20 s', () => {
