@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isoDateSchema, routineTypeSchema, weightUnitSchema } from './common';
+import { addressFormSchema, coachToneSchema, isoDateSchema, routineTypeSchema, weightUnitSchema } from './common';
 
 export const registerRequestSchema = z.object({
   email: z.string().email(),
@@ -24,6 +24,8 @@ export const userSchema = z.object({
   weightUnit: weightUnitSchema,
   /** For calorie estimates; null until set. */
   bodyWeightKg: z.number().nullable().optional(),
+  coachTone: coachToneSchema.default('normal'),
+  addressForm: addressFormSchema.default('neutral'),
   createdAt: isoDateSchema,
 });
 export type UserDto = z.infer<typeof userSchema>;
@@ -42,6 +44,8 @@ export const updateProfileRequestSchema = z
     weightUnit: weightUnitSchema.optional(),
     bodyWeightKg: z.number().min(25).max(300).nullable().optional(),
     routineType: routineTypeSchema.optional(),
+    coachTone: coachToneSchema.optional(),
+    addressForm: addressFormSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;

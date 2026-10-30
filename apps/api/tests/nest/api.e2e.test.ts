@@ -156,6 +156,19 @@ describe('settings (PATCH /auth/me)', () => {
     expect((await http('PATCH', '/auth/me', { token: s.token, body: { weightUnit: 'stone' } })).status).toBe(400);
     expect((await http('PATCH', '/auth/me', { body: { displayName: 'X' } })).status).toBe(401);
   });
+
+  it('defaults and persists the coach tone and address form', async () => {
+    const s = await register('settings3@example.com');
+    const before = await http('GET', '/auth/me', { token: s.token });
+    expect(before.json).toMatchObject({ coachTone: 'normal', addressForm: 'neutral' });
+    const r = await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'hard', addressForm: 'm' } });
+    expect(r.status).toBe(200);
+    expect(userSchema.parse(r.json)).toMatchObject({ coachTone: 'hard', addressForm: 'm' });
+    const me = await http('GET', '/auth/me', { token: s.token });
+    expect(me.json).toMatchObject({ coachTone: 'hard', addressForm: 'm' });
+    expect((await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'savage' } })).status).toBe(400);
+    expect((await http('PATCH', '/auth/me', { token: s.token, body: { addressForm: 'x' } })).status).toBe(400);
+  });
 });
 
 describe('workouts', () => {

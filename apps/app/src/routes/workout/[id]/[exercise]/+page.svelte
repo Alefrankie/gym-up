@@ -11,7 +11,6 @@
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
   import SetTypeCell from '#lib/components/SetTypeCell.svelte';
-  import { teaseLowerWeight } from '#lib/nudge.svelte';
 
   const view = useWorkoutView();
   let finishing = $state(false);
@@ -97,8 +96,7 @@
             bind:value={r.weight}
             disabled={view.isCompleted}
             onchange={() => {
-              const before = view.lastWeightFor(ex, n);
-              if (before !== null && r.weight > 0 && r.weight < before) teaseLowerWeight();
+              view.weightChanged(ex, n);
               view.edited(ex.exerciseId, n);
             }}
             aria-label={t('workout.setWeight', { n, unit: view.unit })}

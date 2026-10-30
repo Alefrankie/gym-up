@@ -5,7 +5,7 @@
   import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
   import SetTypeCell from './SetTypeCell.svelte';
-  import { teaseLowerWeight } from '#lib/nudge.svelte';
+  import { coachSay } from '#lib/coach/coach.svelte';
 
   /** `last`: weights (kg) of the last session's working sets, to tease when a planned weight goes below them. */
   let {
@@ -102,7 +102,7 @@
         onchange={() => {
           const kg = sets[i]?.weight;
           const before = sets[i]?.type === 'warmup' ? undefined : (last[number(i) - 1] ?? last.at(-1));
-          if (kg !== undefined && kg > 0 && before !== undefined && kg < before) teaseLowerWeight();
+          if (kg !== undefined && kg > 0 && before !== undefined && kg < before) coachSay('weightDrop', { weight: `${shown(kg)} ${unit}` });
         }}
       />
       <button type="button" class="del" disabled={sets.length <= 1} aria-label={t('plan.removeSet', { n: i + 1 })} onclick={() => remove(i)}>

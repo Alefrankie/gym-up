@@ -17,6 +17,8 @@ export interface User {
   routineType: 'hombre' | 'mujer';
   weightUnit: 'kg' | 'lbs';
   bodyWeightKg?: number | null;
+  coachTone?: Profile['coachTone'];
+  addressForm?: Profile['addressForm'];
   createdAt: Date;
 }
 

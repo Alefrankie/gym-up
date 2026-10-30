@@ -130,6 +130,37 @@ describe('UpdateProfileUseCase — validation', () => {
   });
 });
 
+describe('UpdateProfileUseCase — coach settings', () => {
+  it('defaults to normal tone and neutral address form', async () => {
+    const p = await repo.findById(userId);
+    expect(p?.coachTone).toBe('normal');
+    expect(p?.addressForm).toBe('neutral');
+  });
+
+  it('persists coachTone and addressForm', async () => {
+    const updated = await useCase.execute({ userId, coachTone: 'gymrat', addressForm: 'f' });
+    expect(updated.coachTone).toBe('gymrat');
+    expect(updated.addressForm).toBe('f');
+    const again = await repo.findById(userId);
+    expect(again?.coachTone).toBe('gymrat');
+    expect(again?.addressForm).toBe('f');
+  });
+
+  it('rejects invalid coachTone', async () => {
+    await expect(
+      // @ts-expect-error intentionally invalid to test runtime guard
+      useCase.execute({ userId, coachTone: 'savage' }),
+    ).rejects.toThrow(/coachTone/);
+  });
+
+  it('rejects invalid addressForm', async () => {
+    await expect(
+      // @ts-expect-error intentionally invalid to test runtime guard
+      useCase.execute({ userId, addressForm: 'x' }),
+    ).rejects.toThrow(/addressForm/);
+  });
+});
+
 describe('UpdateProfileUseCase — not found', () => {
   it('throws ProfileNotFoundError for unknown userId', async () => {
     await expect(

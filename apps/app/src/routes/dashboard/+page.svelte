@@ -32,7 +32,9 @@
   import WeekDays from '#lib/components/WeekDays.svelte';
   import LogDaySheet from '#lib/components/LogDaySheet.svelte';
   import WorkoutHistoryRow from '#lib/components/WorkoutHistoryRow.svelte';
-  import { randomQuote } from '#lib/quotes';
+  import { coachLine, speakHomeOnce } from '#lib/coach/coach.svelte';
+  import { coachVoice } from '#lib/coach/voice.svelte';
+  import type { PickedLine } from '#lib/coach/pick';
   import { localDay } from '#lib/dates';
   import { routineForDate } from '#lib/weekday-routine';
   import { dateLocale, t, tn } from '#lib/i18n';
@@ -54,11 +56,20 @@
   let calendar = $state<CalendarDayDto[]>([]);
   let recent = $state<WorkoutHistoryItemDto[]>([]);
 
-  const quote = randomQuote();
+  // The Coach's line, in the user's tone (known once the session is loaded).
+  let quote = $state<PickedLine | null>(null);
   const dateLabel = longDate().replace(/^./, (c) => c.toUpperCase());
+
+  /** First visit: asks once whether the Coach should talk; the answer is remembered and editable in Settings. */
+  function answerVoice(on: boolean) {
+    coachVoice.set(on);
+    if (on) speakHomeOnce(quote);
+  }
 
   onMount(async () => {
     if (!(await session.require())) return;
+    quote = coachLine('home');
+    speakHomeOnce(quote);
     // A workout under way takes the top card; then today's routine would only repeat it.
     void getActiveWorkoutId().then(async (id) => {
       const s = id ? await loadSnapshot(id) : undefined;
@@ -158,7 +169,16 @@
   <header class="top">
     <p class="date">{dateLabel}</p>
     <h1>{session.user ? t('home.helloName', { name: session.user.displayName.split(' ')[0]! }) : t('home.hello')}</h1>
-    <p class="quote">“{quote}”</p>
+    {#if quote}<p class="quote">“{quote.text}”</p>{/if}
+    {#if session.user && coachVoice.pref === null}
+      <div class="ask" role="group" aria-label={t('coach.askVoice')}>
+        <p><strong>{t('coach.askVoice')}</strong><span class="muted">{t('coach.askVoiceHint')}</span></p>
+        <div class="ask-actions">
+          <button type="button" class="ghost" onclick={() => answerVoice(false)}>{t('coach.notNow')}</button>
+          <button type="button" class="primary" onclick={() => answerVoice(true)}>{t('coach.yes')}</button>
+        </div>
+      </div>
+    {/if}
     {#if today?.kind === 'workout_day' && today.programName}
       <a class="program" href="/programs"><Icon name="dumbbell" size={14} />{today.programName}</a>
     {/if}
@@ -286,6 +306,31 @@
     font-size: var(--t-sm);
     font-style: italic;
     line-height: 1.4;
+  }
+  .ask {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0 0 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .ask p {
+    display: grid;
+    gap: 0.2rem;
+    margin: 0;
+    font-size: var(--t-sm);
+  }
+  .ask-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  .ask-actions button {
+    width: auto;
+    margin: 0;
+    padding: 0 1.1rem;
   }
   .program {
     display: inline-flex;

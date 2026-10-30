@@ -2,7 +2,8 @@ import { goto } from '$app/navigation';
 import { todayWorkoutResponseSchema, workoutDetailSchema, type RoutineExerciseDto, type SetType } from '@gym-up/contracts';
 import { api, ApiRequestError } from '#lib/api/client';
 import { cachedGet } from './cache';
-import { restTimer } from './rest.svelte';
+import { REST_SECONDS, restTimer } from './rest.svelte';
+import { coachSay } from '#lib/coach/coach.svelte';
 import { cancelWorkoutById } from './start-workout';
 import { sync } from './sync.svelte';
 import { loadSnapshot, rowKey, saveSnapshot, setActiveWorkoutId, type WorkoutSnapshot } from './workout-session';
@@ -241,7 +242,11 @@ export class WorkoutView {
         setType: r.type ?? 'normal',
       },
     });
-    if (completed) restTimer.start();
+    if (completed) {
+      // Sets still to do: if the rest runs long, the Coach calls you back to the bar.
+      const exercise = snap.exercises.find((e) => e.exerciseId === exerciseId)?.exerciseName;
+      restTimer.start(REST_SECONDS, this.pendingSets > 0 ? { exercise } : undefined);
+    }
   }
 
   /** Editing a set that is already completed re-sends it; editing an open one only updates the local copy. */
@@ -250,7 +255,20 @@ export class WorkoutView {
     const r = snap?.rows[rowKey(exerciseId, setNumber)];
     if (!snap || !r) return;
     if (r.completed) await this.commit(exerciseId, setNumber, true);
-    else await saveSnapshot(snap);
+    else {
+      // Getting the next set ready: no need for the Coach to call you back.
+      restTimer.stopNag();
+      await saveSnapshot(snap);
+    }
+  }
+
+  /** The Coach reacts when a working set goes below what it weighed last session (any amount). */
+  weightChanged(ex: RoutineExerciseDto, n: number) {
+    const r = this.row(ex.exerciseId, n);
+    const before = this.lastWeightFor(ex, n);
+    if (r && before !== null && r.weight > 0 && r.weight < before) {
+      coachSay('weightDrop', { exercise: ex.exerciseName, weight: `${r.weight} ${this.unit}`, reps: r.reps });
+    }
   }
 
   /** Marks a set as warm-up, drop set, to failure or normal; a completed set is re-sent. */

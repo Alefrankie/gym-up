@@ -27,8 +27,13 @@ export const ProfileRules = {
 const VALID_ROUTINE_TYPES = ['hombre', 'mujer'] as const;
 const VALID_WEIGHT_UNITS = ['kg', 'lbs'] as const;
 
+const VALID_COACH_TONES = ['flower', 'normal', 'hard', 'gymrat'] as const;
+const VALID_ADDRESS_FORMS = ['f', 'm', 'neutral'] as const;
+
 type RoutineType = (typeof VALID_ROUTINE_TYPES)[number];
 type WeightUnit = (typeof VALID_WEIGHT_UNITS)[number];
+type CoachTone = (typeof VALID_COACH_TONES)[number];
+type AddressForm = (typeof VALID_ADDRESS_FORMS)[number];
 
 export class DisplayNameRequiredError extends Error {
   constructor() {
@@ -64,12 +69,32 @@ export class InvalidWeightUnitError extends Error {
   }
 }
 
+export class InvalidCoachToneError extends Error {
+  constructor(public readonly actual: unknown) {
+    super(
+      `coachTone must be one of ${VALID_COACH_TONES.join(', ')} (got ${JSON.stringify(actual)}).`,
+    );
+    this.name = 'InvalidCoachToneError';
+  }
+}
+
+export class InvalidAddressFormError extends Error {
+  constructor(public readonly actual: unknown) {
+    super(
+      `addressForm must be one of ${VALID_ADDRESS_FORMS.join(', ')} (got ${JSON.stringify(actual)}).`,
+    );
+    this.name = 'InvalidAddressFormError';
+  }
+}
+
 export interface UpdateProfileInput {
   userId: string;
   displayName?: string;
   routineType?: RoutineType;
   weightUnit?: WeightUnit;
   bodyWeightKg?: number | null;
+  coachTone?: CoachTone;
+  addressForm?: AddressForm;
 }
 
 export class UpdateProfileUseCase {
@@ -87,8 +112,14 @@ export class UpdateProfileUseCase {
     if (input.weightUnit !== undefined) {
       this.validateWeightUnit(input.weightUnit);
     }
+    if (input.coachTone !== undefined && !VALID_COACH_TONES.includes(input.coachTone)) {
+      throw new InvalidCoachToneError(input.coachTone);
+    }
+    if (input.addressForm !== undefined && !VALID_ADDRESS_FORMS.includes(input.addressForm)) {
+      throw new InvalidAddressFormError(input.addressForm);
+    }
 
-    const patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg'>> = {};
+    const patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg' | 'coachTone' | 'addressForm'>> = {};
     if (input.displayName !== undefined) {
       patch.displayName = input.displayName.trim();
     }
@@ -100,6 +131,12 @@ export class UpdateProfileUseCase {
     }
     if (input.bodyWeightKg !== undefined) {
       patch.bodyWeightKg = input.bodyWeightKg;
+    }
+    if (input.coachTone !== undefined) {
+      patch.coachTone = input.coachTone;
+    }
+    if (input.addressForm !== undefined) {
+      patch.addressForm = input.addressForm;
     }
 
     return this.profileRepository.update(userId, patch);

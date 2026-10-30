@@ -31,6 +31,6 @@ export abstract class ProfileRepository {
    */
   abstract update(
     id: string,
-    patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg'>>,
+    patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg' | 'coachTone' | 'addressForm'>>,
   ): Promise<Profile>;
 }

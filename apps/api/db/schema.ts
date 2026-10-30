@@ -44,6 +44,14 @@ export const profiles = sqliteTable('profiles', {
     .default('kg'),
   /** For calorie estimates; null until set in Settings. */
   bodyWeightKg: real('body_weight_kg'),
+  /** Coach personality for motivational lines and voice. */
+  coachTone: text('coach_tone', { enum: ['flower', 'normal', 'hard', 'gymrat'] })
+    .notNull()
+    .default('normal'),
+  /** How the coach addresses the user in Spanish (grammatical gender). */
+  addressForm: text('address_form', { enum: ['f', 'm', 'neutral'] })
+    .notNull()
+    .default('neutral'),
   activeProgramId: text('active_program_id'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()

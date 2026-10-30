@@ -51,6 +51,8 @@
     "#lib/offline/workout-view.svelte": "./src/lib/offline/workout-view.svelte.ts",
     "#lib/i18n": "./src/lib/i18n/index.svelte.ts",
     "#lib/nudge.svelte": "./src/lib/nudge.svelte.ts",
+    "#lib/coach/coach.svelte": "./src/lib/coach/coach.svelte.ts",
+    "#lib/coach/voice.svelte": "./src/lib/coach/voice.svelte.ts",
     "#lib/*.svelte": "./src/lib/*.svelte",
     "#lib/*": "./src/lib/*.ts"
   }

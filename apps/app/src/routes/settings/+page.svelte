@@ -1,7 +1,7 @@
 <script lang="ts">
   import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
-  import { updateProfileRequestSchema, userSchema, type UpdateProfileRequest } from '@gym-up/contracts';
+  import { updateProfileRequestSchema, userSchema, type AddressForm, type CoachTone, type UpdateProfileRequest } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { API_URL } from '#lib/api/config';
   import { session } from '#lib/session';
@@ -11,6 +11,8 @@
   import Icon from '#lib/components/Icon.svelte';
   import { i18n, t, type LocalePreference } from '#lib/i18n';
   import { appUpdates } from '#lib/updates.svelte';
+  import { coachSay } from '#lib/coach/coach.svelte';
+  import { coachVoice } from '#lib/coach/voice.svelte';
 
   let displayName = $state('');
   let weightUnit = $state<'kg' | 'lbs'>('kg');
@@ -20,6 +22,10 @@
   let message = $state<string | null>(null);
   let error = $state<string | null>(null);
   let busy = $state(false);
+  let coachTone = $state<CoachTone>('normal');
+  let addressForm = $state<AddressForm>('neutral');
+  let coachMessage = $state<string | null>(null);
+  let coachError = $state<string | null>(null);
 
   onMount(async () => {
     const user = await session.require();
@@ -28,7 +34,28 @@
     weightUnit = user.weightUnit;
     routineType = user.routineType;
     bodyWeight = user.bodyWeightKg ? Math.round(toDisplay(user.bodyWeightKg, user.weightUnit)) : null;
+    coachTone = user.coachTone;
+    addressForm = user.addressForm;
   });
+
+  /** Coach settings save as soon as they change; gymrat asks first because it swears. */
+  async function saveCoach(patch: Pick<UpdateProfileRequest, 'coachTone' | 'addressForm'>) {
+    coachMessage = null;
+    coachError = null;
+    const before = { coachTone: session.user?.coachTone ?? 'normal', addressForm: session.user?.addressForm ?? 'neutral' };
+    if (patch.coachTone === 'gymrat' && before.coachTone !== 'gymrat' && !confirm(t('coach.gymratConfirm'))) {
+      coachTone = before.coachTone;
+      return;
+    }
+    try {
+      await session.set(await api('/auth/me', { method: 'PATCH', body: patch, schema: userSchema }));
+      coachMessage = t('coach.saved');
+    } catch (e) {
+      coachTone = before.coachTone;
+      addressForm = before.addressForm;
+      coachError = e instanceof NetworkError ? t('settings.offline') : e instanceof ApiRequestError ? e.message : t('settings.saveError');
+    }
+  }
 
   async function save(event: SubmitEvent) {
     event.preventDefault();
@@ -115,6 +142,46 @@
   </section>
 
   <section class="card">
+    <h2 class="first">{t('coach.title')}</h2>
+    <p class="muted hint lead">{t('coach.hint')}</p>
+    <div class="coach">
+      <label>
+        {t('coach.tone')}
+        <Select
+          bind:value={coachTone}
+          options={(['flower', 'normal', 'hard', 'gymrat'] as const).map((v) => ({ value: v, label: t(`coach.tone.${v}`) }))}
+          onchange={(v) => saveCoach({ coachTone: v })}
+        />
+        {#if coachTone === 'gymrat'}<span class="muted hint">{t('coach.gymratHint')}</span>{/if}
+      </label>
+      <label>
+        {t('coach.addressForm')}
+        <Select
+          bind:value={addressForm}
+          options={(['f', 'm', 'neutral'] as const).map((v) => ({ value: v, label: t(`coach.address.${v}`) }))}
+          onchange={(v) => saveCoach({ addressForm: v })}
+        />
+      </label>
+      <div>
+        <span class="field">{t('coach.voice')}</span>
+        <div class="lang two" role="radiogroup" aria-label={t('coach.voice')}>
+          {#each [true, false] as on (on)}
+            <button type="button" role="radio" aria-checked={coachVoice.enabled === on} class:on={coachVoice.enabled === on} onclick={() => coachVoice.set(on)}>
+              {on ? t('coach.voiceOn') : t('coach.voiceOff')}
+            </button>
+          {/each}
+        </div>
+        <p class="muted hint">{t('coach.voiceHint')}</p>
+        {#if coachVoice.enabled}
+          <button type="button" class="test" onclick={() => coachSay('home')}><Icon name="bolt" size={16} /> {t('coach.voiceTest')}</button>
+        {/if}
+      </div>
+    </div>
+    {#if coachMessage}<p class="ok" role="status">{coachMessage}</p>{/if}
+    {#if coachError}<p class="error" role="alert">{coachError}</p>{/if}
+  </section>
+
+  <section class="card">
     <h2 class="first">{t('language.title')}</h2>
     <div class="lang" role="radiogroup" aria-label={t('language.title')}>
       {#each [['system', t('language.system')], ['es', t('language.es')], ['en', t('language.en')]] as [value, text] (value)}
@@ -181,6 +248,26 @@
   .hint {
     margin: 0.6rem 0 0;
     font-size: var(--t-sm);
+  }
+  .lead {
+    margin: 0 0 0.75rem;
+  }
+  .coach {
+    display: grid;
+    gap: 1rem;
+  }
+  .field {
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .lang.two {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .test {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
   }
   .update-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 </style>

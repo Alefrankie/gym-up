@@ -7,6 +7,7 @@
   import { useWorkoutView } from '#lib/offline/workout-context';
   import { normalizeSupplementName, parseWorkoutVoiceCommand, type WorkoutVoiceCommand } from '#lib/voice-assistant';
   import { transcribeWorkoutAudio } from '#lib/voice-transcriber';
+  import { coachVoice } from '#lib/coach/voice.svelte';
   import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
 
@@ -38,7 +39,14 @@
     recorder = null;
   }
 
+  // The Coach never talks while the microphone is listening.
+  $effect(() => {
+    coachVoice.micBusy = status === 'recording';
+    if (status === 'recording') coachVoice.stop();
+  });
+
   onDestroy(() => {
+    coachVoice.micBusy = false;
     destroyed = true;
     if (recorder?.state === 'recording') recorder.stop();
     releaseMic();

@@ -16,6 +16,8 @@ export function toUserDto(u: User): UserDto {
     routineType: u.routineType,
     weightUnit: u.weightUnit,
     bodyWeightKg: u.bodyWeightKg ?? null,
+    coachTone: u.coachTone ?? 'normal',
+    addressForm: u.addressForm ?? 'neutral',
     createdAt: iso(u.createdAt),
   };
 }
@@ -28,6 +30,8 @@ export function profileToUserDto(p: Profile): UserDto {
     routineType: p.routineType,
     weightUnit: p.weightUnit,
     bodyWeightKg: p.bodyWeightKg ?? null,
+    coachTone: p.coachTone,
+    addressForm: p.addressForm,
     createdAt: iso(p.createdAt),
   };
 }

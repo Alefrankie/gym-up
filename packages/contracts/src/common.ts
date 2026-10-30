@@ -20,6 +20,14 @@ export type WeightUnit = z.infer<typeof weightUnitSchema>;
 export const routineTypeSchema = z.enum(['hombre', 'mujer']);
 export type RoutineType = z.infer<typeof routineTypeSchema>;
 
+/** Coach personality. `gymrat` is opt-in and Spanish only. */
+export const coachToneSchema = z.enum(['flower', 'normal', 'hard', 'gymrat']);
+export type CoachTone = z.infer<typeof coachToneSchema>;
+
+/** How the coach addresses the user in Spanish (grammatical gender). */
+export const addressFormSchema = z.enum(['f', 'm', 'neutral']);
+export type AddressForm = z.infer<typeof addressFormSchema>;
+
 /** ISO-8601 timestamp as sent over the wire. */
 export const isoDateSchema = z.string().datetime();
 

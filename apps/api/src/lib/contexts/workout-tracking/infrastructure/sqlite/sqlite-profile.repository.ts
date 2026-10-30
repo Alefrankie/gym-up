@@ -39,7 +39,7 @@ export class SqliteProfileRepository implements ProfileRepository {
 
   async update(
     id: string,
-    patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit'>>,
+    patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg' | 'coachTone' | 'addressForm'>>,
   ): Promise<Profile> {
     const [row] = await this.db
       .update(profiles)
