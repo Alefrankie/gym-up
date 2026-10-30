@@ -78,8 +78,8 @@ class AppUpdates {
     this.downloading = true;
 
     try {
-      // The plugin resolves { allowed }, not a bare boolean.
-      const { allowed } = await invoke<{ allowed: boolean }>('plugin:apk-installer|can_install_packages');
+      // The Rust command unwraps the Kotlin { allowed } object into a bare boolean.
+      const allowed = await invoke<boolean>('plugin:apk-installer|can_install_packages');
       if (!allowed) {
         this.permissionRequired = true;
         await invoke('plugin:apk-installer|open_install_settings');
