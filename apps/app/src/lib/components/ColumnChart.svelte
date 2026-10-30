@@ -74,7 +74,8 @@
   }
   .v,
   .l {
-    font-size: var(--t-xs);
+    font-size: 0.62rem;
+    white-space: nowrap;
     color: var(--muted);
     font-variant-numeric: tabular-nums;
   }

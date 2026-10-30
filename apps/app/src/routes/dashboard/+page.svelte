@@ -93,7 +93,10 @@
       to.setUTCDate(from.getUTCDate() + 7);
       const a = from.toISOString().slice(0, 10);
       const b = to.toISOString().slice(0, 10);
-      return { label: String(from.getUTCDate()), value: on.filter((d) => d >= a && d < b).length };
+      return {
+        // The week's Monday as "26 oct"; the current week just says so.
+        label: i === 7 ? t('home.nowWeek') : from.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', timeZone: 'UTC' }).replace('.', ''),
+        value: on.filter((d) => d >= a && d < b).length };
     });
   });
 
@@ -233,6 +236,7 @@
   {#if calendar.length}
     <section class="block card">
       <div class="block-head"><h2>{t('home.perWeek')}</h2><a href="/progress">{t('nav.progress')}</a></div>
+      <p class="muted chart-hint">{t('home.perWeekHint')}</p>
       <ColumnChart values={perWeek.map((w) => w.value)} labels={perWeek.map((w) => w.label)} label={t('home.perWeekLabel')} empty={t('home.perWeekEmpty')} />
     </section>
   {/if}
@@ -254,6 +258,10 @@
 <AppNav />
 
 <style>
+  .chart-hint {
+    margin: -0.25rem 0 0.75rem;
+    font-size: var(--t-xs);
+  }
   .top {
     margin: 0.5rem 0 1rem;
   }
