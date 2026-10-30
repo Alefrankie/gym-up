@@ -157,6 +157,9 @@ export const es = {
   'voice.apply': 'Aplicar',
   'voice.confirmSupplement': 'Confirmar y marcar tomado',
   'voice.applied': 'Comando aplicado.',
+  'voice.previewGoTo': 'Ir a {exercise}.',
+  'voice.exerciseMissing': 'No encontré ese ejercicio en este entrenamiento.',
+  'voice.exerciseAmbiguous': 'Hay varios ejercicios parecidos: {options}. Dilo más completo.',
 } as const;
 
 export const en: Record<keyof typeof es, string> = {
@@ -317,4 +320,7 @@ export const en: Record<keyof typeof es, string> = {
   'voice.apply': 'Apply',
   'voice.confirmSupplement': 'Confirm and mark taken',
   'voice.applied': 'Command applied.',
+  'voice.previewGoTo': 'Go to {exercise}.',
+  'voice.exerciseMissing': 'I could not find that exercise in this workout.',
+  'voice.exerciseAmbiguous': 'Several exercises fit: {options}. Say the full name.',
 };

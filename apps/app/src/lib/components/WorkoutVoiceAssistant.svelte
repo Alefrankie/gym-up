@@ -5,7 +5,8 @@
   import { localDay, loadSupplements, persistMark, withMark } from '#lib/supplements';
   import { toDisplay } from '#lib/offline/workout-view.svelte';
   import { useWorkoutView } from '#lib/offline/workout-context';
-  import { normalizeSupplementName, parseWorkoutVoiceCommand, type WorkoutVoiceCommand } from '#lib/voice-assistant';
+  import { matchSpokenExercise, normalizeSupplementName, parseWorkoutVoiceCommand, type WorkoutVoiceCommand } from '#lib/voice-assistant';
+  import { exerciseName } from '#lib/exercise-name';
   import { transcribeWorkoutAudio } from '#lib/voice-transcriber';
   import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
@@ -29,6 +30,22 @@
     const routeExercise = exercises.find((e) => e.exerciseId === page.params.exercise);
     return routeExercise ?? exercises.find((e) => view.activeSet(e) !== null) ?? null;
   });
+
+  /** The workout exercise a spoken name points to, by its English or Spanish name or an alias. */
+  function spokenExercise(query: string) {
+    return matchSpokenExercise(query, view.snap?.exercises ?? []);
+  }
+
+  /** The exercise a command acts on: the one it names, else the current one; or why it cannot tell. */
+  function targetExercise(named: string | undefined): { ex: typeof currentExercise; error?: string } {
+    if (!named) return { ex: currentExercise };
+    const found = spokenExercise(named);
+    if (found.kind === 'match') return { ex: found.exercise };
+    if (found.kind === 'ambiguous') {
+      return { ex: null, error: t('voice.exerciseAmbiguous', { options: found.options.map((o) => exerciseName(o.exerciseName)).join(', ') }) };
+    }
+    return { ex: null, error: t('voice.exerciseMissing') };
+  }
 
   function releaseMic() {
     if (stopTimer) clearTimeout(stopTimer);
@@ -121,15 +138,20 @@
   function preview(commandToShow: WorkoutVoiceCommand | null): string {
     if (!commandToShow) return t('voice.noCommand');
     if (commandToShow.type === 'log-set') {
-      const ex = currentExercise;
+      const { ex, error } = targetExercise(commandToShow.exercise);
+      if (error) return error;
       return t('voice.previewSet', {
-        exercise: ex?.exerciseName ?? '',
+        exercise: ex ? exerciseName(ex.exerciseName) : '',
         set: commandToShow.setNumber ?? (ex ? view.activeSet(ex) ?? '?' : '?'),
         reps: commandToShow.reps,
         weight: commandToShow.weight === undefined ? t('voice.keepWeight') : `${commandToShow.weight} ${commandToShow.weightUnit}`,
       });
     }
     if (commandToShow.type === 'next-exercise') return t('voice.previewNext');
+    if (commandToShow.type === 'go-to-exercise') {
+      const { ex, error } = targetExercise(commandToShow.query);
+      return error ?? t('voice.previewGoTo', { exercise: exerciseName(ex!.exerciseName) });
+    }
     if (!commandToShow.query) return t('voice.supplementUnclear');
     return t('voice.previewSupplement', { name: commandToShow.query });
   }
@@ -142,7 +164,11 @@
         message = t('voice.valuesInvalid');
         return;
       }
-      const ex = currentExercise;
+      const { ex, error } = targetExercise(command.exercise);
+      if (error) {
+        message = error;
+        return;
+      }
       const setNumber = command.setNumber ?? (ex ? view.activeSet(ex) : null);
       if (!ex || !setNumber || !view.row(ex.exerciseId, setNumber)) {
         message = t('voice.setUnavailable');
@@ -166,6 +192,17 @@
       const next = index >= 0 ? exercises[index + 1] ?? exercises.find((e) => view.activeSet(e) !== null) : exercises.find((e) => view.activeSet(e) !== null);
       if (next) void goto(`/workout/${page.params.id}/${next.exerciseId}`, { replaceState: true });
       else void goto(`/workout/${page.params.id}`, { replaceState: true });
+      command = null;
+      return;
+    }
+
+    if (command.type === 'go-to-exercise') {
+      const { ex, error } = targetExercise(command.query);
+      if (error || !ex) {
+        message = error ?? t('voice.exerciseMissing');
+        return;
+      }
+      void goto(`/workout/${page.params.id}/${ex.exerciseId}`, { replaceState: true });
       command = null;
       return;
     }
