@@ -34,6 +34,7 @@
   import WorkoutHistoryRow from '#lib/components/WorkoutHistoryRow.svelte';
   import { coachLine, speakHomeOnce } from '#lib/coach/coach.svelte';
   import { coachVoice } from '#lib/coach/voice.svelte';
+  import { coachRecordings } from '#lib/coach/recordings.svelte';
   import type { PickedLine } from '#lib/coach/pick';
   import { localDay } from '#lib/dates';
   import { routineForDate } from '#lib/weekday-routine';
@@ -71,6 +72,8 @@
     if (!(await session.require())) return;
     quote = coachLine('home');
     speakHomeOnce(quote);
+    // Lines recorded in the voice studio for this tone, ready before the workout (and offline).
+    if (coachVoice.enabled && session.user) void coachRecordings.prefetch(session.user.coachTone);
     // A workout under way takes the top card; then today's routine would only repeat it.
     void getActiveWorkoutId().then(async (id) => {
       const s = id ? await loadSnapshot(id) : undefined;

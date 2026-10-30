@@ -14,6 +14,7 @@
   import { coachLine } from '#lib/coach/coach.svelte';
   import { nudge } from '#lib/nudge.svelte';
   import { CLOUD_OPTIONS, coachVoice, type VoiceOption } from '#lib/coach/voice.svelte';
+  import { coachRecordings } from '#lib/coach/recordings.svelte';
 
   let displayName = $state('');
   let weightUnit = $state<'kg' | 'lbs'>('kg');
@@ -84,6 +85,7 @@
     try {
       await session.set(await api('/auth/me', { method: 'PATCH', body: patch, schema: userSchema }));
       coachMessage = t('coach.saved');
+      if (patch.coachTone && coachVoice.enabled) void coachRecordings.prefetch(patch.coachTone);
     } catch (e) {
       coachTone = before.coachTone;
       addressForm = before.addressForm;

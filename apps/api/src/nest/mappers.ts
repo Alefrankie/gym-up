@@ -1,5 +1,6 @@
 import type { Profile, Workout, WorkoutEntry } from '@db/schema';
 import type { User } from '@/lib/contexts/auth/auth.types';
+import { isAdmin } from './common/admin';
 import type {
   UserDto,
   WorkoutDto,
@@ -18,6 +19,7 @@ export function toUserDto(u: User): UserDto {
     bodyWeightKg: u.bodyWeightKg ?? null,
     coachTone: u.coachTone ?? 'normal',
     addressForm: u.addressForm ?? 'neutral',
+    isAdmin: isAdmin(u),
     createdAt: iso(u.createdAt),
   };
 }
@@ -32,6 +34,7 @@ export function profileToUserDto(p: Profile): UserDto {
     bodyWeightKg: p.bodyWeightKg ?? null,
     coachTone: p.coachTone,
     addressForm: p.addressForm,
+    isAdmin: isAdmin(p),
     createdAt: iso(p.createdAt),
   };
 }

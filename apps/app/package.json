@@ -53,6 +53,7 @@
     "#lib/nudge.svelte": "./src/lib/nudge.svelte.ts",
     "#lib/coach/coach.svelte": "./src/lib/coach/coach.svelte.ts",
     "#lib/coach/voice.svelte": "./src/lib/coach/voice.svelte.ts",
+    "#lib/coach/recordings.svelte": "./src/lib/coach/recordings.svelte.ts",
     "#lib/*.svelte": "./src/lib/*.svelte",
     "#lib/*": "./src/lib/*.ts"
   }

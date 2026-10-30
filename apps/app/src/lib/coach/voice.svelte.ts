@@ -3,6 +3,8 @@ import { API_URL } from '#lib/api/config';
 import { tokenStore } from '#lib/api/token';
 import type { CoachLocale } from './lines';
 import { pickMaleVoice } from './male-voice';
+import { coachRecordings } from './recordings.svelte';
+import { chooseSource } from './studio';
 
 const KEY = 'gymup.coach.voice';
 const VOICE_KEY = 'gymup.coach.voiceId';
@@ -300,6 +302,21 @@ class CoachVoice {
   async #say(text: string, locale: CoachLocale, id: CoachVoiceId): Promise<SpeakResult> {
     this.stop();
     try {
+      // A line recorded in the voice studio beats any synthetic voice.
+      const recording = await coachRecordings.find(text).catch(() => undefined);
+      const source = chooseSource({ recorded: !!recording, cloudChosen: isCloudVoice(id), cloudAvailable: !cloudPaused() });
+      if (source === 'recording' && recording) {
+        try {
+          const started = performance.now();
+          const blob = await coachRecordings.audio(recording);
+          if (this.micBusy) return { ok: false, latencyMs: null };
+          const latencyMs = await this.#play(blob, started);
+          this.problem = null;
+          return { ok: true, latencyMs };
+        } catch (e) {
+          console.warn('[coach-voice] recording failed, using the chosen voice', e);
+        }
+      }
       if (isCloudVoice(id)) {
         try {
           return await this.#speakCloud(text, locale, id);

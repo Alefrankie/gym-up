@@ -26,6 +26,8 @@ export const userSchema = z.object({
   bodyWeightKg: z.number().nullable().optional(),
   coachTone: coachToneSchema.default('normal'),
   addressForm: addressFormSchema.default('neutral'),
+  /** Can manage feedback and record the Coach's lines in the voice studio. */
+  isAdmin: z.boolean().default(false),
   createdAt: isoDateSchema,
 });
 export type UserDto = z.infer<typeof userSchema>;

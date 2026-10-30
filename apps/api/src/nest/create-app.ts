@@ -5,6 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import express, { type Express } from 'express';
 import { AppModule, type AppDeps } from './app.module';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
+import { COACH_RECORDING_TYPES } from '@gym-up/contracts';
 
 /** Origins allowed to call the API from a browser or the Tauri webview (ADR-027). */
 const ALLOWED_ORIGINS = new Set([
@@ -28,6 +29,8 @@ export async function createApp(deps: AppDeps, extraOrigins: string[] = []): Pro
 
   // Photos arrive as raw image bytes (the app compresses them first); everything else is JSON.
   expressApp.use(express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '6mb' }));
+  // The Coach's recorded lines arrive as raw audio (short Opus clips).
+  expressApp.use(express.raw({ type: [...COACH_RECORDING_TYPES], limit: '1mb' }));
 
   // Meal analysis and logging send a base64 photo inside JSON (the app compresses it first).
   app.useBodyParser('json', { limit: '8mb' });

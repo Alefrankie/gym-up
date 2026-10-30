@@ -22,7 +22,7 @@
 // =============================================================
 
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, primaryKey, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, real, blob } from 'drizzle-orm/sqlite-core';
 
 /**
  * User profile. Created on registration (Round 1: in LocalAuthService
@@ -400,4 +400,21 @@ export type FeedbackItem = typeof feedbackItems.$inferSelect;
 export const coachVoiceUsage = sqliteTable('coach_voice_usage', {
   day: text('day').primaryKey(),
   chars: integer('chars').notNull().default(0),
+});
+
+/**
+ * The Coach's lines recorded by an admin in the voice studio. `id` is the hash of the voice slot and the rendered
+ * line, so the app finds a recording from the line it is about to say. Audio is stored inline (small Opus clips).
+ */
+export const coachRecordings = sqliteTable('coach_recordings', {
+  id: text('id').primaryKey(),
+  tone: text('tone').notNull(),
+  locale: text('locale').notNull(),
+  event: text('event').notNull(),
+  form: text('form'),
+  text: text('text').notNull(),
+  contentType: text('content_type').notNull(),
+  audio: blob('audio', { mode: 'buffer' }).notNull(),
+  bytes: integer('bytes').notNull(),
+  updatedAt: integer('updated_at').notNull(),
 });

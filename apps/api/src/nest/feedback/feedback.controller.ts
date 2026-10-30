@@ -6,10 +6,10 @@ import type { Db } from '@/lib/db/client';
 import type { User } from '@/lib/contexts/auth/auth.types';
 import { AuthGuard, CurrentUser } from '../common/auth.guard';
 import { DB } from '../tokens';
+import { isAdmin } from '../common/admin';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
-const FEEDBACK_ADMINS = new Set(['alefrank.m@gmail.com']);
-const isFeedbackAdmin = (user: User) => FEEDBACK_ADMINS.has(user.email.trim().toLowerCase());
+const isFeedbackAdmin = (user: User) => isAdmin(user);
 
 type FeedbackRow = typeof feedbackItems.$inferSelect;
 const canDelete = (row: FeedbackRow, user: User) => row.authorId === user.id || isFeedbackAdmin(user);

@@ -32,6 +32,12 @@
     { href: '/voice-benchmark', title: 'more.voiceBenchmark', hint: 'more.voiceBenchmarkHint', icon: 'mic' },
     { href: '/settings', title: 'more.settings', hint: 'more.settingsHint', icon: 'sliders' },
   ];
+  // The voice studio is only for admins (they record the Coach's lines for everyone).
+  const visibleLinks = $derived(
+    session.user?.isAdmin
+      ? [...links.slice(0, -1), { href: '/voice-studio', title: 'more.voiceStudio', hint: 'more.voiceStudioHint', icon: 'mic' } as const, links.at(-1)!]
+      : links,
+  );
 
   async function shareApp() {
     shareMessage = '';
@@ -103,7 +109,7 @@
     {/if}
   </section>
   <ul class="list">
-    {#each links as l}
+    {#each visibleLinks as l}
       <li>
         <a href={l.href}>
           <span class="ico"><Icon name={l.icon} size={18} /></span>
