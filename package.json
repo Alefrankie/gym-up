@@ -2,7 +2,7 @@
   "name": "gym-up",
   "private": true,
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "Workout tracker with routines, progress, and family sharing",
   "packageManager": "pnpm@11.18.0",
   "scripts": {
