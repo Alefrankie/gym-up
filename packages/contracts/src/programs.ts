@@ -10,6 +10,8 @@ export const programExerciseDtoSchema = z.object({
   exerciseName: z.string(),
   muscleGroup: z.string(),
   secondaryMuscles: z.array(z.string()).optional(),
+  /** barbell, dumbbell, machine… (the same movement is a different exercise per equipment). */
+  equipment: z.string().optional(),
   targetSets: z.number().int(),
   targetReps: z.number().int(),
   warmupSets: z.number().int(),

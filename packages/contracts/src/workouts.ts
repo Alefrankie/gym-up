@@ -114,6 +114,7 @@ export const routineExerciseSchema = z.object({
   exerciseName: z.string(),
   muscleGroup: z.string(),
   secondaryMuscles: z.array(z.string()).optional(),
+  equipment: z.string().optional(),
   targetSets: z.number().int(),
   targetReps: z.number().int(),
   exerciseOrder: z.number().int(),

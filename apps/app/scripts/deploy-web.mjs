@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const appDir = resolve(import.meta.dirname, '..');
-const apk = join(appDir, 'src-tauri', 'target', 'share-artifacts', 'gym-up.apk');
+const apk = join(appDir, 'src-tauri', 'target', 'release-artifacts', 'gym-up.apk');
 const downloadDir = join(appDir, 'build', 'downloads');
 const deployEnv = { ...process.env };
 
@@ -13,12 +13,12 @@ function run(command, args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-// Development distribution: rebuild the compact Android APK on every web deploy.
+// Build a compact signed Android release APK on every web deploy.
 // Tauri's Android build also runs the app's beforeBuildCommand (`pnpm build`).
-run('pnpm', ['android:share']);
+run('pnpm', ['android:release']);
 
 if (!existsSync(apk)) {
-  console.error('No verified share APK found. Run "pnpm android:share" before deploying the download page.');
+  console.error('No verified signed release APK found. Run "pnpm android:release" before deploying the download page.');
   process.exit(1);
 }
 

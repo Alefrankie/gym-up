@@ -2,9 +2,26 @@
   import { t, tn } from '#lib/i18n';
   import { sync } from '#lib/offline/sync.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import { fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
+
+  // A change that reaches the server within a few seconds is nothing to report: only offline or stuck sends show.
+  let stuck = $state(false);
+  $effect(() => {
+    if (sync.pending === 0) {
+      stuck = false;
+      return;
+    }
+    const timer = setTimeout(() => (stuck = true), 5000);
+    return () => clearTimeout(timer);
+  });
+  const show = $derived((sync.pending > 0 && (sync.offline || stuck)) || sync.failed.length > 0);
 </script>
 
-{#if sync.pending > 0 || sync.failed.length > 0}
+<!-- Floats above the bottom bar so it never pushes the screen around. -->
+{#if show}
+<div class="dock" transition:fly={{ y: 16, duration: 220, easing: cubicOut }}>
+  {#if sync.pending > 0 && (sync.offline || stuck)}
   <div class="banner" class:warn={sync.offline} role="status">
     {#if sync.pending > 0}
       <span class="msg">
@@ -19,6 +36,7 @@
       {/if}
     {/if}
   </div>
+  {/if}
   {#each sync.failed as item (item.seq)}
     <div class="banner err" role="alert">
       <span class="msg">
@@ -31,19 +49,35 @@
       </span>
     </div>
   {/each}
+</div>
 {/if}
 
 <style>
+  .dock {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    z-index: 30;
+    max-width: 32rem;
+    margin: 0 auto;
+    display: grid;
+    gap: 0.4rem;
+    pointer-events: none;
+  }
+  .dock > :global(*) {
+    pointer-events: auto;
+  }
   .banner {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
-    margin: 0.5rem 0;
+    margin: 0;
     padding: 0.3rem 0.3rem 0.3rem 0.75rem;
     border-radius: var(--radius);
     background: var(--surface);
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-pop);
     font-size: var(--t-sm);
     color: var(--text);
   }

@@ -100,6 +100,7 @@ export class WorkoutsController {
         exerciseName: e.exercise.name,
         muscleGroup: e.exercise.muscleGroup,
         secondaryMuscles: parseMuscles(e.exercise.secondaryMuscles),
+        equipment: e.exercise.equipment,
         targetSets: e.targetSets,
         targetReps: e.targetReps,
         last: result.last[e.exerciseId] ?? null,

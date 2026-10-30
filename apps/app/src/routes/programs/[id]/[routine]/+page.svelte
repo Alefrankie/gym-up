@@ -16,7 +16,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
   import { muscleLoad } from '#lib/muscle-load';
-  import { muscle } from '#lib/labels';
+  import { equipment, muscle } from '#lib/labels';
   import { saveBody } from '#lib/programs';
   import { session } from '#lib/session';
   import ExercisePicker from '#lib/components/ExercisePicker.svelte';
@@ -282,7 +282,7 @@
               <span class="tile"><MuscleFigure primary={e.muscleGroup} secondary={e.secondaryMuscles} size={22} /></span>
               <span class="grow">
                 <strong>{e.exerciseName}</strong>
-                <span class="muted">{muscle(e.muscleGroup)} · {tn('routine.sets', e.targetSets)} · {t('routine.reps', { n: e.targetReps })}{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: t('plan.short.warmup'), drop: t('plan.short.drop'), failure: t('plan.short.failure') })[s.type as 'warmup']).join(' ')}{/if}</span>
+                <span class="muted">{#if library.find((x) => x.id === e.exerciseId)?.equipment}{equipment(library.find((x) => x.id === e.exerciseId)!.equipment)} ·{' '}{/if}{muscle(e.muscleGroup)} · {tn('routine.sets', e.targetSets)} · {t('routine.reps', { n: e.targetReps })}{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: t('plan.short.warmup'), drop: t('plan.short.drop'), failure: t('plan.short.failure') })[s.type as 'warmup']).join(' ')}{/if}</span>
               </span>
               <Icon name="right" size={18} />
             </button>

@@ -11,7 +11,8 @@
     "test": "vitest run --passWithNoTests",
     "deploy:web": "node scripts/deploy-web.mjs",
     "android:debug": "node scripts/android-debug.mjs",
-    "android:share": "node scripts/android-share.mjs"
+    "android:share": "node scripts/android-share.mjs",
+    "android:release": "node scripts/android-release.mjs"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^4.0.0",

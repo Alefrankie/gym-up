@@ -62,6 +62,7 @@ export function toProgramDetailDto(tree: ProgramTree): ProgramDetailDto {
         exerciseName: s.exercise.name,
         muscleGroup: s.exercise.muscleGroup,
         secondaryMuscles: parseMuscles(s.exercise.secondaryMuscles),
+        equipment: s.exercise.equipment,
         targetSets: s.targetSets,
         targetReps: s.targetReps,
         warmupSets: s.warmupSets,

@@ -5,7 +5,9 @@
   import { cachedGet } from '#lib/offline/cache';
   import { toDisplay } from '#lib/offline/workout-view.svelte';
   import { session } from '#lib/session';
+  import Icon from './Icon.svelte';
   import MuscleFigure from './MuscleFigure.svelte';
+  import Overlay from './Overlay.svelte';
   import ProgressChart from './ProgressChart.svelte';
 
   /**
@@ -36,6 +38,8 @@
       .then((r) => (history = r.data))
       .catch(() => {});
   });
+
+  let howTo = $state(false);
 
   const steps = $derived(
     (exercise.instructions ?? '')
@@ -79,17 +83,27 @@
   </section>
 {/if}
 
-{#if steps.length}
-  <h2>{t('exercise.howTo')}</h2>
-  <ol class="steps">
-    {#each steps as s, i (i)}
-      <li><span class="n">{i + 1}</span><span>{s}</span></li>
-    {/each}
-  </ol>
+{#if steps.length || exercise.videoUrl}
+  <button type="button" class="howto" onclick={() => (howTo = true)}>
+    <Icon name="book" size={20} />
+    <span class="grow">{t('exercise.howTo')}</span>
+    <Icon name="right" size={18} />
+  </button>
 {/if}
 
-{#if exercise.videoUrl}
-  <p><a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">{t('exercise.watchVideo')}</a></p>
+{#if howTo}
+  <Overlay title={t('exercise.howTo')} zIndex={50} onclose={() => (howTo = false)}>
+    {#if steps.length}
+      <ol class="steps">
+        {#each steps as s, i (i)}
+          <li><span class="n">{i + 1}</span><span>{s}</span></li>
+        {/each}
+      </ol>
+    {/if}
+    {#if exercise.videoUrl}
+      <p><a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">{t('exercise.watchVideo')}</a></p>
+    {/if}
+  </Overlay>
 {/if}
 
 <style>
@@ -124,6 +138,23 @@
     font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1.2;
+  }
+  .howto {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 56px;
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    text-align: left;
+    font-weight: 600;
+  }
+  .howto .grow {
+    flex: 1;
   }
   .steps {
     list-style: none;
