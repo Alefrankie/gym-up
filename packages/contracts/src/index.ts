@@ -9,3 +9,4 @@ export * from './library';
 export * from './programs';
 export * from './groups';
 export * from './supplements';
+export * from './feedback';

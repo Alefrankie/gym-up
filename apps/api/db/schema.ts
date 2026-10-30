@@ -372,3 +372,18 @@ export const supplementLogs = sqliteTable(
 );
 
 export type Supplement = typeof supplements.$inferSelect;
+
+/** Shared feedback board visible to every authenticated Gym Up account. */
+export const feedbackItems = sqliteTable('feedback_items', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  category: text('category', { enum: ['idea', 'bug', 'other'] }).notNull().default('idea'),
+  status: text('status', { enum: ['open', 'planned', 'in_progress', 'resolved'] }).notNull().default('open'),
+  authorId: text('author_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  authorName: text('author_name').notNull(),
+  createdAt: integer('created_at').notNull().default(0),
+  updatedAt: integer('updated_at').notNull().default(0),
+});
+
+export type FeedbackItem = typeof feedbackItems.$inferSelect;
