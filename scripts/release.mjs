@@ -62,5 +62,5 @@ run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web']);
 run('git', ['add', tauriConfigPath, ...packageFiles]);
 run('git', ['commit', '-m', `chore(release): v${next}`]);
 run('git', ['tag', '-a', `v${next}`, '-m', `v${next}`]);
-run('git', ['push', '--follow-tags', 'origin', 'HEAD']);
+run('git', ['push', '--follow-tags', 'origin', 'HEAD:main']);
 console.log(`\nReleased v${next}.`);
