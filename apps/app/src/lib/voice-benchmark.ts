@@ -231,26 +231,27 @@ export async function transcribeWithVosk(
     const inferenceStartedAt = performance.now();
     const text = await new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Vosk tardó demasiado en transcribir el audio.')), 30_000);
-      let chunkProcessed = false;
+      // The worker answers acceptWaveform with exactly one event (result or
+      // partialresult) and retrieveFinalResult with one result, in order.
+      let firstText = '';
+      let events = 0;
       const onAbort = () => {
         clearTimeout(timeout);
         reject(new DOMException('Prueba cancelada.', 'AbortError'));
       };
       signal?.addEventListener('abort', onAbort, { once: true });
-      recognizer!.on('partialresult', (event) => {
-        if (event.event !== 'partialresult' || chunkProcessed) return;
-        chunkProcessed = true;
-      });
-      recognizer!.on('result', (event) => {
-        if (event.event !== 'result') return;
-        if (!chunkProcessed) {
-          chunkProcessed = true;
-          recognizer!.retrieveFinalResult();
-          return;
-        }
+      const onEvent = (piece: string) => {
+        events += 1;
+        if (events === 1) { firstText = piece; return; }
         clearTimeout(timeout);
         signal?.removeEventListener('abort', onAbort);
-        resolve(event.result.text.trim());
+        resolve([firstText, piece].filter(Boolean).join(' ').trim());
+      };
+      recognizer!.on('partialresult', (event) => {
+        if (event.event === 'partialresult') onEvent('');
+      });
+      recognizer!.on('result', (event) => {
+        if (event.event === 'result') onEvent(event.result.text.trim());
       });
       recognizer!.on('error', (event) => {
         if (event.event !== 'error') return;
@@ -259,11 +260,7 @@ export async function transcribeWithVosk(
         reject(new Error(event.error));
       });
       recognizer!.acceptWaveform(decoded.buffer);
-      recognizer!.on('partialresult', (event) => {
-        if (event.event !== 'partialresult' || chunkProcessed) return;
-        chunkProcessed = true;
-        recognizer!.retrieveFinalResult();
-      });
+      recognizer!.retrieveFinalResult();
     });
     const inferenceMs = performance.now() - inferenceStartedAt;
     return {
