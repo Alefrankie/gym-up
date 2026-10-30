@@ -37,10 +37,18 @@ class AppUpdates {
       this.checked = true;
       return;
     }
-    this.supported = true;
     this.checking = true;
     this.error = false;
     try {
+      const releaseBuild = await invoke<boolean>('is_release_build');
+      if (!releaseBuild) {
+        this.supported = false;
+        this.available = null;
+        this.dismissed = false;
+        this.checked = true;
+        return;
+      }
+      this.supported = true;
       const installed = await invoke<InstalledVersion>('plugin:apk-installer|get_installed_version');
       this.installedVersion = installed.versionName;
       const response = await fetch(new URL('/update.json', UPDATE_BASE_URL), {

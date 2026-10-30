@@ -8,6 +8,7 @@ Default permissions for the plugin
 - `allow-get-installed-version`
 - `allow-open-install-settings`
 - `allow-download-and-install`
+- `allow-register-listener`
 
 ## Permission Table
 
@@ -118,6 +119,32 @@ Enables the open_install_settings command without any pre-configured scope.
 <td>
 
 Denies the open_install_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apk-installer:allow-register-listener`
+
+</td>
+<td>
+
+Enables the register_listener command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apk-installer:deny-register-listener`
+
+</td>
+<td>
+
+Denies the register_listener command without any pre-configured scope.
 
 </td>
 </tr>

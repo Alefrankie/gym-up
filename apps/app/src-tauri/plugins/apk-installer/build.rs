@@ -1,4 +1,10 @@
-const COMMANDS: &[&str] = &["can_install_packages", "get_installed_version", "open_install_settings", "download_and_install"];
+const COMMANDS: &[&str] = &[
+  "can_install_packages",
+  "get_installed_version",
+  "open_install_settings",
+  "download_and_install",
+  "register_listener",
+];
 
 fn main() {
   tauri_plugin::Builder::new(COMMANDS)
