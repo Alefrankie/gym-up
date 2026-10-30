@@ -205,24 +205,11 @@ export async function transcribeWithVosk(
   signal?: AbortSignal,
 ): Promise<VoskTranscription> {
   const startedAt = performance.now();
-  const modelArchive = await getVoskArchive(onProgress, signal);
-  if (signal?.aborted) throw new DOMException('Prueba cancelada.', 'AbortError');
-  const archiveUrl = URL.createObjectURL(modelArchive.blob);
-  const [{ createVoskClient }, decoded] = await Promise.all([
-    import('@lichess-org/vosk-browser'),
-    decodeAudio(audio),
-  ]);
-
-  let client: Awaited<ReturnType<typeof createVoskClient>> | undefined;
-  let recognizer: InstanceType<Awaited<ReturnType<typeof createVoskClient>>['KaldiRecognizer']> | undefined;
+  const decoded = await decodeAudio(audio);
+  let recognizer: InstanceType<VoskClient['KaldiRecognizer']> | undefined;
   try {
-    onProgress?.({ status: 'loading' });
     const loadStartedAt = performance.now();
-    const pendingClient = createVoskClient({ modelUrl: archiveUrl, workerUrl: voskWorkerUrl, wasmUrl: voskWasmUrl, logLevel: -1 });
-    const abortClient = () => { void pendingClient.then((loadedClient) => loadedClient.terminate()).catch(() => undefined); };
-    signal?.addEventListener('abort', abortClient, { once: true });
-    client = await pendingClient;
-    signal?.removeEventListener('abort', abortClient);
+    const { client, modelArchive, fresh } = await getWarmVosk(onProgress, signal);
     if (signal?.aborted) throw new DOMException('Prueba cancelada.', 'AbortError');
     const modelLoadMs = performance.now() - loadStartedAt;
     recognizer = new client.KaldiRecognizer(decoded.buffer.sampleRate);
@@ -268,16 +255,40 @@ export async function transcribeWithVosk(
       elapsedMs: performance.now() - startedAt,
       modelLoadMs,
       inferenceMs,
-      downloadedBytes: modelArchive.downloadedBytes,
+      downloadedBytes: fresh ? modelArchive.downloadedBytes : 0,
       archiveBytes: modelArchive.archiveBytes,
-      archiveCached: modelArchive.archiveCached,
+      archiveCached: modelArchive.archiveCached || !fresh,
     };
   } finally {
     recognizer?.remove();
-    client?.terminate();
-    URL.revokeObjectURL(archiveUrl);
     await decoded.context.close();
   }
+}
+
+type VoskClient = Awaited<ReturnType<typeof import('@lichess-org/vosk-browser')['createVoskClient']>>;
+type WarmVosk = { client: VoskClient; modelArchive: Awaited<ReturnType<typeof getVoskArchive>> };
+
+// The model stays loaded in its worker for the session; only the per-phrase recogniser is recreated.
+let warmVosk: Promise<WarmVosk> | undefined;
+
+async function getWarmVosk(onProgress?: (progress: BenchmarkProgress) => void, signal?: AbortSignal) {
+  if (warmVosk) return { ...(await warmVosk), fresh: false };
+  const loading = (async () => {
+    // No abort signal here: a load that finishes after the user leaves is still useful next time.
+    const modelArchive = await getVoskArchive(onProgress);
+    const { createVoskClient } = await import('@lichess-org/vosk-browser');
+    onProgress?.({ status: 'loading' });
+    // Kept for the session: the worker reads the model from this URL.
+    const archiveUrl = URL.createObjectURL(modelArchive.blob);
+    const client = await createVoskClient({ modelUrl: archiveUrl, workerUrl: voskWorkerUrl, wasmUrl: voskWasmUrl, logLevel: -1 });
+    return { client, modelArchive };
+  })();
+  warmVosk = loading;
+  loading.catch(() => { if (warmVosk === loading) warmVosk = undefined; });
+  const loaded = signal
+    ? await Promise.race([loading, new Promise<never>((_, reject) => signal.addEventListener('abort', () => reject(new DOMException('Prueba cancelada.', 'AbortError')), { once: true }))])
+    : await loading;
+  return { ...loaded, fresh: true };
 }
 
 export const VOSK_MODEL_DOWNLOAD_URL = MODEL_ZIP_URL;

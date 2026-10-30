@@ -96,11 +96,13 @@ export function parseWorkoutVoiceCommand(input: string): WorkoutVoiceCommand | n
     return { type: 'next-exercise' };
   }
 
-  const setNumber = text.match(/\bseri[ea]\s*(\d+)\b/)?.[1];
+  // Recognisers often hear "serie" as "seria" or "se dio"; "serie una" keeps the article form.
+  const setWord = text.match(/\b(?:seri[ea]|se dio)\s*(\d+|un[oa]?)\b/)?.[1];
+  const setNumber = setWord && /^\d+$/.test(setWord) ? setWord : setWord ? '1' : undefined;
   const repsMatch = text.match(/\b(\d+)\s*(?:repeticiones?|reps?|rex)\b/) ?? text.match(/\b(?:hice|he hecho|complete|registre)\s+(\d+)\b/);
   if (!repsMatch) return null;
 
-  const weightMatch = text.match(/\b(?:con|a)\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|kilogramos?|lbs?|libras?)\b/);
+  const weightMatch = text.match(/\b(?:con|como|a)\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|kilogramos?|lbs?|libras?)\b/);
   const weight = weightMatch ? parseNumber(weightMatch[1]!) : undefined;
   const weightUnit = weightMatch ? (/^(?:lb|lbs|libra|libras)$/.test(weightMatch[2]!) ? 'lbs' : 'kg') : undefined;
   return {

@@ -31,6 +31,22 @@ describe('spelled-out numbers (Vosk output)', () => {
     });
   });
 
+  it('accepts the mishearings recorded on the phone ("se dio", "y si", "como")', () => {
+    expect(parseWorkoutVoiceCommand('se dio una y se ocho repeticiones con 32.5 kilos')).toEqual({
+      type: 'log-set',
+      setNumber: 1,
+      reps: 8,
+      weight: 32.5,
+      weightUnit: 'kg',
+    });
+    expect(parseWorkoutVoiceCommand('Y sí, 10 repeticiones como 80 kilos.')).toEqual({
+      type: 'log-set',
+      reps: 10,
+      weight: 80,
+      weightUnit: 'kg',
+    });
+  });
+
   it('accepts Whisper mishearing "serie" as "sería"', () => {
     expect(parseWorkoutVoiceCommand('Sería 1. Hice 8 reps con 32,5 kg.')).toEqual({
       type: 'log-set',
