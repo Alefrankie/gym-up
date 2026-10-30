@@ -25,7 +25,7 @@ pnpm --filter @gym-up/app android:share   # signed release APK for sharing
 pnpm --filter @gym-up/app deploy:web      # publish /descarga and the latest share APK to Cloudflare
 ```
 
-For Android releases, increment `version` in `apps/app/src-tauri/tauri.conf.json` before deploying. The deploy generates `update.json` from the signed APK and its Android version metadata; installed Android apps check it on launch and from Settings.
+Every deploy goes through `pnpm release` (or `pnpm release major|minor|patch`). It bumps the semver version from Conventional Commits since the last `v*` tag (`feat` → minor, `fix`/other → patch, `!`/`BREAKING CHANGE` → major), deploys the API and web/APK, then commits, tags `vX.Y.Z` and pushes. The web deploy generates `update.json` from the signed APK; installed Android apps check it on launch and from Settings.
 
 ## Notes
 
