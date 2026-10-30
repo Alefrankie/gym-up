@@ -935,5 +935,146 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
     "equipment": "kettlebell",
     "type": "weight_reps",
     "instructions": "1. Sujeta la kettlebell con las dos manos entre las piernas.\n2. Impúlsala extendiendo la cadera con fuerza hasta la altura del pecho.\n3. Deja que baje y repite el movimiento de cadera."
+  },
+  {
+    "name": "Incline Dumbbell Press",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "dumbbell",
+    "type": "weight_reps",
+    "instructions": "1. Ajusta el banco a 30–45 grados y apoya la espalda con una mancuerna en cada mano.\n2. Empuja hacia arriba juntando ligeramente las mancuernas sobre el pecho.\n3. Baja despacio hasta la parte alta del pecho."
+  },
+  {
+    "name": "Incline Dumbbell Fly",
+    "primary": "chest",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "dumbbell",
+    "type": "weight_reps",
+    "instructions": "1. En banco inclinado, sujeta las mancuernas arriba con los codos un poco flexionados.\n2. Abre los brazos en arco hasta notar el estiramiento del pecho alto.\n3. Cierra apretando el pecho."
+  },
+  {
+    "name": "Smith Machine Incline Press",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Coloca el banco inclinado bajo la barra guiada.\n2. Baja la barra a la parte alta del pecho.\n3. Empuja hasta casi extender los codos."
+  },
+  {
+    "name": "Incline Chest Press Machine",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Ajusta el asiento para que los agarres queden a la altura del pecho alto.\n2. Empuja hacia delante y arriba sin bloquear los codos.\n3. Vuelve despacio."
+  },
+  {
+    "name": "Low to High Cable Fly",
+    "primary": "chest",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "cable",
+    "type": "weight_reps",
+    "instructions": "1. Con las poleas abajo, agarra los estribos y da un paso al frente.\n2. Sube las manos en arco hasta juntarlas a la altura del pecho.\n3. Baja despacio."
+  },
+  {
+    "name": "Machine Shoulder Press",
+    "primary": "shoulders",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Ajusta el asiento para que los agarres queden a la altura de los hombros.\n2. Empuja hacia arriba sin bloquear los codos.\n3. Baja controlando."
+  },
+  {
+    "name": "Pendulum Squat",
+    "primary": "quadriceps",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Apoya la espalda y los hombros en la máquina con los pies adelantados.\n2. Baja todo lo que permita tu movilidad con la espalda apoyada.\n3. Empuja con todo el pie hasta casi extender."
+  },
+  {
+    "name": "Single Leg Press",
+    "primary": "quadriceps",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. En la prensa, apoya un solo pie en el centro de la plataforma.\n2. Baja hasta unos 90 grados de rodilla.\n3. Empuja y repite antes de cambiar de pierna."
+  },
+  {
+    "name": "Glute Kickback Machine",
+    "primary": "glutes",
+    "secondary": [
+      "hamstrings"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Apoya el pecho y coloca un pie en la plataforma.\n2. Empuja hacia atrás extendiendo la cadera.\n3. Vuelve despacio sin arquear la espalda."
+  },
+  {
+    "name": "Reverse Lunge",
+    "primary": "glutes",
+    "secondary": [
+      "quadriceps",
+      "hamstrings"
+    ],
+    "equipment": "dumbbell",
+    "type": "weight_reps",
+    "instructions": "1. De pie con una mancuerna en cada mano.\n2. Da un paso atrás y baja la rodilla casi hasta el suelo.\n3. Vuelve empujando con la pierna de delante."
+  },
+  {
+    "name": "Seated Dumbbell Lateral Raise",
+    "primary": "shoulders",
+    "secondary": [],
+    "equipment": "dumbbell",
+    "type": "weight_reps",
+    "instructions": "1. Sentado con una mancuerna en cada mano a los lados.\n2. Eleva los brazos hasta la altura de los hombros.\n3. Baja despacio."
+  },
+  {
+    "name": "EZ Bar Curl",
+    "primary": "biceps",
+    "secondary": [
+      "forearms"
+    ],
+    "equipment": "barbell",
+    "type": "weight_reps",
+    "instructions": "1. Sujeta la barra Z con agarre supino.\n2. Flexiona los codos sin moverlos hacia delante.\n3. Baja controlando."
+  },
+  {
+    "name": "Rope Tricep Pushdown",
+    "primary": "triceps",
+    "secondary": [],
+    "equipment": "cable",
+    "type": "weight_reps",
+    "instructions": "1. Agarra la cuerda de la polea alta con los codos pegados.\n2. Extiende los brazos separando la cuerda abajo.\n3. Sube despacio."
+  },
+  {
+    "name": "Chest Supported Row",
+    "primary": "upper_back",
+    "secondary": [
+      "lats",
+      "biceps"
+    ],
+    "equipment": "machine",
+    "type": "weight_reps",
+    "instructions": "1. Apoya el pecho en el respaldo y agarra las asas.\n2. Tira hacia atrás juntando escápulas.\n3. Estira los brazos despacio."
   }
 ];

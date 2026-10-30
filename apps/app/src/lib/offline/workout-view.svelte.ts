@@ -258,6 +258,56 @@ export class WorkoutView {
     await this.edited(exerciseId, setNumber);
   }
 
+  // Changes to the exercise list belong to this workout only: the routine it came from is never touched.
+
+  /** New order of the exercises for this session. */
+  async reorder(next: RoutineExerciseDto[]) {
+    const snap = this.snap;
+    if (!snap) return;
+    snap.exercises = next.map((e, i) => ({ ...e, exerciseOrder: i + 1 }));
+    await saveSnapshot(snap);
+  }
+
+  /** Adds an exercise to this session only (3 sets of 10 to start). */
+  async addExercise(ex: { id: string; name: string; primaryMuscle: string; secondaryMuscles: string[] }) {
+    const snap = this.snap;
+    if (!snap || snap.exercises.some((e) => e.exerciseId === ex.id)) return;
+    const added: RoutineExerciseDto = {
+      id: crypto.randomUUID(),
+      exerciseId: ex.id,
+      exerciseName: ex.name,
+      muscleGroup: ex.primaryMuscle,
+      secondaryMuscles: ex.secondaryMuscles,
+      targetSets: 3,
+      targetReps: 10,
+      exerciseOrder: snap.exercises.length + 1,
+    };
+    snap.exercises = [...snap.exercises, added];
+    this.#ensureRows(snap);
+    await saveSnapshot(snap);
+  }
+
+  /** Swaps an exercise for another in this session; sets already logged for the old one stay in the history. */
+  async replaceExercise(oldExerciseId: string, ex: { id: string; name: string; primaryMuscle: string; secondaryMuscles: string[] }) {
+    const snap = this.snap;
+    if (!snap || snap.exercises.some((e) => e.exerciseId === ex.id)) return;
+    snap.exercises = snap.exercises.map((e) =>
+      e.exerciseId === oldExerciseId
+        ? { ...e, id: crypto.randomUUID(), exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscle, secondaryMuscles: ex.secondaryMuscles, last: null, sets: null }
+        : e,
+    );
+    this.#ensureRows(snap);
+    await saveSnapshot(snap);
+  }
+
+  /** Drops an exercise from this session's list. */
+  async removeExercise(exerciseId: string) {
+    const snap = this.snap;
+    if (!snap) return;
+    snap.exercises = snap.exercises.filter((e) => e.exerciseId !== exerciseId);
+    await saveSnapshot(snap);
+  }
+
   /** Adds one more set to an exercise, copying the previous set's reps and weight. */
   async addSet(ex: RoutineExerciseDto) {
     const snap = this.snap;

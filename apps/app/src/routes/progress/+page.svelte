@@ -18,6 +18,7 @@
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import ColumnChart from '#lib/components/ColumnChart.svelte';
+  import LogDaySheet from '#lib/components/LogDaySheet.svelte';
   import ProgressChart from '#lib/components/ProgressChart.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -31,6 +32,9 @@
 
   let streak = $state<StreakDto | null>(null);
   let calendar = $state<CalendarDayDto[]>([]);
+  // Tapping a past day (up to 60 days back) logs a workout on it.
+  let logDay = $state<string | null>(null);
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
 
   const monthName = (m: number, month: 'short' | 'long') => new Date(2000, m, 1).toLocaleDateString(dateLocale(), { month });
   const DAYS = $derived(t('progress.dayLabels').split(','));
@@ -180,12 +184,17 @@
             <div class="col">
               <span class="m">{monthLabel(col, i)}</span>
               {#each col as day (day.date)}
-                <span class="cell" class:on={day.on} class:future={day.future} title={day.date}></span>
+                {#if !day.future && day.date >= sixtyDaysAgo}
+                  <button type="button" class="cell" class:on={day.on} title={day.date} aria-label={t('logDay.title', { day: day.date })} onclick={() => (logDay = day.date)}></button>
+                {:else}
+                  <span class="cell" class:on={day.on} class:future={day.future} title={day.date}></span>
+                {/if}
               {/each}
             </div>
           {/each}
         </div>
       </div>
+      <p class="muted tap-hint">{t('logDay.tap')}</p>
     </section>
 
     <section class="card">
@@ -227,6 +236,10 @@
     <p class="muted loading">{t('common.loading')}</p>
   {/if}
 </main>
+
+{#if logDay}
+  <LogDaySheet day={logDay} onclose={() => (logDay = null)} />
+{/if}
 
 <AppNav />
 
@@ -335,6 +348,11 @@
     border-radius: 5px;
     background: var(--surface-hi);
   }
+  button.cell {
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+  }
   .cell.on {
     background: var(--accent);
   }
@@ -369,5 +387,9 @@
   .chart-sub {
     margin: 0.2rem 0 1rem;
     font-size: var(--t-sm);
+  }
+  .tap-hint {
+    margin: 0.75rem 0 0;
+    font-size: var(--t-xs);
   }
 </style>

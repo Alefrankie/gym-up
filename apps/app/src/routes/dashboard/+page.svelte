@@ -5,6 +5,8 @@
   import { cubicOut } from 'svelte/easing';
   import {
     calendarResponseSchema,
+    programDetailDtoSchema,
+    programListResponseSchema,
     todayWorkoutResponseSchema,
     workoutHistoryResponseSchema,
     type CalendarDayDto,
@@ -28,12 +30,16 @@
   import SyncBanner from '#lib/components/SyncBanner.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import WeekDays from '#lib/components/WeekDays.svelte';
+  import LogDaySheet from '#lib/components/LogDaySheet.svelte';
   import WorkoutHistoryRow from '#lib/components/WorkoutHistoryRow.svelte';
   import { randomQuote } from '#lib/quotes';
   import { localDay } from '#lib/dates';
-  import { t, tn } from '#lib/i18n';
+  import { routineForDate } from '#lib/weekday-routine';
+  import { dateLocale, t, tn } from '#lib/i18n';
 
   let today = $state<TodayWorkoutResponse | null>(null);
+  // The day picked on the week strip to log a workout for.
+  let logDay = $state<string | null>(null);
   let stale = $state(false);
   let live = $state(false);
   let error = $state<string | null>(null);
@@ -63,6 +69,7 @@
       const res = await cachedGet('/workouts/today', todayWorkoutResponseSchema, { onCached: (c) => (today = c.data) });
       today = res.data;
       stale = res.stale;
+      void followWeekday();
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -89,6 +96,35 @@
       return { label: String(from.getUTCDate()), value: on.filter((d) => d >= a && d < b).length };
     });
   });
+
+  // Weekday programs: Home shows the routine named after today, not the next one in the rotation.
+  let planned = $state<TodayWorkoutResponse | null>(null);
+  let restNext = $state<{ name: string; weekday: number } | null>(null);
+  let byWeekday = $state(false);
+
+  async function followWeekday() {
+    try {
+      const list = (await cachedGet('/programs', programListResponseSchema)).data;
+      if (!list.activeProgramId) return;
+      const program = (await cachedGet(`/programs/${list.activeProgramId}`, programDetailDtoSchema)).data;
+      const pick = routineForDate(program.routines, new Date());
+      if (!pick) return;
+      byWeekday = true;
+      if (!pick.today) {
+        restNext = pick.next && pick.nextWeekday !== null ? { name: pick.next.name, weekday: pick.nextWeekday } : null;
+        return;
+      }
+      if (today?.kind === 'workout_day' && today.routineDay.id === pick.today.id) return;
+      planned = (await cachedGet(`/workouts/routine/${pick.today.id}`, todayWorkoutResponseSchema, { onCached: (c) => (planned = c.data) })).data;
+    } catch {
+      /* offline with nothing saved: keep the rotation's suggestion */
+    }
+  }
+
+  const weekdayName = (d: number) => {
+    const ref = new Date(2024, 0, 7 + d); // 7 Jan 2024 was a Sunday
+    return ref.toLocaleDateString(dateLocale(), { weekday: 'long' });
+  };
 
   /** Starts (or resumes) today's workout and opens the chosen exercise, or the first one. */
   async function start(w: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>, exerciseId?: string) {
@@ -123,8 +159,14 @@
   <ActiveWorkoutCard oncancelled={() => location.reload()} />
 
   {#if !live}
-    {#if today?.kind === 'workout_day'}
-      {@const w = today}
+    {#if byWeekday && restNext && !planned}
+      <section class="today">
+        <span class="label">{t('common.today')}</span>
+        <strong>{t('home.restDay')}</strong>
+        <span class="muted">{t('home.nextOn', { name: restNext.name, day: weekdayName(restNext.weekday) })}</span>
+      </section>
+    {:else if (planned ?? today)?.kind === 'workout_day'}
+      {@const w = (planned ?? today) as Extract<TodayWorkoutResponse, { kind: 'workout_day' }>}
       {#if w.workoutStatus === 'completed'}
         <a class="today done" href={w.existingWorkoutId ? `/workout/${w.existingWorkoutId}` : '/history'}>
           <span class="label ok"><Icon name="check" size={14} /> {t('home.doneToday')}</span>
@@ -133,7 +175,7 @@
         </a>
       {:else}
         <section class="today">
-          <span class="label">{t('home.todayIs')}{#if w.week?.target}{' · '}{t('home.dayOf', { n: w.dayNumber, total: w.week.target })}{/if}</span>
+          <span class="label">{#if byWeekday}{t('home.todayRoutine')}{:else}{t('home.todayIs')}{#if w.week?.target}{' · '}{t('home.dayOf', { n: w.dayNumber, total: w.week.target })}{/if}{/if}</span>
           <strong>{w.routineDay.dayName}</strong>
           <span class="meta">{w.routineDay.focus ? `${w.routineDay.focus} · ` : ''}{sessionSummary(w.exercises)}</span>
           <TargetMuscles muscles={muscleLoad(w.exercises)} />
@@ -175,7 +217,8 @@
         <span class="muted">{t('home.weekProgress', { done: Math.min(today.week.done, today.week.target), target: today.week.target })}</span>
       {/if}
     </div>
-    <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} today={localDay()} />
+    <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} today={localDay()} onpick={(d) => (logDay = d)} />
+    <p class="muted tap-hint">{t('logDay.tap')}</p>
   </section>
 
   {#if calendar.length}
@@ -194,6 +237,10 @@
     </section>
   {/if}
 </main>
+
+{#if logDay}
+  <LogDaySheet day={logDay} onclose={() => (logDay = null)} />
+{/if}
 
 <AppNav />
 
@@ -231,6 +278,8 @@
   }
   .today {
     display: grid;
+    /* One column no wider than the card: the muscle carousel inside must scroll, not stretch the card. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.35rem;
     margin: 0.5rem 0 1rem;
     padding: 1rem;
@@ -311,6 +360,11 @@
   .block-head a {
     font-weight: 600;
     text-decoration: none;
+  }
+  .tap-hint {
+    margin: 0.5rem 0 0;
+    font-size: var(--t-xs);
+    text-align: center;
   }
   .recent {
     list-style: none;

@@ -66,7 +66,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 10;
+    /* Above the exercise screen too: unsaved set changes made there must stay one tap from saving. */
+    z-index: 46;
     padding: 1.25rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
     display: grid;
     gap: 0.4rem;

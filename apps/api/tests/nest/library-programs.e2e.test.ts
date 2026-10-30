@@ -92,7 +92,7 @@ describe('exercise library', () => {
   it('lists the seeded system exercises with the new taxonomy and filters them', async () => {
     const s = await register('lib1@example.com');
     const all = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises', { token: s.token })).json);
-    expect(all.items).toHaveLength(97);
+    expect(all.items).toHaveLength(111);
     const squat = all.items.find((e) => e.name === 'Squat')!;
     expect(squat).toMatchObject({ primaryMuscle: 'quadriceps', equipment: 'barbell', isCustom: false });
     expect(squat.secondaryMuscles).toEqual(['glutes', 'hamstrings']);

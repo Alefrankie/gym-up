@@ -26,6 +26,7 @@
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import SaveBar from '#lib/components/SaveBar.svelte';
   import PastDaySheet from '#lib/components/PastDaySheet.svelte';
+  import ExerciseScreen from '#lib/components/ExerciseScreen.svelte';
   import UndoToast from '#lib/components/UndoToast.svelte';
   import { goto } from '$app/navigation';
   import { startRoutine } from '#lib/offline/start-workout';
@@ -73,7 +74,9 @@
     JSON.stringify({ name: name.trim(), focus: focus.trim(), exercises: exercises.map((e) => [e.exerciseId, e.sets, e.restSeconds, e.notes]) });
   const dirty = $derived(!!baseline && fingerprint() !== baseline);
   let saved = $state(false);
+  // The exercise shown on its own screen (details + its sets).
   let open = $state<string | null>(null);
+  const openDraft = $derived(open ? exercises.find((e) => e.key === open) : undefined);
   let picker = $state<{ mode: 'add' } | { mode: 'replace'; target: Draft } | null>(null);
   let removed = $state<{ item: Draft; index: number } | null>(null);
 
@@ -252,20 +255,15 @@
         onreplace={editable ? (item) => (picker = { mode: 'replace', target: item }) : undefined}
       >
         {#snippet row(e)}
-          <div class="ex" class:open={open === e.key}>
-            <button type="button" class="head-row" onclick={() => (open = open === e.key ? null : e.key)} aria-expanded={open === e.key}>
+          <div class="ex">
+            <button type="button" class="head-row" onclick={() => (open = e.key)}>
               <span class="tile"><MuscleFigure primary={e.muscleGroup} secondary={e.secondaryMuscles} size={22} /></span>
               <span class="grow">
                 <strong>{e.exerciseName}</strong>
                 <span class="muted">{muscle(e.muscleGroup)} · {tn('routine.sets', e.targetSets)} · {t('routine.reps', { n: e.targetReps })}{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: t('plan.short.warmup'), drop: t('plan.short.drop'), failure: t('plan.short.failure') })[s.type as 'warmup']).join(' ')}{/if}</span>
               </span>
-              {#if editable}<Icon name={open === e.key ? 'up' : 'down'} size={18} />{/if}
+              <Icon name="right" size={18} />
             </button>
-            {#if editable && open === e.key}
-              <div class="steppers" data-nodrag transition:slide={{ duration: 260, easing: cubicOut }}>
-                <SetPlanEditor bind:sets={e.sets} unit={session.user?.weightUnit ?? 'kg'} onchange={() => planChanged(e)} />
-              </div>
-            {/if}
           </div>
         {/snippet}
       </SortableRows>
@@ -286,6 +284,26 @@
       {/if}
     {/snippet}
   </SaveBar>
+{/if}
+
+{#if openDraft}
+  {@const d = openDraft}
+  <ExerciseScreen
+    title={d.exerciseName}
+    exercise={library.find((x) => x.id === d.exerciseId) ?? { id: d.exerciseId, primaryMuscle: d.muscleGroup, secondaryMuscles: d.secondaryMuscles }}
+    actions={editable
+      ? [
+          { label: t('routine.replaceExercise'), icon: 'swap', onselect: () => ((open = null), (picker = { mode: 'replace', target: d })) },
+          { label: t('common.remove'), icon: 'trash', danger: true, onselect: () => ((open = null), remove(d)) },
+        ]
+      : []}
+    onclose={() => (open = null)}
+  >
+    {#if editable}
+      <h2 class="first">{t('routine.setsTitle')}</h2>
+      <SetPlanEditor bind:sets={d.sets} unit={session.user?.weightUnit ?? 'kg'} onchange={() => planChanged(d)} />
+    {/if}
+  </ExerciseScreen>
 {/if}
 
 {#if pastDay}
@@ -369,10 +387,6 @@
   }
   .grow .muted {
     font-size: var(--t-sm);
-  }
-  .steppers {
-    padding: 0.75rem;
-    border-top: 1px solid var(--line);
   }
   .hint {
     margin: 0.75rem 0 0;

@@ -3,7 +3,8 @@
   import Icon from './Icon.svelte';
 
   /** This week, Monday to Sunday: a filled circle for each day trained, a ring around today. */
-  let { trained, today }: { trained: string[]; today: string } = $props();
+  /** `onpick` makes today and past days tappable (to log a workout on that day). */
+  let { trained, today, onpick }: { trained: string[]; today: string; onpick?: (day: string) => void } = $props();
 
   const days = $derived.by(() => {
     const LETTERS = [...t('week.letters')];
@@ -25,7 +26,11 @@
   {#each days as d (d.key)}
     <li class:on={d.on} class:today={d.isToday} class:future={d.future} aria-label={`${d.letter} ${d.num}${d.on ? t('week.trained') : ''}`}>
       <span class="letter">{d.letter}</span>
-      <span class="dot">{#if d.on}<Icon name="check" size={16} />{:else}{d.num}{/if}</span>
+      {#if onpick && !d.future}
+        <button type="button" class="dot" onclick={() => onpick(d.key)}>{#if d.on}<Icon name="check" size={16} />{:else}{d.num}{/if}</button>
+      {:else}
+        <span class="dot">{#if d.on}<Icon name="check" size={16} />{:else}{d.num}{/if}</span>
+      {/if}
     </li>
   {/each}
 </ol>
@@ -48,6 +53,10 @@
     color: var(--muted);
     font-size: var(--t-xs);
     font-weight: 600;
+  }
+  button.dot {
+    min-height: 0;
+    padding: 0;
   }
   .dot {
     display: grid;

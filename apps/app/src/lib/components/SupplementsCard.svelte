@@ -62,9 +62,11 @@
             <span class="big" aria-hidden="true">{#if s.taken}<Icon name="check" size={22} />{/if}</span>
             <span class="info">
               <strong>{s.name}</strong>
-              <span class="muted">
-                {#if s.taken}{t('supps.doneToday')}{:else}{t('supps.tapToMark')}{/if}{#if s.streak > 1} · <span class="streak-text">{tn('supps.streak', s.streak)}</span>{/if}
-              </span>
+              {#if s.taken || s.streak > 1}
+                <span class="muted">
+                  {#if s.taken}{t('supps.doneToday')}{/if}{#if s.taken && s.streak > 1}{' · '}{/if}{#if s.streak > 1}<span class="streak-text">{tn('supps.streak', s.streak)}</span>{/if}
+                </span>
+              {/if}
             </span>
             <span class="week" aria-label={t('supps.last7')}>
               {#each last7(list.day) as d (d.key)}

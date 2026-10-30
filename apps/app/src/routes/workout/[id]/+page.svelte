@@ -3,6 +3,10 @@
   import { muscleLoad } from '#lib/muscle-load';
   import { useWorkoutView } from '#lib/offline/workout-context';
   import { sessionSummary } from '#lib/workout-math';
+  import { libraryExerciseListResponseSchema, type LibraryExerciseDto, type RoutineExerciseDto } from '@gym-up/contracts';
+  import { cachedGet } from '#lib/offline/cache';
+  import ExercisePicker from '#lib/components/ExercisePicker.svelte';
+  import SortableRows from '#lib/components/SortableRows.svelte';
   import { localDay, relativeDay } from '#lib/dates';
   import { t } from '#lib/i18n';
   import ExerciseRow from '#lib/components/ExerciseRow.svelte';
@@ -16,6 +20,30 @@
   const exercises = $derived(view.snap?.exercises ?? []);
   const done = $derived(exercises.reduce((n, e) => n + view.progress(e).done, 0));
   const total = $derived(exercises.reduce((n, e) => n + view.progress(e).total, 0));
+
+  // Changing the exercises here changes this session only; the routine stays as it is.
+  let library = $state<LibraryExerciseDto[]>([]);
+  let picker = $state<{ mode: 'add' } | { mode: 'replace'; target: RoutineExerciseDto } | null>(null);
+
+  async function openPicker(p: NonNullable<typeof picker>) {
+    picker = p;
+    if (!library.length) {
+      library = (await cachedGet('/exercises', libraryExerciseListResponseSchema, { onCached: (c) => (library = c.data.items) }).catch(() => null))?.data.items ?? library;
+    }
+  }
+
+  async function pick(ex: LibraryExerciseDto) {
+    const p = picker;
+    picker = null;
+    if (!p) return;
+    if (p.mode === 'add') await view.addExercise(ex);
+    else await view.replaceExercise(p.target.exerciseId, ex);
+  }
+
+  async function removeExercise(ex: RoutineExerciseDto) {
+    if (view.progress(ex).done > 0 && !confirm(t('workout.removeDoneConfirm', { name: ex.exerciseName }))) return;
+    await view.removeExercise(ex.exerciseId);
+  }
 
   async function cancel() {
     if (!confirm(t('workout.cancelConfirm'))) return;
@@ -48,12 +76,36 @@
 
 <TargetMuscles muscles={muscleLoad(exercises)} />
 
-<h2>{t('workout.exercises')}</h2>
-<ul class="rows">
-  {#each exercises as ex (ex.exerciseId)}
-    <li><ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.progress(ex)} sets={view.doneSets(ex)} /></li>
-  {/each}
-</ul>
+<div class="head-row">
+  <h2>{t('workout.exercises')}</h2>
+  {#if !view.isCompleted}
+    <button type="button" class="icon add" aria-label={t('workout.addExercise')} onclick={() => openPicker({ mode: 'add' })}><Icon name="plus" size={18} /></button>
+  {/if}
+</div>
+<SortableRows
+  items={exercises}
+  key={(ex) => ex.exerciseId}
+  disabled={view.isCompleted}
+  onreorder={(next) => view.reorder(next)}
+  onremove={view.isCompleted ? undefined : removeExercise}
+  onreplace={view.isCompleted ? undefined : (ex) => openPicker({ mode: 'replace', target: ex })}
+>
+  {#snippet row(ex)}
+    <ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.progress(ex)} sets={view.doneSets(ex)} />
+  {/snippet}
+</SortableRows>
+{#if !view.isCompleted}
+  <p class="muted note">{t('workout.onlyThisSession')}</p>
+{/if}
+
+{#if picker}
+  <ExercisePicker
+    exercises={library}
+    title={picker.mode === 'replace' ? t('routine.replace', { name: picker.target.exerciseName }) : t('workout.addExercise')}
+    onpick={pick}
+    onclose={() => (picker = null)}
+  />
+{/if}
 
 {#if !view.isCompleted}
   <SaveBar dirty={false} saved={false} onsave={() => {}}>
@@ -148,11 +200,20 @@
   .count {
     font-size: var(--t-xs);
   }
-  .rows {
-    list-style: none;
-    margin: 0 0 6rem;
-    padding: 0;
-    display: grid;
-    gap: 0.25rem;
+  .head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .add {
+    width: 40px;
+    min-height: 40px;
+    border-radius: 50%;
+    color: var(--accent-hi);
+  }
+  .note {
+    margin: 0.75rem 0 6rem;
+    font-size: var(--t-xs);
+    text-align: center;
   }
 </style>
