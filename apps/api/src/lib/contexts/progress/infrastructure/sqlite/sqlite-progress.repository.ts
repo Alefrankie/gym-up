@@ -50,20 +50,23 @@ export class SqliteProgressRepository implements ProgressRepository {
   async getCalendarData(userId: string, days: number): Promise<CalendarDay[]> {
     // Pull all distinct completed workout dates for the user.
     const dateRows = await this.db
-      .selectDistinct({ workoutDate: workouts.workoutDate })
+      .select({ id: workouts.id, workoutDate: workouts.workoutDate })
       .from(workouts)
       .where(
         and(eq(workouts.userId, userId), eq(workouts.status, 'completed')),
-      );
+      )
+      .orderBy(asc(workouts.workoutDate));
 
-    const workoutDates = new Set(
-      dateRows.map((r) => toDateKey(r.workoutDate)),
+    // Date → workout id; the latest one of a day wins.
+    const workoutDates = new Map(
+      dateRows.map((r) => [toDateKey(r.workoutDate), r.id] as const),
     );
 
     // Generate the last N calendar days ending today (UTC).
     return lastNDateKeys(days).map((date) => ({
       date,
       hasWorkout: workoutDates.has(date),
+      workoutId: workoutDates.get(date),
     }));
   }
 

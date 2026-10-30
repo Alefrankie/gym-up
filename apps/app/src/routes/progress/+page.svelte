@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { t, tn, dateLocale, type MessageKey } from '#lib/i18n';
   import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
@@ -34,6 +35,12 @@
   let calendar = $state<CalendarDayDto[]>([]);
   // Tapping a past day (up to 60 days back) logs a workout on it.
   let logDay = $state<string | null>(null);
+  // A day already trained opens what was done (to review or fix it); an empty one offers to log a routine.
+  function openDay(date: string) {
+    const done = calendar.find((d) => d.date === date)?.workoutId;
+    if (done) void goto(`/workout/${done}`);
+    else logDay = date;
+  }
   const sixtyDaysAgo = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
 
   const monthName = (m: number, month: 'short' | 'long') => new Date(2000, m, 1).toLocaleDateString(dateLocale(), { month });
@@ -185,7 +192,7 @@
               <span class="m">{monthLabel(col, i)}</span>
               {#each col as day (day.date)}
                 {#if !day.future && day.date >= sixtyDaysAgo}
-                  <button type="button" class="cell" class:on={day.on} title={day.date} aria-label={t('logDay.title', { day: day.date })} onclick={() => (logDay = day.date)}></button>
+                  <button type="button" class="cell" class:on={day.on} title={day.date} aria-label={t('logDay.title', { day: day.date })} onclick={() => openDay(day.date)}></button>
                 {:else}
                   <span class="cell" class:on={day.on} class:future={day.future} title={day.date}></span>
                 {/if}

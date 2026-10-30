@@ -91,6 +91,8 @@ export const workoutHistoryItemSchema = z.object({
   dropSets: z.number().int().default(0),
   failureSets: z.number().int().default(0),
   status: workoutStatusSchema,
+  /** Start to finish, in seconds; null while in progress. */
+  durationSeconds: z.number().int().nullable().optional(),
 });
 export type WorkoutHistoryItemDto = z.infer<typeof workoutHistoryItemSchema>;
 

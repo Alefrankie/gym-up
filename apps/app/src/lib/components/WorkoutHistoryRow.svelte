@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { WorkoutHistoryItemDto } from '@gym-up/contracts';
   import { dateLocale, t, tn } from '#lib/i18n';
+  import { estimateKcal, formatDuration } from '#lib/workout-math';
   import Icon from './Icon.svelte';
   import SetTypeBadge from './SetTypeBadge.svelte';
 
@@ -14,6 +15,9 @@
   <span class="grow">
     <strong>{item.routineDayName} {#if item.status === 'in_progress'}<span class="badge">{t('workout.inProgress')}</span>{/if}</strong>
     <span class="muted meta">{date} · {tn('workout.exerciseCount', item.exerciseCount)}</span>
+    {#if item.durationSeconds}
+      <span class="muted meta">{formatDuration(item.durationSeconds)} · <span class="kcal">≈ {estimateKcal(item.durationSeconds)} kcal</span></span>
+    {/if}
     {#if item.warmupSets || item.dropSets || item.failureSets}
       <span class="kinds">
         {#if item.warmupSets}<span class="kind"><SetTypeBadge type="warmup" />{item.warmupSets}</span>{/if}
@@ -63,6 +67,9 @@
   }
   .meta {
     font-size: var(--t-sm);
+  }
+  .kcal {
+    color: var(--ember);
   }
   .vol {
     color: var(--faint);

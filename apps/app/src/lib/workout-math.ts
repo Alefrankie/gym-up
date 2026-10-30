@@ -17,3 +17,32 @@ export const sessionSummary = (exercises: readonly { targetSets: number; restSec
     exercises: tn('workout.exerciseCount', exercises.length),
     sets: tn('sets.count', totalSets(exercises)),
   });
+
+const BODY_KEY = 'body-weight-kg';
+
+/** Body weight used for calorie estimates, remembered on this device (75 kg until set). */
+export function bodyWeightKg(): number {
+  try {
+    return Number(localStorage.getItem(BODY_KEY)) || 75;
+  } catch {
+    return 75;
+  }
+}
+
+export function saveBodyWeightKg(kg: number) {
+  try {
+    localStorage.setItem(BODY_KEY, String(kg));
+  } catch {
+    /* private mode: the default stays */
+  }
+}
+
+/** Weight training burns about 5 MET: kcal = MET × body kg × hours. An estimate, shown as one. */
+export const estimateKcal = (seconds: number, kg = bodyWeightKg()) => Math.round(5 * kg * (seconds / 3600));
+
+/** "1 h 20 min" / "45 min" */
+export function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return h ? t('finish.hm', { h, m }) : t('finish.m', { m });
+}

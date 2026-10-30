@@ -31,6 +31,10 @@ export interface WorkoutSnapshot {
   startedAt: number;
   /** Set when logging a workout done on an earlier day (YYYY-MM-DD): no live timer then. */
   day?: string;
+  /** When the workout was finished (epoch ms), for the summary of a completed one. */
+  endedAt?: number;
+  /** Reopened after finishing to fix it: the duration it had is kept unless changed. */
+  editing?: boolean;
 }
 
 const sessionKey = (id: string) => `session:${id}`;

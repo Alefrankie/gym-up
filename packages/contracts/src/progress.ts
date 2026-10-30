@@ -32,6 +32,7 @@ export type StreakDto = z.infer<typeof streakSchema>;
 export const calendarDaySchema = z.object({
   date: z.string(),
   hasWorkout: z.boolean(),
+  workoutId: z.string().optional(),
 });
 export type CalendarDayDto = z.infer<typeof calendarDaySchema>;
 

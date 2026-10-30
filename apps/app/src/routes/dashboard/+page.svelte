@@ -40,6 +40,12 @@
   let today = $state<TodayWorkoutResponse | null>(null);
   // The day picked on the week strip to log a workout for.
   let logDay = $state<string | null>(null);
+  // A day already trained opens what was done (to review or fix it); an empty one offers to log a routine.
+  function openDay(date: string) {
+    const done = calendar.find((d) => d.date === date)?.workoutId;
+    if (done) void goto(`/workout/${done}`);
+    else logDay = date;
+  }
   let stale = $state(false);
   let live = $state(false);
   let error = $state<string | null>(null);
@@ -229,7 +235,7 @@
         <span class="muted">{t('home.weekProgress', { done: Math.min(today.week.done, today.week.target), target: today.week.target })}</span>
       {/if}
     </div>
-    <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} today={localDay()} onpick={(d) => (logDay = d)} />
+    <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} today={localDay()} onpick={openDay} />
     <p class="muted tap-hint">{t('logDay.tap')}</p>
   </section>
 

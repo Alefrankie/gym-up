@@ -40,7 +40,7 @@ export class WorkoutView {
 
   /** Time since the workout started; anything past 6 h is a forgotten session, not a clock. */
   get elapsed(): string | null {
-    if (!this.snap || this.isCompleted || this.snap.day) return null;
+    if (!this.snap || this.isCompleted || this.snap.day || this.snap.editing) return null;
     const secs = Math.floor((this.now - this.snap.startedAt) / 1000);
     if (secs < 0 || secs > 6 * 3600) return null;
     const h = Math.floor(secs / 3600);
@@ -177,6 +177,7 @@ export class WorkoutView {
         status: detail.workout.status,
         unit: u,
         startedAt: Date.parse(detail.workout.startedAt),
+        endedAt: detail.workout.completedAt ? Date.parse(detail.workout.completedAt) : undefined,
       };
       for (const e of detail.entries) {
         built.rows[rowKey(e.exerciseId, e.setNumber)] = {
@@ -209,7 +210,8 @@ export class WorkoutView {
         if (mine && pending.has(mine.id)) continue;
         snap.rows[k] = { id: e.id, reps: e.reps, weight: toDisplay(e.weight, snap.unit), completed: e.completed, type: e.setType };
       }
-      if (detail.workout.status === 'completed') snap.status = 'completed';
+      if (detail.workout.completedAt) snap.endedAt = Date.parse(detail.workout.completedAt);
+      if (detail.workout.status === 'completed' && !snap.editing) snap.status = 'completed';
       await saveSnapshot(snap);
     } catch {
       /* offline or the start command has not reached the server yet: keep the local copy */
@@ -342,6 +344,21 @@ export class WorkoutView {
     await goto('/dashboard', { replaceState: true });
   }
 
+  /** Duration of a finished workout, in seconds. */
+  get finishedSeconds(): number | null {
+    const s = this.snap;
+    return s?.endedAt && s.endedAt > s.startedAt ? Math.round((s.endedAt - s.startedAt) / 1000) : null;
+  }
+
+  /** Opens a finished workout to fix sets or duration; saving finishes it again. */
+  async reopen() {
+    const snap = this.snap;
+    if (!snap || snap.status !== 'completed') return;
+    snap.status = 'in_progress';
+    snap.editing = true;
+    await saveSnapshot(snap);
+  }
+
   /** Planned sets still not ticked: finishing with them left is allowed, after a warning. */
   get pendingSets(): number {
     return (this.snap?.exercises ?? []).reduce((n, e) => n + this.progress(e).total - this.progress(e).done, 0);
@@ -356,6 +373,8 @@ export class WorkoutView {
     if (!snap) return { clockSeconds: null, suggestedSeconds: 0, doubtful: false };
     const rows = Object.values(snap.rows).filter((r) => r.completed);
     const estimate = Math.max(10, Math.round((rows.length * 135 + 300) / 300) * 5) * 60;
+    const before = snap.endedAt ? Math.round((snap.endedAt - snap.startedAt) / 1000) : 0;
+    if (snap.editing && before > 0) return { clockSeconds: null, suggestedSeconds: before, doubtful: false };
     if (snap.day) return { clockSeconds: null, suggestedSeconds: estimate, doubtful: true };
     const clock = Math.max(60, Math.round((Date.now() - snap.startedAt) / 1000));
     const lastDone = Math.max(0, ...rows.map((r) => r.doneAt ?? 0));
@@ -375,6 +394,8 @@ export class WorkoutView {
     this.finishing = true;
     this.error = null;
     snap.status = 'completed';
+    snap.editing = false;
+    if (durationSeconds) snap.endedAt = snap.startedAt + durationSeconds * 1000;
     await saveSnapshot(snap);
     await sync.enqueue({ type: 'finish-workout', workoutId: this.#id, durationSeconds });
     await setActiveWorkoutId(null);

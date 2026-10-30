@@ -2,7 +2,9 @@
   import { untrack } from 'svelte';
   import { t, tn } from '#lib/i18n';
   import type { WorkoutView } from '#lib/offline/workout-view.svelte';
+  import { bodyWeightKg, estimateKcal, formatDuration, saveBodyWeightKg } from '#lib/workout-math';
   import Icon from './Icon.svelte';
+  import SessionStats from './SessionStats.svelte';
   import Sheet from './Sheet.svelte';
 
   /**
@@ -11,40 +13,16 @@
    */
   let { view, onclose }: { view: WorkoutView; onclose: () => void } = $props();
 
-  const BODY_KEY = 'body-weight-kg';
-  // Weight-training burns about 5 MET: kcal = MET × body kg × hours. An estimate, labelled as one.
-  const MET = 5;
-
-  // Taken once when the sheet opens: the suggestion must not drift while the user edits it.
   const d = untrack(() => view.duration);
   let hours = $state(Math.floor(d.suggestedSeconds / 3600));
   let minutes = $state(Math.round((d.suggestedSeconds % 3600) / 60));
-  let bodyKg = $state(readBody());
-
-  function readBody(): number {
-    try {
-      return Number(localStorage.getItem(BODY_KEY)) || 75;
-    } catch {
-      return 75;
-    }
-  }
-  function saveBody() {
-    try {
-      localStorage.setItem(BODY_KEY, String(bodyKg));
-    } catch {
-      /* private mode: the default stays */
-    }
-  }
+  let bodyKg = $state(bodyWeightKg());
 
   const seconds = $derived(Math.max(0, (Number(hours) || 0) * 3600 + (Number(minutes) || 0) * 60));
   const rows = $derived(Object.values(view.snap?.rows ?? {}).filter((r) => r.completed));
   const volume = $derived(Math.round(rows.reduce((n, r) => n + r.reps * r.weight, 0)));
-  const kcal = $derived(Math.round(MET * (Number(bodyKg) || 75) * (seconds / 3600)));
-  const fmt = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.round((s % 3600) / 60);
-    return h ? t('finish.hm', { h, m }) : t('finish.m', { m });
-  };
+  const kcal = $derived(estimateKcal(seconds, Number(bodyKg) || 75));
+  const fmt = formatDuration;
 
   function useClock() {
     if (d.clockSeconds == null) return;
@@ -53,7 +31,7 @@
   }
 
   async function save() {
-    saveBody();
+    saveBodyWeightKg(Number(bodyKg) || 75);
     // The clock as it is needs no correction; anything else is sent as the real duration.
     const changed = d.clockSeconds == null || Math.abs(seconds - d.clockSeconds) > 60;
     if (await view.finish(changed ? Math.max(60, seconds) : undefined)) onclose();
@@ -84,12 +62,7 @@
     </div>
   </section>
 
-  <section class="stats">
-    <div><span class="v">{fmt(seconds)}</span><span class="k">{t('finish.duration')}</span></div>
-    <div><span class="v">{rows.length}</span><span class="k">{t('finish.sets')}</span></div>
-    <div><span class="v">{volume.toLocaleString()}</span><span class="k">{t('finish.volume', { unit: view.unit })}</span></div>
-    <div class="kcal"><span class="v">≈ {kcal}</span><span class="k">kcal</span></div>
-  </section>
+  <SessionStats seconds={seconds} sets={rows.length} volume={volume} unit={view.unit} kcal={kcal} />
   <label class="body muted">
     {t('finish.bodyWeight')}
     <input type="number" inputmode="decimal" min="30" max="250" bind:value={bodyKg} />
@@ -152,30 +125,6 @@
     padding: 0.3rem 0.8rem;
     border-radius: 999px;
     font-size: var(--t-sm);
-  }
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem;
-    margin: 1.25rem 0 0.5rem;
-  }
-  .stats div {
-    display: grid;
-    padding: 0.75rem 0.9rem;
-    border-radius: var(--radius);
-    background: var(--surface-hi);
-  }
-  .v {
-    font-size: var(--t-lg);
-    font-weight: 650;
-    font-variant-numeric: tabular-nums;
-  }
-  .k {
-    color: var(--muted);
-    font-size: var(--t-xs);
-  }
-  .kcal .v {
-    color: var(--ember);
   }
   .body {
     display: flex;

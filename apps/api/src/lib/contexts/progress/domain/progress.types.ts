@@ -40,6 +40,8 @@ export interface Streak {
 export interface CalendarDay {
   date: string; // YYYY-MM-DD (UTC)
   hasWorkout: boolean;
+  /** The day's latest completed workout, so the calendar can open it. */
+  workoutId?: string;
 }
 
 // ---------- Use case inputs ----------

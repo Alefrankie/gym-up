@@ -3,7 +3,8 @@
   import { page } from '$app/state';
   import { muscleLoad } from '#lib/muscle-load';
   import { useWorkoutView } from '#lib/offline/workout-context';
-  import { sessionSummary } from '#lib/workout-math';
+  import { estimateKcal, sessionSummary } from '#lib/workout-math';
+  import SessionStats from '#lib/components/SessionStats.svelte';
   import { libraryExerciseListResponseSchema, type LibraryExerciseDto, type RoutineExerciseDto } from '@gym-up/contracts';
   import { cachedGet } from '#lib/offline/cache';
   import ExercisePicker from '#lib/components/ExercisePicker.svelte';
@@ -18,6 +19,7 @@
 
   const view = useWorkoutView();
   let finishing = $state(false);
+  const completedRows = $derived(Object.values(view.snap?.rows ?? {}).filter((r) => r.completed));
   const id = $derived(page.params.id ?? '');
   const exercises = $derived(view.snap?.exercises ?? []);
   const done = $derived(exercises.reduce((n, e) => n + view.progress(e).done, 0));
@@ -55,7 +57,9 @@
 
 <header class="bar">
   <a class="round" href="/dashboard" aria-label={t('workout.backHome')}><Icon name="left" size={20} /></a>
-  {#if !view.isCompleted}
+  {#if view.isCompleted}
+    <button type="button" class="edit secondary" onclick={() => view.reopen()}><Icon name="edit" size={16} /> {t('workout.edit')}</button>
+  {:else if !view.snap?.editing}
     <OverflowMenu items={[{ label: t('workout.cancel'), icon: 'trash', danger: true, disabled: view.cancelling || view.finishing, onselect: cancel }]} />
   {/if}
 </header>
@@ -75,6 +79,16 @@
   <div class="progress" aria-label={t('workout.setsDone', { done, total })}><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></div>
   <span class="muted count">{t('workout.setsDone', { done, total })}</span>
 </section>
+
+{#if view.isCompleted}
+  <SessionStats
+    seconds={view.finishedSeconds}
+    sets={completedRows.length}
+    volume={Math.round(completedRows.reduce((n, r) => n + r.reps * r.weight, 0))}
+    unit={view.unit}
+    kcal={view.finishedSeconds ? estimateKcal(view.finishedSeconds) : null}
+  />
+{/if}
 
 <TargetMuscles muscles={muscleLoad(exercises)} />
 
@@ -113,7 +127,7 @@
   <SaveBar dirty={false} saved={false} onsave={() => {}}>
     {#snippet idle()}
       <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => (finishing = true)}>
-        <Icon name="check" size={18} /> {view.finishing ? t('workout.finishing') : t('workout.finish')}
+        <Icon name="check" size={18} /> {view.finishing ? t('workout.finishing') : view.snap?.editing ? t('finish.save') : t('workout.finish')}
       </button>
     {/snippet}
   </SaveBar>
@@ -122,6 +136,15 @@
 {#if finishing}<FinishSheet {view} onclose={() => (finishing = false)} />{/if}
 
 <style>
+  .edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 40px;
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    font-size: var(--t-sm);
+  }
   .bar {
     display: flex;
     align-items: center;

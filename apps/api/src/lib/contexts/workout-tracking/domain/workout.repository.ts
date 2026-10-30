@@ -32,6 +32,8 @@ export interface WorkoutHistoryItem {
   failureSets: number;
   totalVolume: number; // kg — Σ(reps × weight) over completed entries (matches WorkoutSummary per Q4)
   status: WorkoutStatus;
+  /** Seconds from start to finish; null while in progress. */
+  durationSeconds: number | null;
 }
 
 /**

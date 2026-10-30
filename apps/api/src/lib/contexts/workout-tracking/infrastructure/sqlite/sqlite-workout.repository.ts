@@ -245,6 +245,8 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         id: workouts.id,
         workoutDate: workouts.workoutDate,
         status: workouts.status,
+        startedAt: workouts.startedAt,
+        completedAt: workouts.completedAt,
         routineDayName: routineDays.dayName,
         exerciseCount: sql<number>`COUNT(DISTINCT ${workoutEntries.exerciseId})`,
         totalVolume: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} != 'warmup' THEN ${workoutEntries.reps} * ${workoutEntries.weight} ELSE 0 END), 0)`,
@@ -274,6 +276,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       dropSets: Number(row.dropSets),
       failureSets: Number(row.failureSets),
       status: row.status,
+      durationSeconds: row.completedAt && row.startedAt ? Math.max(0, Math.round((row.completedAt.getTime() - row.startedAt.getTime()) / 1000)) : null,
     }));
   }
 
