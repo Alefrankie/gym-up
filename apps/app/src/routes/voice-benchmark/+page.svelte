@@ -323,7 +323,7 @@
       <div class="engine-grid">
         {#each latest.results as result}
           <article class="engine-result">
-            <h3>{result.engine === 'runonweb' ? 'RunOnWeb · Whisper tiny' : 'Vosk · español pequeño'}</h3>
+            <h3>{result.engine === 'runonweb' ? 'RunOnWeb · Whisper base' : 'Vosk · español pequeño'}</h3>
             {#if result.error}
               <p class="error">{result.error}</p>
             {:else}
@@ -357,7 +357,7 @@
       <li>Activa el modo avión, vuelve a abrir esta pantalla y repite la prueba. Anota si ambos motores terminan correctamente.</li>
       <li>Repite las frases en silencio y en el gimnasio. Marca «Sí» solo si conserva la acción y todos los números/unidades.</li>
     </ol>
-    <p class="small">Vosk descargará su modelo desde <a href={VOSK_MODEL_DOWNLOAD_URL} target="_blank" rel="noreferrer">el servidor oficial de Vosk</a> la primera vez. El tamaño registrado es el de la descarga real. No se incluye dentro del APK.</p>
+    <p class="small">Vosk descargará su modelo desde <a href={VOSK_MODEL_DOWNLOAD_URL} target="_blank" rel="noreferrer">Hugging Face (copia del modelo oficial de Vosk)</a> la primera vez. El tamaño registrado es el de la descarga real. No se incluye dentro del APK.</p>
   </section>
 
   <section class="card history">

@@ -7,7 +7,7 @@ export async function transcribeWorkoutAudio(blob: Blob, onProgress?: ProgressLi
   const { SpeechToText } = await import('runonweb/stt');
   if (signal?.aborted) throw new DOMException('Prueba cancelada.', 'AbortError');
   const stt = new SpeechToText({
-    model: 'onnx-community/whisper-tiny',
+    model: 'onnx-community/whisper-base',
     language: 'es',
     device: 'auto',
     onProgress,
