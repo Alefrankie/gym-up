@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, NotFoundException, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Inject, NotFoundException, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { createFeedbackRequestSchema, updateFeedbackStatusRequestSchema, type CreateFeedbackRequest, type FeedbackItemDto } from '@gym-up/contracts';
 import { desc, eq } from 'drizzle-orm';
 import { feedbackItems } from '@db/schema';
@@ -8,15 +8,18 @@ import { AuthGuard, CurrentUser } from '../common/auth.guard';
 import { DB } from '../tokens';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
+const FEEDBACK_ADMINS = new Set(['alefrank.m@gmail.com']);
+const isFeedbackAdmin = (user: User) => FEEDBACK_ADMINS.has(user.email.trim().toLowerCase());
+
 @Controller('feedback')
 @UseGuards(AuthGuard)
 export class FeedbackController {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   @Get()
-  async list(): Promise<{ items: FeedbackItemDto[] }> {
+  async list(@CurrentUser() user: User): Promise<{ items: FeedbackItemDto[]; canManage: boolean }> {
     const rows = await this.db.select().from(feedbackItems).orderBy(desc(feedbackItems.createdAt));
-    return { items: rows.map(({ id, title, description, category, status, authorName, createdAt, updatedAt }) => ({ id, title, description, category, status, authorName, createdAt, updatedAt })) };
+    return { canManage: isFeedbackAdmin(user), items: rows.map(({ id, title, description, category, status, authorName, createdAt, updatedAt }) => ({ id, title, description, category, status, authorName, createdAt, updatedAt })) };
   }
 
   @Post()
@@ -27,7 +30,8 @@ export class FeedbackController {
   }
 
   @Patch(':id/status')
-  async setStatus(@Param('id') id: string, @Body(new ZodValidationPipe(updateFeedbackStatusRequestSchema)) body: { status: 'open' | 'planned' | 'in_progress' | 'resolved' }): Promise<FeedbackItemDto> {
+  async setStatus(@CurrentUser() user: User, @Param('id') id: string, @Body(new ZodValidationPipe(updateFeedbackStatusRequestSchema)) body: { status: 'open' | 'planned' | 'in_progress' | 'resolved' }): Promise<FeedbackItemDto> {
+    if (!isFeedbackAdmin(user)) throw new ForbiddenException('Only admins can change feedback status');
     const existing = await this.db.select().from(feedbackItems).where(eq(feedbackItems.id, id)).limit(1);
     if (!existing[0]) throw new NotFoundException('Feedback not found');
     const [row] = await this.db.update(feedbackItems).set({ status: body.status, updatedAt: Date.now() }).where(eq(feedbackItems.id, id)).returning();

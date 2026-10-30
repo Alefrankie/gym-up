@@ -12,6 +12,7 @@
   let category = $state<'idea' | 'bug' | 'other'>('idea');
   let busy = $state(false);
   let loading = $state(true);
+  let canManage = $state(false);
   let error = $state('');
   let notice = $state('');
 
@@ -19,7 +20,7 @@
     try {
       await session.require();
       const result = await api('/feedback', { schema: feedbackListSchema });
-      items = result.items;
+      items = result.items; canManage = result.canManage;
     } catch (e) {
       error = e instanceof NetworkError ? t('feedback.needsConnection') : t('feedback.loadError');
     } finally { loading = false; }
@@ -76,7 +77,7 @@
           <h2>{item.title}</h2>
           {#if item.description}<p class="description">{item.description}</p>{/if}
           <div class="foot"><span class="muted">{t('feedback.author', { name: item.authorName })}</span>
-            <label class="status-control"><span>{t('feedback.ownStatus')}</span><select value={item.status} onchange={(e) => setStatus(item, e.currentTarget.value as FeedbackItemDto['status'])}>{#each statuses as status}<option value={status}>{t(`feedback.status.${status}` as Parameters<typeof t>[0])}</option>{/each}</select></label>
+            {#if canManage}<label class="status-control"><span>{t('feedback.ownStatus')}</span><select value={item.status} onchange={(e) => setStatus(item, e.currentTarget.value as FeedbackItemDto['status'])}>{#each statuses as status}<option value={status}>{t(`feedback.status.${status}` as Parameters<typeof t>[0])}</option>{/each}</select></label>{/if}
           </div>
         </article>
       {/each}

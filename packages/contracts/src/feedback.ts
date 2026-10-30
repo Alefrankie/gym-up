@@ -12,7 +12,7 @@ export const feedbackItemSchema = z.object({
   createdAt: z.number(),
   updatedAt: z.number(),
 });
-export const feedbackListSchema = z.object({ items: z.array(feedbackItemSchema) });
+export const feedbackListSchema = z.object({ items: z.array(feedbackItemSchema), canManage: z.boolean().default(false) });
 export const createFeedbackRequestSchema = z.object({
   title: z.string().trim().min(3).max(120),
   description: z.string().trim().max(1000).default(''),
