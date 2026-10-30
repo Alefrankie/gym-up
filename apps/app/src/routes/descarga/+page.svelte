@@ -3,8 +3,20 @@
   import QRCode from 'qrcode';
 
   let qrDataUrl = $state('');
+  let apkHref = $state('/downloads/gym-up.apk');
+  let apkName = $state('gym-up-android.apk');
 
   onMount(async () => {
+    // Versioned file name so repeated downloads don't become gym-up(1).apk.
+    fetch('/update.json', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((manifest) => {
+        if (typeof manifest?.version !== 'string' || typeof manifest?.apkUrl !== 'string') return;
+        apkHref = manifest.apkUrl;
+        apkName = `gym-up-${manifest.version}.apk`;
+      })
+      .catch(() => {});
+
     try {
       qrDataUrl = await QRCode.toDataURL(`${window.location.origin}/descarga`, {
         errorCorrectionLevel: 'H',
@@ -45,7 +57,7 @@
         Gym Up también funciona cuando no tienes cobertura en el gimnasio.
       </p>
 
-      <a class="download-button" href="/downloads/gym-up.apk" download="gym-up-android.apk">
+      <a class="download-button" href={apkHref} download={apkName}>
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
           <path d="M12 3.75v11.5m0 0 4.25-4.25M12 15.25 7.75 11M4.75 16.5v2.25c0 .83.67 1.5 1.5 1.5h11.5c.83 0 1.5-.67 1.5-1.5V16.5" />
         </svg>

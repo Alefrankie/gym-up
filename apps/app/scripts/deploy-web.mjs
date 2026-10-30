@@ -52,11 +52,14 @@ if (!version || versionName !== version || !Number.isSafeInteger(versionCode) ||
   console.error('Android version metadata does not match tauri.conf.json. Update the app version before publishing.');
   process.exit(1);
 }
+// Versioned copy so downloads are named gym-up-<version>.apk; gym-up.apk stays as a stable link.
+const versionedApk = `gym-up-${version}.apk`;
+copyFileSync(apk, join(downloadDir, versionedApk));
 const sha256 = createHash('sha256').update(readFileSync(apk)).digest('hex');
 writeFileSync(join(appDir, 'build', 'update.json'), `${JSON.stringify({
   version,
   versionCode,
-  apkUrl: '/downloads/gym-up.apk',
+  apkUrl: `/downloads/${versionedApk}`,
   sha256,
   releaseNotes: '',
 }, null, 2)}\n`);
