@@ -7,7 +7,9 @@
   // Browser origins allowed by CORS in addition to the Tauri origins (comma separated).
   "vars": { "EXTRA_ORIGINS": "https://gym-up-web.gymup-phase0-spike.workers.dev" },
   // Local development only: `wrangler dev --local` simulates this bucket, nothing is created in the cloud.
-  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "gym-up-photos" }],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "gym-up-photos" }, { "binding": "COACH_AUDIO", "bucket_name": "gym-up-coach-audio" }],
+  // Workers AI always runs in the cloud, even in local dev (each new Coach line is a real, billed generation).
+  "ai": { "binding": "AI", "remote": true },
   "d1_databases": [
     {
       "binding": "DB",

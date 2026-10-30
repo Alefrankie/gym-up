@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseBackend, toDownload } from './voice.svelte';
+import { CLOUD_OPTIONS, chooseBackend, parseVoiceId, toDownload } from './voice.svelte';
 
 describe('chooseBackend', () => {
   it('uses Android TextToSpeech in the app, where the WebView has no speechSynthesis', () => {
@@ -31,5 +31,23 @@ describe('toDownload', () => {
   it('moves to loading, then ready', () => {
     expect(toDownload({ status: 'loading', progress: 0 }, false)).toEqual({ phase: 'load' });
     expect(toDownload({ status: 'ready', progress: 100 }, true)).toEqual({ phase: 'ready' });
+  });
+});
+
+describe('parseVoiceId', () => {
+  it('keeps the automatic phone voice, a specific Android voice and the male cloud voices', () => {
+    expect(parseVoiceId(null)).toBe('auto');
+    expect(parseVoiceId('native:es-us-x-esd-local')).toBe('native:es-us-x-esd-local');
+    expect(parseVoiceId('aura:sirio')).toBe('aura:sirio');
+  });
+
+  it('falls back to automatic for anything else (female or unknown voices, empty ids)', () => {
+    expect(parseVoiceId('aura:aquila')).toBe('auto');
+    expect(parseVoiceId('native:')).toBe('auto');
+    expect(parseVoiceId('kokoro')).toBe('auto');
+  });
+
+  it('offers the four male cloud voices to compare', () => {
+    expect(CLOUD_OPTIONS.map((o) => o.name)).toEqual(['sirio', 'javier', 'nestor', 'alvaro']);
   });
 });

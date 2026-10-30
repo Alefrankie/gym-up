@@ -11,3 +11,4 @@ export * from './groups';
 export * from './supplements';
 export * from './feedback';
 export * from './exercise-names';
+export * from './coach';

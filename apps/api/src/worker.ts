@@ -15,6 +15,7 @@ import blake2bWASM from 'argon2-wasm-edge/wasm/blake2b.wasm';
 import type { Db } from '@/lib/db/client';
 import { R2PhotoStorage, type R2BucketLike } from '@/lib/contexts/private-photos/infrastructure/r2-photo-storage';
 import { GeminiVisionAdapter } from '@/lib/contexts/nutrition/infrastructure/ai/gemini-vision.adapter';
+import { EdgeAudioCache, R2AudioCache, WorkersAiCoachSpeech, type EdgeCacheLike, type R2Like, type WorkersAiLike } from '@/lib/contexts/coach/coach-speech';
 import { createApp } from './nest/create-app';
 import type { RateLimiter } from './nest/tokens';
 import { registerArgon2Wasm, SharedInstanceArgon2PasswordHasher } from './worker/shared-argon2-hasher';
@@ -27,6 +28,10 @@ interface WorkerEnv {
   PHOTOS?: R2BucketLike;
   /** Optional Gemini API key (a Worker secret). Without it /nutrition/analyze answers 503. */
   GEMINI_API_KEY?: string;
+  /** Workers AI: the Coach's cloud voice. */
+  AI?: WorkersAiLike;
+  /** Optional R2 bucket for generated Coach lines; without it they stay in the data center cache. */
+  COACH_AUDIO?: R2Like;
   /** Comma separated extra CORS origins (for example a preview web build). */
   EXTRA_ORIGINS?: string;
 }
@@ -48,6 +53,14 @@ async function boot() {
       rateLimiter,
       photoStorage: e.PHOTOS ? new R2PhotoStorage(e.PHOTOS) : undefined,
       aiAnalysis: e.GEMINI_API_KEY ? new GeminiVisionAdapter(e.GEMINI_API_KEY) : undefined,
+      coachSpeech: e.AI
+        ? new WorkersAiCoachSpeech(
+            e.AI,
+            e.COACH_AUDIO
+              ? new R2AudioCache(e.COACH_AUDIO)
+              : new EdgeAudioCache((globalThis as unknown as { caches: { default: EdgeCacheLike } }).caches.default),
+          )
+        : undefined,
     },
     (e.EXTRA_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean),
   );

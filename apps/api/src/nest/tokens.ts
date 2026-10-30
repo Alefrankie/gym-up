@@ -8,6 +8,7 @@ export const RATE_LIMITER = Symbol('RATE_LIMITER');
 export const PHOTO_STORAGE = Symbol('PHOTO_STORAGE');
 export const AI_PORT = Symbol('AI_PORT');
 export const AI_ANALYSIS = Symbol('AI_ANALYSIS');
+export const COACH_SPEECH = Symbol('COACH_SPEECH');
 
 /** Minimal rate limiter port; the Worker adapts Cloudflare's Rate Limiting binding to it. */
 export interface RateLimiter {

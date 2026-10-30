@@ -13,7 +13,7 @@
   import { appUpdates } from '#lib/updates.svelte';
   import { coachLine } from '#lib/coach/coach.svelte';
   import { nudge } from '#lib/nudge.svelte';
-  import { coachVoice } from '#lib/coach/voice.svelte';
+  import { CLOUD_OPTIONS, coachVoice, type VoiceOption } from '#lib/coach/voice.svelte';
 
   let displayName = $state('');
   let weightUnit = $state<'kg' | 'lbs'>('kg');
@@ -40,6 +40,23 @@
   });
 
   /** Coach settings save as soon as they change; gymrat asks first because it swears. */
+  // Voices to compare: the phone's male voices (filled in once the app asks Android) and the cloud ones.
+  let voiceOptions = $state<VoiceOption[]>([{ id: 'auto', kind: 'auto', name: 'auto' }, ...CLOUD_OPTIONS]);
+  onMount(() => {
+    void coachVoice.options().then((o) => (voiceOptions = o));
+  });
+  const phoneVoices = $derived(voiceOptions.filter((o) => o.kind === 'native'));
+  function voiceLabel(o: VoiceOption): string {
+    if (o.kind === 'auto') return t('coach.voiceAuto');
+    if (o.kind === 'native') return t('coach.voicePhone', { n: phoneVoices.indexOf(o) + 1 });
+    return o.name.charAt(0).toUpperCase() + o.name.slice(1);
+  }
+  function voiceHint(o: VoiceOption): string {
+    if (o.kind === 'cloud') return t('coach.voiceCloudHint');
+    if (o.kind === 'native') return t('coach.voicePhoneHint', { locale: o.locale ?? '' });
+    return t('coach.voiceAutoHint');
+  }
+
   /** Says a Home line now and reports how it went, instead of failing in silence. */
   let voiceSaid = $state(false);
   async function testVoice() {
@@ -210,6 +227,28 @@
           {:else if d?.phase === 'ready' || voiceSaid}
             <p class="ok" role="status">{t('coach.voiceReady')}</p>
           {/if}
+          <p class="field pick-title">{t('coach.voicePick')}</p>
+          <div class="voices" role="radiogroup" aria-label={t('coach.voicePick')}>
+            {#each voiceOptions as o (o.id)}
+              {@const tried = coachVoice.tried[o.id]}
+              <div class="voice" class:on={coachVoice.voiceId === o.id}>
+                <button type="button" role="radio" aria-checked={coachVoice.voiceId === o.id} class="pick" onclick={() => coachVoice.choose(o.id)}>
+                  <strong>{voiceLabel(o)}</strong>
+                  <span class="muted">{voiceHint(o)}</span>
+                </button>
+                <div class="try-row">
+                  <button type="button" class="try" disabled={coachVoice.trying !== null} onclick={() => coachVoice.tryOption(o.id)}>
+                    {coachVoice.trying === o.id ? t('coach.voiceTrying') : t('coach.voiceTry')}
+                  </button>
+                  {#if tried}
+                    <span class="lat" class:bad={!!tried.error}>
+                      {tried.error ? t('coach.voiceTryFailed', { message: tried.error }) : t('coach.voiceLatency', { ms: tried.latencyMs ?? '?' })}
+                    </span>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
           {#if coachVoice.inApp && (coachVoice.problem?.kind === 'noVoice' || coachVoice.problem?.kind === 'notMale' || coachVoice.problem?.kind === 'failed')}
             <button type="button" class="test" onclick={() => coachVoice.openSystemSettings()}>{t('coach.voiceSystemSettings')}</button>
           {/if}
@@ -301,6 +340,57 @@
   }
   .lang.two {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .pick-title {
+    margin: 1rem 0 0.4rem;
+  }
+  .voices {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .voice {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius);
+    box-shadow: 0 0 0 1px var(--line) inset;
+  }
+  .voice.on {
+    box-shadow: 0 0 0 2px var(--accent) inset;
+  }
+  .pick {
+    display: grid;
+    gap: 0.15rem;
+    min-height: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--text);
+    text-align: left;
+  }
+  .pick span {
+    font-size: var(--t-xs);
+    font-weight: 400;
+  }
+  .try-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .try {
+    min-height: 36px;
+    width: auto;
+    margin: 0;
+    padding: 0 0.9rem;
+    font-size: var(--t-sm);
+  }
+  .lat {
+    color: var(--ok);
+    font-size: var(--t-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .lat.bad {
+    color: var(--danger, #e5484d);
   }
   progress {
     width: 100%;

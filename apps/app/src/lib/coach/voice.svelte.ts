@@ -1,7 +1,48 @@
+import { COACH_CLOUD_VOICES, type CoachCloudVoice } from '@gym-up/contracts';
+import { API_URL } from '#lib/api/config';
+import { tokenStore } from '#lib/api/token';
 import type { CoachLocale } from './lines';
 import { pickMaleVoice } from './male-voice';
 
 const KEY = 'gymup.coach.voice';
+const VOICE_KEY = 'gymup.coach.voiceId';
+const CLOUD_CACHE = 'coach-voice-v1';
+
+/**
+ * Which voice speaks, chosen in Settings (on this device):
+ * - `auto`: the phone's own male voice (Android TextToSpeech in the app, the browser's voice on the web).
+ * - `native:<name>`: one specific Android voice.
+ * - `aura:<speaker>`: a natural male voice generated in the cloud and kept on the device once heard.
+ */
+export type CoachVoiceId = 'auto' | `native:${string}` | CoachCloudVoice;
+
+export const isCloudVoice = (id: string): id is CoachCloudVoice => (COACH_CLOUD_VOICES as readonly string[]).includes(id);
+
+export function parseVoiceId(v: string | null): CoachVoiceId {
+  if (!v) return 'auto';
+  if (isCloudVoice(v) || (v.startsWith('native:') && v.length > 7)) return v as CoachVoiceId;
+  return 'auto';
+}
+
+export interface VoiceOption {
+  id: CoachVoiceId;
+  /** Speaker name for cloud voices, voice id for Android ones. */
+  name: string;
+  kind: 'auto' | 'native' | 'cloud';
+  locale?: string;
+}
+
+/** Cloud voices by name, in the order the user compares them. */
+export const CLOUD_OPTIONS: VoiceOption[] = COACH_CLOUD_VOICES.map((id) => ({ id, kind: 'cloud', name: id.slice(id.indexOf(':') + 1) }));
+
+/** The same line for every option, so they can be compared by ear. */
+export const SAMPLE_LINE = '¡Épale! Se acabó el descanso. Dale que vamos, una serie más.';
+
+export interface SpeakResult {
+  ok: boolean;
+  /** From the request to the first sound. */
+  latencyMs: number | null;
+}
 
 export type VoicePref = 'on' | 'off' | null;
 
@@ -60,6 +101,14 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
   return invoke<T>(`plugin:coach-voice|${cmd}`, args);
 }
 
+function readVoiceId(): CoachVoiceId {
+  try {
+    return parseVoiceId(localStorage.getItem(VOICE_KEY));
+  } catch {
+    return 'auto';
+  }
+}
+
 function readPref(): VoicePref {
   try {
     const v = localStorage.getItem(KEY);
@@ -105,6 +154,11 @@ class CoachVoice {
   /** Set by the voice assistant while it listens: the Coach keeps quiet. */
   micBusy = false;
   readonly inApp = inApp();
+  /** The voice that speaks everywhere. */
+  voiceId = $state<CoachVoiceId>(readVoiceId());
+  /** Settings picker: the option being tried, and the last tap-to-sound time or error of each. */
+  trying = $state<CoachVoiceId | null>(null);
+  tried = $state<Record<string, { latencyMs: number | null; error?: string }>>({});
   #audio: HTMLAudioElement | undefined;
   #tts: Promise<Tts> | undefined;
 
@@ -125,6 +179,42 @@ class CoachVoice {
     }
   }
 
+  choose(id: CoachVoiceId) {
+    this.voiceId = id;
+    try {
+      localStorage.setItem(VOICE_KEY, id);
+    } catch {
+      /* private mode: the choice lasts for this session only */
+    }
+  }
+
+  /** What the picker offers on this device: the phone's male voices (in the app) and the cloud ones. */
+  async options(): Promise<VoiceOption[]> {
+    const phone: VoiceOption[] = [{ id: 'auto', kind: 'auto', name: 'auto' }];
+    if (this.inApp) {
+      try {
+        const status = await withTimeout(invoke<NativeStatus>('status', { lang: 'es' }), 5000);
+        for (const v of status.voices.filter((v) => v.male)) phone.push({ id: `native:${v.name}`, kind: 'native', name: v.name, locale: v.locale });
+      } catch {
+        /* no engine: only the automatic choice, which reports the problem */
+      }
+    }
+    return [...phone, ...CLOUD_OPTIONS];
+  }
+
+  /** Plays the sample with one option (even if the voice is off) and records how long it took to sound. */
+  async tryOption(id: CoachVoiceId): Promise<void> {
+    if (this.trying) return;
+    this.trying = id;
+    try {
+      const r = await this.#say(SAMPLE_LINE, 'es', id);
+      const error = r.ok ? undefined : this.problem?.kind === 'failed' ? this.problem.message : 'sin voz';
+      this.tried = { ...this.tried, [id]: { latencyMs: r.latencyMs, ...(error ? { error } : {}) } };
+    } finally {
+      this.trying = null;
+    }
+  }
+
   stop() {
     if (typeof window === 'undefined') return;
     if (this.inApp) void invoke('stop').catch(() => {});
@@ -138,7 +228,7 @@ class CoachVoice {
     if (this.busy) return false;
     this.busy = true;
     try {
-      return await this.speak(text, locale);
+      return (await this.speak(text, locale)).ok;
     } finally {
       this.busy = false;
     }
@@ -158,44 +248,102 @@ class CoachVoice {
   }
 
   /**
-   * Says the line aloud when the voice is on and the microphone is free. Resolves once it was said (or could not
-   * be); never throws. What went wrong ends up in `problem`.
+   * Says the line aloud with the chosen voice when the voice is on and the microphone is free. Never throws: what
+   * went wrong ends up in `problem`. A cloud voice that cannot be reached (no signal) falls back to the phone's.
    */
-  async speak(text: string, locale: CoachLocale): Promise<boolean> {
-    if (!this.enabled || this.micBusy || typeof window === 'undefined') return false;
+  async speak(text: string, locale: CoachLocale): Promise<SpeakResult> {
+    if (!this.enabled || this.micBusy || typeof window === 'undefined') return { ok: false, latencyMs: null };
+    return this.#say(text, locale, this.voiceId);
+  }
+
+  async #say(text: string, locale: CoachLocale, id: CoachVoiceId): Promise<SpeakResult> {
     this.stop();
     try {
-      if (this.inApp) return await this.#speakNative(text, locale);
-      const voice = pickMaleVoice(await systemVoices(), locale);
-      if (this.micBusy) return false;
-      if (chooseBackend({ inApp: false, maleSystemVoice: !!voice }) === 'system') {
-        const u = new SpeechSynthesisUtterance(text);
-        u.voice = voice!;
-        u.lang = voice!.lang;
-        u.rate = 1.05;
-        window.speechSynthesis.speak(u);
-        this.problem = null;
-        return true;
+      if (isCloudVoice(id)) {
+        try {
+          return await this.#speakCloud(text, locale, id);
+        } catch (e) {
+          console.warn('[coach-voice] cloud voice failed, using the phone voice', e);
+          const fallback = await this.#speakPhone(text, locale, 'auto');
+          this.problem = { kind: 'failed', message: errorText(e) };
+          return { ...fallback, ok: false };
+        }
       }
-      return await this.#speakOnDevice(text, locale);
+      return await this.#speakPhone(text, locale, id);
     } catch (e) {
       this.problem = { kind: 'failed', message: errorText(e) };
       console.warn('[coach-voice]', e);
-      return false;
+      return { ok: false, latencyMs: null };
     }
   }
 
-  async #speakNative(text: string, locale: CoachLocale): Promise<boolean> {
+  async #speakPhone(text: string, locale: CoachLocale, id: CoachVoiceId): Promise<SpeakResult> {
+    const started = performance.now();
+    if (this.inApp) return this.#speakNative(text, locale, id.startsWith('native:') ? id.slice(7) : undefined);
+    const voice = pickMaleVoice(await systemVoices(), locale);
+    if (this.micBusy) return { ok: false, latencyMs: null };
+    if (chooseBackend({ inApp: false, maleSystemVoice: !!voice }) === 'system') {
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = voice!;
+      u.lang = voice!.lang;
+      u.rate = 1.05;
+      const latency = new Promise<number>((resolve) => u.addEventListener('start', () => resolve(Math.round(performance.now() - started)), { once: true }));
+      window.speechSynthesis.speak(u);
+      this.problem = null;
+      return { ok: true, latencyMs: await withTimeout(latency, 8000).catch(() => null) };
+    }
+    return this.#speakOnDevice(text, locale, started);
+  }
+
+  /**
+   * A natural cloud voice. Each line is fetched once from the API and kept in Cache Storage, so it plays at once
+   * (and offline) the next time.
+   */
+  async #speakCloud(text: string, locale: CoachLocale, voice: CoachCloudVoice): Promise<SpeakResult> {
+    const started = performance.now();
+    const url = `${API_URL}/coach/voice?${new URLSearchParams({ voice, lang: locale, text })}`;
+    let cache: Cache | undefined;
+    try {
+      cache = await caches.open(CLOUD_CACHE);
+    } catch {
+      /* no Cache Storage (private mode): fetch every time */
+    }
+    let res = await cache?.match(url);
+    if (!res) {
+      const token = tokenStore.get();
+      res = await fetch(url, { headers: token ? { authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`la voz de la nube respondió ${res.status}`);
+      await cache?.put(url, res.clone()).catch(() => {});
+    }
+    const blob = await res.blob();
+    if (this.micBusy) return { ok: false, latencyMs: null };
+    const latencyMs = await this.#play(blob, started);
+    this.problem = null;
+    return { ok: true, latencyMs };
+  }
+
+  /** Plays audio and resolves with the time from `started` to the first sound. */
+  async #play(blob: Blob, started: number): Promise<number> {
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true });
+    this.#audio = audio;
+    const playing = new Promise<number>((resolve) => audio.addEventListener('playing', () => resolve(Math.round(performance.now() - started)), { once: true }));
+    await audio.play();
+    return withTimeout(playing, 8000);
+  }
+
+  async #speakNative(text: string, locale: CoachLocale, voice?: string): Promise<SpeakResult> {
     // One round trip: Android picks the voice and starts speaking right away (target: sound in under half a second).
     try {
-      const done = await withTimeout(invoke<NativeStatus>('speak', { text, lang: locale }), 8000);
+      const done = await withTimeout(invoke<NativeStatus>('speak', { text, lang: locale, ...(voice ? { voice } : {}) }), 8000);
       console.info('[coach-voice] native', { voice: done.voice, male: done.male, latencyMs: done.latencyMs });
       this.problem = done.male ? null : { kind: 'notMale', voice: done.voice };
-      return true;
+      return { ok: true, latencyMs: done.latencyMs ?? null };
     } catch (e) {
       if (String(e).includes('NO_VOICE')) {
         this.problem = { kind: 'noVoice' };
-        return false;
+        return { ok: false, latencyMs: null };
       }
       throw e;
     }
@@ -227,17 +375,13 @@ class CoachVoice {
     return this.#tts;
   }
 
-  async #speakOnDevice(text: string, locale: CoachLocale): Promise<boolean> {
+  async #speakOnDevice(text: string, locale: CoachLocale, started: number): Promise<SpeakResult> {
     const tts = await this.#deviceTts();
     const blob = await tts.speakToBlob(text, { voice: locale === 'es' ? 'em_alex' : 'am_michael' });
-    if (this.micBusy || !this.enabled) return false;
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true });
-    this.#audio = audio;
-    await audio.play();
+    if (this.micBusy) return { ok: false, latencyMs: null };
+    const latencyMs = await this.#play(blob, started);
     this.problem = null;
-    return true;
+    return { ok: true, latencyMs };
   }
 }
 

@@ -4,7 +4,9 @@ import type { PasswordHasher } from '@/lib/contexts/auth/auth.types';
 import { AuthModule } from './auth/auth.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { PhotosModule } from './photos/photos.module';
-import { AI_PORT, DB, PASSWORD_HASHER, PHOTO_STORAGE, RATE_LIMITER, type RateLimiter } from './tokens';
+import { AI_PORT, COACH_SPEECH, DB, PASSWORD_HASHER, PHOTO_STORAGE, RATE_LIMITER, type RateLimiter } from './tokens';
+import type { CoachSpeech } from '@/lib/contexts/coach/coach-speech';
+import { CoachModule } from './coach/coach.module';
 import type { AIAnalysisPort } from '@/lib/contexts/nutrition/domain/ports/ai-analysis.port';
 import type { PhotoStorage } from '@/lib/contexts/private-photos/domain/photo-storage';
 import { LibraryModule } from './library/library.module';
@@ -32,6 +34,8 @@ export interface AppDeps {
   photoStorage?: PhotoStorage;
   /** Meal analysis provider (Gemini). Absent until a key is configured: /nutrition/analyze answers 503. */
   aiAnalysis?: AIAnalysisPort;
+  /** The Coach's cloud voice (Workers AI). Absent in tests and local runs: /coach/voice answers 503. */
+  coachSpeech?: CoachSpeech;
 }
 
 /** Environment-specific dependencies are supplied by the entry point (Worker or test). */
@@ -41,15 +45,16 @@ export class AppModule {
     return {
       module: AppModule,
       global: true,
-      imports: [AuthModule, WorkoutsModule, ProgressModule, GroupsModule, PhotosModule, NutritionModule, LibraryModule, ProgramsModule, SupplementsModule, FeedbackModule],
+      imports: [AuthModule, WorkoutsModule, ProgressModule, GroupsModule, PhotosModule, NutritionModule, LibraryModule, ProgramsModule, SupplementsModule, FeedbackModule, CoachModule],
       providers: [
         { provide: DB, useValue: deps.db },
         { provide: PASSWORD_HASHER, useValue: deps.hasher },
         { provide: PHOTO_STORAGE, useValue: deps.photoStorage ?? null },
         { provide: AI_PORT, useValue: deps.aiAnalysis ?? null },
+        { provide: COACH_SPEECH, useValue: deps.coachSpeech ?? null },
         ...(deps.rateLimiter ? [{ provide: RATE_LIMITER, useValue: deps.rateLimiter }] : []),
       ],
-      exports: [DB, PASSWORD_HASHER, PHOTO_STORAGE, AI_PORT, ...(deps.rateLimiter ? [RATE_LIMITER] : [])],
+      exports: [DB, PASSWORD_HASHER, PHOTO_STORAGE, AI_PORT, COACH_SPEECH, ...(deps.rateLimiter ? [RATE_LIMITER] : [])],
     };
   }
 }

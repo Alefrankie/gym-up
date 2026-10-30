@@ -6,6 +6,8 @@
   "observability": { "enabled": true },
   // Browser origins allowed by CORS in addition to the Tauri origins (comma separated).
   "vars": { "EXTRA_ORIGINS": "https://gym-up-web.gymup-phase0-spike.workers.dev" },
+  // Workers AI: the Coach's cloud voice (Deepgram Aura-2). Add an R2 bucket bound as COACH_AUDIO to keep lines for good.
+  "ai": { "binding": "AI" },
   "d1_databases": [
     {
       "binding": "DB",
