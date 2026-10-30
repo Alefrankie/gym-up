@@ -27,6 +27,8 @@ export interface WorkoutSnapshot {
   status: 'in_progress' | 'completed';
   unit: WeightUnit;
   startedAt: number;
+  /** Set when logging a workout done on an earlier day (YYYY-MM-DD): no live timer then. */
+  day?: string;
 }
 
 const sessionKey = (id: string) => `session:${id}`;

@@ -15,7 +15,7 @@ import { ApiRequestError, NetworkError } from '../api/errors';
 import { idb } from './idb';
 
 export type Command =
-  | { type: 'start-workout'; id: string; routineDayId: string }
+  | { type: 'start-workout'; id: string; routineDayId: string; date?: string }
   | { type: 'upsert-set'; workoutId: string; set: UpsertSetRequest }
   | { type: 'finish-workout'; workoutId: string }
   | { type: 'discard-workout'; workoutId: string }

@@ -3,6 +3,7 @@
   import { muscleLoad } from '#lib/muscle-load';
   import { useWorkoutView } from '#lib/offline/workout-context';
   import { sessionSummary } from '#lib/workout-math';
+  import { localDay, relativeDay } from '#lib/dates';
   import { t } from '#lib/i18n';
   import ExerciseRow from '#lib/components/ExerciseRow.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -36,6 +37,7 @@
     {:else}
       <span class="live"><span class="dot"></span>{t('workout.inProgress')}</span>
     {/if}
+    {#if view.snap?.day}<span class="time"><Icon name="history" size={14} />{relativeDay(view.snap.day, localDay())}</span>{/if}
     {#if view.elapsed}<span class="time" role="timer" aria-label={t('workout.elapsed')}><Icon name="timer" size={14} />{view.elapsed}</span>{/if}
   </div>
   <h1>{view.snap?.dayName ?? t('workout.title')}</h1>

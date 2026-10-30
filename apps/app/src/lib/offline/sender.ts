@@ -7,7 +7,7 @@ export const sendCommand: Sender = async (command: Command) => {
   switch (command.type) {
     case 'start-workout': {
       const res = await api('/workouts', {
-        body: { id: command.id, routineDayId: command.routineDayId },
+        body: { id: command.id, routineDayId: command.routineDayId, ...(command.date ? { date: command.date } : {}) },
         schema: startWorkoutResponseSchema,
       });
       // One workout per user per day: if the server already had one, our local id is replaced by its id.

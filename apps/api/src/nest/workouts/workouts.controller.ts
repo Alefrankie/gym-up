@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -43,6 +44,20 @@ const parseMuscles = (json: string): string[] => {
     return [];
   }
 };
+
+/**
+ * A workout done on an earlier day is dated at noon UTC of that day, so it lands on that calendar day for
+ * every time zone the app is used in. Future days and days older than 60 are refused.
+ */
+function pastDay(day: string | undefined): Date | undefined {
+  if (!day) return undefined;
+  const at = new Date(`${day}T12:00:00Z`);
+  const ageDays = (Date.now() - at.getTime()) / 86_400_000;
+  if (Number.isNaN(at.getTime()) || ageDays < -1 || ageDays > 60) {
+    throw new BadRequestException('date must be a day within the last 60 days');
+  }
+  return at;
+}
 
 @Controller('workouts')
 @UseGuards(AuthGuard)
@@ -128,6 +143,7 @@ export class WorkoutsController {
       id: body.id,
       routineDayId: body.routineDayId,
       existingWorkoutId: body.existingWorkoutId,
+      now: pastDay(body.date),
     });
     return { kind: result.kind, workout: toWorkoutDto(result.workout) };
   }

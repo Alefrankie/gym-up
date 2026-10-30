@@ -22,6 +22,8 @@ export const startWorkoutRequestSchema = z.object({
   routineDayId: z.string().min(1),
   /** When set, the call continues an existing workout instead of creating one. */
   existingWorkoutId: idSchema.optional(),
+  /** Log a workout done on an earlier day (YYYY-MM-DD, up to 60 days back). Omitted = today. */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 export type StartWorkoutRequest = z.infer<typeof startWorkoutRequestSchema>;
 

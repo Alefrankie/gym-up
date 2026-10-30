@@ -40,7 +40,7 @@ export class WorkoutView {
 
   /** Time since the workout started; anything past 6 h is a forgotten session, not a clock. */
   get elapsed(): string | null {
-    if (!this.snap || this.isCompleted) return null;
+    if (!this.snap || this.isCompleted || this.snap.day) return null;
     const secs = Math.floor((this.now - this.snap.startedAt) / 1000);
     if (secs < 0 || secs > 6 * 3600) return null;
     const h = Math.floor(secs / 3600);

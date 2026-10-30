@@ -292,6 +292,24 @@ describe('programs', () => {
     expect(last.record).toMatchObject({ weight: 110, reps: 6 });
   });
 
+  it('logs a workout on an earlier day, and refuses future or too old days', async () => {
+    const s = await register('backfill@example.com');
+    const programs = programListResponseSchema.parse((await http('GET', '/programs', { token: s.token })).json);
+    const mine = programDetailDtoSchema.parse((await http('POST', `/programs/${programs.templates[0]!.id}/adopt`, { token: s.token })).json);
+    const day = mine.routines[0]!;
+    const ymd = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+
+    const id = crypto.randomUUID();
+    const started = startWorkoutResponseSchema.parse((await http('POST', '/workouts', { token: s.token, body: { id, routineDayId: day.id, date: ymd(3) } })).json);
+    expect(started.workout.workoutDate.slice(0, 10)).toBe(ymd(3));
+    // The same routine on that same day resumes it.
+    const again = startWorkoutResponseSchema.parse((await http('POST', '/workouts', { token: s.token, body: { id: crypto.randomUUID(), routineDayId: day.id, date: ymd(3) } })).json);
+    expect(again).toMatchObject({ kind: 'resumed', workout: { id } });
+
+    expect((await http('POST', '/workouts', { token: s.token, body: { id: crypto.randomUUID(), routineDayId: day.id, date: ymd(-5) } })).status).toBe(400);
+    expect((await http('POST', '/workouts', { token: s.token, body: { id: crypto.randomUUID(), routineDayId: day.id, date: ymd(90) } })).status).toBe(400);
+  });
+
   it('keeps programs private to their owner and archives them', async () => {
     const a = await register('prog4@example.com');
     const b = await register('prog5@example.com');

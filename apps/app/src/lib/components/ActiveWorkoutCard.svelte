@@ -3,6 +3,7 @@
   import { getActiveWorkoutId, loadSnapshot, type WorkoutSnapshot } from '#lib/offline/workout-session';
   import { cancelWorkoutById } from '#lib/offline/start-workout';
   import { t } from '#lib/i18n';
+  import { localDay, relativeDay } from '#lib/dates';
   import Icon from './Icon.svelte';
   import OverflowMenu from './OverflowMenu.svelte';
 
@@ -50,7 +51,11 @@
       <div class="top">
         <span class="dot" aria-hidden="true"></span>
         <span class="label">{t('workout.inProgress')}</span>
-        <span class="time" role="timer"><Icon name="timer" size={14} />{elapsed}</span>
+        {#if snap.day}
+          <span class="time"><Icon name="history" size={14} />{relativeDay(snap.day, localDay())}</span>
+        {:else}
+          <span class="time" role="timer"><Icon name="timer" size={14} />{elapsed}</span>
+        {/if}
       </div>
       <span class="row">
         <strong class="name">{snap.dayName}</strong>

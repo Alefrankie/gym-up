@@ -28,7 +28,8 @@
   ul {
     list-style: none;
     margin: 0 -1rem;
-    padding: 0 1rem 0.25rem;
+    /* Room above and below: a scroller clips anything outside it, including the cards' 1px ring. */
+    padding: 3px 1rem 0.35rem;
     display: flex;
     gap: 0.5rem;
     overflow-x: auto;

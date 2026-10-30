@@ -133,7 +133,7 @@
         </a>
       {:else}
         <section class="today">
-          <span class="label">{t('home.todayIs')}</span>
+          <span class="label">{t('home.todayIs')}{#if w.week?.target}{' · '}{t('home.dayOf', { n: w.dayNumber, total: w.week.target })}{/if}</span>
           <strong>{w.routineDay.dayName}</strong>
           <span class="meta">{w.routineDay.focus ? `${w.routineDay.focus} · ` : ''}{sessionSummary(w.exercises)}</span>
           <TargetMuscles muscles={muscleLoad(w.exercises)} />

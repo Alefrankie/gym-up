@@ -25,6 +25,7 @@
   import SetPlanEditor from '#lib/components/SetPlanEditor.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import SaveBar from '#lib/components/SaveBar.svelte';
+  import PastDaySheet from '#lib/components/PastDaySheet.svelte';
   import UndoToast from '#lib/components/UndoToast.svelte';
   import { goto } from '$app/navigation';
   import { startRoutine } from '#lib/offline/start-workout';
@@ -185,11 +186,15 @@
   let starting = $state(false);
 
   /** Starts this routine today, whatever the rotation says; opens its first exercise. */
-  async function start() {
+  let pastDay = $state(false);
+
+  /** Starts this routine today, or logs it for an earlier `day`. */
+  async function start(day?: string) {
+    pastDay = false;
     starting = true;
     error = null;
     try {
-      const out = await startRoutine(routineId, (n) => confirm(t('routine.replaceConfirm', { current: n, name })));
+      const out = await startRoutine(routineId, (n) => confirm(t('routine.replaceConfirm', { current: n, name })), day);
       if (out.kind === 'started') {
         await goto(out.firstExerciseId ? `/workout/${out.workoutId}/${out.firstExerciseId}` : `/workout/${out.workoutId}`);
         return;
@@ -276,10 +281,15 @@
   <SaveBar {dirty} {saved} {busy} disabled={!name.trim()} label={t('routine.save')} onsave={save}>
     {#snippet idle()}
       {#if exercises.length}
-        <button class="primary go" disabled={starting} onclick={start}><Icon name="bolt" size={16} /> {starting ? t('routine.starting') : t('routine.start')}</button>
+        <button class="primary go" disabled={starting} onclick={() => start()}><Icon name="bolt" size={16} /> {starting ? t('routine.starting') : t('routine.start')}</button>
+        <button type="button" class="ghost past" disabled={starting} onclick={() => (pastDay = true)}><Icon name="history" size={16} /> {t('routine.logPast')}</button>
       {/if}
     {/snippet}
   </SaveBar>
+{/if}
+
+{#if pastDay}
+  <PastDaySheet onpick={(d) => start(d)} onclose={() => (pastDay = false)} />
 {/if}
 
 {#if picker}
@@ -371,5 +381,13 @@
   }
   .empty {
     text-align: center;
+  }
+  .past {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 40px;
+    font-size: var(--t-sm);
+    background: var(--bg);
   }
 </style>

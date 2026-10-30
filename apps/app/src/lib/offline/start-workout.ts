@@ -12,10 +12,12 @@ type WorkoutDay = Extract<TodayWorkoutResponse, { kind: 'workout_day' }>;
  * routine as the server last described it) and the `start-workout` command reaches the server whenever there is signal.
  * Returns the id of the workout to open.
  */
-export async function beginWorkout(t: WorkoutDay): Promise<string> {
+export async function beginWorkout(t: WorkoutDay, day?: string): Promise<string> {
   const active = await getActiveWorkoutId();
-  const id = t.existingWorkoutId ?? active ?? crypto.randomUUID();
-  if (!t.existingWorkoutId && !active) {
+  // The routine's existing workout is today's; logging an earlier day is always a new one.
+  const existing = day ? null : t.existingWorkoutId;
+  const id = existing ?? active ?? crypto.randomUUID();
+  if (!existing && !active) {
     await saveSnapshot({
       workoutId: id,
       routineDayId: t.routineDay.id,
@@ -25,8 +27,9 @@ export async function beginWorkout(t: WorkoutDay): Promise<string> {
       status: 'in_progress',
       unit: t.weightUnit,
       startedAt: Date.now(),
+      ...(day ? { day } : {}),
     });
-    await sync.enqueue({ type: 'start-workout', id, routineDayId: t.routineDay.id });
+    await sync.enqueue({ type: 'start-workout', id, routineDayId: t.routineDay.id, ...(day ? { date: day } : {}) });
   }
   await setActiveWorkoutId(id);
   return id;
@@ -50,12 +53,17 @@ export type StartOutcome = { kind: 'started'; workoutId: string; firstExerciseId
  * Starts any routine of a program, on any day. If another workout is in progress the caller decides whether to
  * cancel it (`confirmReplace`); if this very routine is already in progress it is simply continued.
  */
-export async function startRoutine(routineDayId: string, confirmReplace: (inProgressName: string) => boolean): Promise<StartOutcome> {
+/** `day` (YYYY-MM-DD) logs the routine as done on an earlier day instead of today. */
+export async function startRoutine(
+  routineDayId: string,
+  confirmReplace: (inProgressName: string) => boolean,
+  day?: string,
+): Promise<StartOutcome> {
   const active = await getActiveWorkoutId();
   if (active) {
     const snap = await loadSnapshot(active);
     if (snap && snap.status === 'in_progress') {
-      if (snap.routineDayId === routineDayId) {
+      if (snap.routineDayId === routineDayId && snap.day === day) {
         return { kind: 'started', workoutId: active, firstExerciseId: snap.exercises[0]?.exerciseId ?? null };
       }
       if (!confirmReplace(snap.dayName)) return { kind: 'declined' };
@@ -64,7 +72,7 @@ export async function startRoutine(routineDayId: string, confirmReplace: (inProg
   }
   const routine = await api(`/workouts/routine/${routineDayId}`, { schema: todayWorkoutResponseSchema });
   if (routine.kind !== 'workout_day') return { kind: 'missing' };
-  const workoutId = await beginWorkout(routine);
+  const workoutId = await beginWorkout(routine, day);
   await invalidateCache(['/workouts/today']);
   return { kind: 'started', workoutId, firstExerciseId: routine.exercises[0]?.exerciseId ?? null };
 }
