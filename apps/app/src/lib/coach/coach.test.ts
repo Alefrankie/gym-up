@@ -75,7 +75,7 @@ describe('coach catalog', () => {
       // racial and origin slurs
       'negro', 'negra', 'indio', 'india', 'sudaca', 'veneco', 'chino', 'nigger', 'spic',
       // sexuality
-      'marico', 'marica', 'maricon', 'maricona', 'puto', 'joto', 'gay', 'fag', 'faggot', 'tortillera',
+      'maricon', 'maricona', 'maricones', 'puto', 'joto', 'gay', 'fag', 'faggot', 'tortillera', 'homosexual', 'trolo',
       // disability
       'retrasado', 'retrasada', 'mongolico', 'mongolica', 'subnormal', 'invalido', 'invalida', 'tarado', 'tarada', 'autista', 'retard', 'cripple', 'cojo', 'coja', 'manco', 'manca', 'lisiado',
       // bodies
@@ -83,7 +83,9 @@ describe('coach catalog', () => {
     ];
     const phrases = [
       // threats
-      'te mato', 'te voy a matar', 'te parto', 'te reviento', 'ver las caras', 'kill you', 'beat you',
+      'te mato', 'te voy a matar', 'te parto', 'te reviento', 'te voy a pegar', 'ver las caras', 'kill you', 'beat you',
+      // "marico" is only a friendly vocative: never a statement about someone's sexuality
+      'eres marico', 'eres marica', 'es marico', 'como marico', 'de marico', 'pareces marico', 'pareces marica',
       // training through pain or injury
       'aunque duela', 'con dolor', 'ignora el dolor', 'sin dolor no', 'lesion', 'no pain', 'through the pain', 'injur',
     ];
@@ -95,8 +97,20 @@ describe('coach catalog', () => {
     }
   });
 
-  it('keeps swearing to gymrat', () => {
-    const swear = ['coño', 'carajo', 'verga', 'vergación', 'joder', 'jodas', 'mierda', 'bolas', 'pendejo', 'pendeja', 'fuck', 'shit', 'damn'];
+  it('keeps gymrat street: most of its lines swear or use Venezuelan slang', () => {
+    const street = /(coño|carajo|verga|vergación|mierda|bolas|pendej\w*|marico|marica|mamagüevo|mariquera\w*|güevón|güevona|pajúo|pajúa|ladilla|vaina|chamo|chama|pana|épale|na’ guará|becerr[oa]|mojón|jod\w+|flojo|floja|flojera)/iu;
+    for (const event of COACH_EVENTS) {
+      const lines = LINES.gymrat.es![event].map(lineText);
+      const share = lines.filter((l) => street.test(l)).length / lines.length;
+      expect(share, event).toBeGreaterThan(0.6);
+    }
+  });
+
+  it('keeps swearing and street slang to gymrat', () => {
+    const swear = [
+      'coño', 'carajo', 'verga', 'vergación', 'joder', 'jodas', 'jodiendo', 'mierda', 'bolas', 'pendejo', 'pendeja', 'marico', 'marica',
+      'mamagüevo', 'mariquera', 'mariqueras', 'güevón', 'güevona', 'pajúo', 'pajúa', 'mojón', 'cagando', 'fuck', 'shit', 'damn',
+    ];
     for (const { tone, text } of all().filter((l) => l.tone !== 'gymrat')) {
       const w = text.toLowerCase().split(/[^\p{L}]+/u);
       for (const bad of swear) expect(w.includes(bad), `"${bad}" in ${tone}: ${text}`).toBe(false);
