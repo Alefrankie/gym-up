@@ -48,11 +48,19 @@ describe('reactToSet', () => {
   describe('compared with the previous set today', () => {
     const prev = { weight: 10, reps: 10 };
 
-    it('reacts to fewer reps or less weight than the previous working set', () => {
+    it('reacts to less weight, or fewer reps at the same weight, than the previous working set', () => {
       expect(reactToSet({ weight: 10, reps: 8 }, null, null, [prev], prev)).toBe('setDrop');
       expect(reactToSet({ weight: 7.5, reps: 10 }, null, null, [prev], prev)).toBe('setDrop');
+      expect(reactToSet({ weight: 7.5, reps: 12 }, null, null, [prev], prev)).toBe('setDrop');
       expect(reactToSet({ weight: 10, reps: 10 }, null, null, [prev], prev)).toBe('setDone');
-      expect(reactToSet({ weight: 12.5, reps: 8 }, null, null, [prev], prev)).toBe('setDrop');
+      expect(reactToSet({ weight: 10, reps: 12 }, null, null, [prev], prev)).toBe('setDone');
+    });
+
+    it('treats a heavier set than the previous one as progress, even with fewer reps', () => {
+      expect(reactToSet({ weight: 12.5, reps: 8 }, null, null, [prev], prev)).toBe('progressUp');
+      expect(reactToSet({ weight: 12.5, reps: 8 }, { weight: 15, reps: 8 }, null, [prev], prev)).toBe('progressUp');
+      expect(reactToSet({ weight: 12.5, reps: 8 }, null, { weight: 12.5, reps: 5 }, [prev], prev)).toBe('pr');
+      expect(reactToSet({ weight: 12.5, reps: 8, type: 'warmup' }, null, null, [prev], prev)).toBe('setDone');
     });
 
     it('leaves drop sets, warm-ups and the first set alone', () => {

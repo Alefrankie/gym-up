@@ -31,9 +31,10 @@ const beats = (a: SetLike, b: { weight: number; reps: number }) => a.weight > b.
 /**
  * What the Coach says when a set is ticked, all weights in the same unit, in this order of preference:
  * - `pr`: beats the all-time best (and anything heavier already done today),
- * - `progressUp`: beats the same set of last session (heavier, or more reps at no less weight),
- * - `setDrop`: fewer reps or less weight than the previous working set of the exercise today (drop sets are meant
- *   to go lower and are left alone),
+ * - `progressUp`: beats the same set of last session (heavier, or more reps at no less weight), or is heavier than
+ *   the previous working set of the exercise today,
+ * - `setDrop`: lighter than the previous working set today, or fewer reps at the same weight (drop sets are meant
+ *   to go lower and are left alone; heavier with fewer reps is progress, not a drop),
  * - `setDone` otherwise. Warm-ups are always `setDone`.
  */
 export function reactToSet(
@@ -49,6 +50,8 @@ export function reactToSet(
     if (beats(set, best)) return 'pr';
   }
   if (last && (set.weight > last.weight || (set.reps > last.reps && set.weight >= last.weight))) return 'progressUp';
-  if (set.type !== 'drop' && previous && previous.type !== 'warmup' && (set.reps < previous.reps || set.weight < previous.weight)) return 'setDrop';
+  const prev = previous && previous.type !== 'warmup' ? previous : null;
+  if (prev && set.weight > prev.weight) return 'progressUp';
+  if (set.type !== 'drop' && prev && (set.weight < prev.weight || (set.weight === prev.weight && set.reps < prev.reps))) return 'setDrop';
   return 'setDone';
 }
