@@ -74,6 +74,8 @@ class AppUpdates {
   async install() {
     const manifest = this.available;
     if (!manifest || this.downloading) return;
+    // Claim the flag before any await so a quick second tap is ignored.
+    this.downloading = true;
 
     try {
       // The plugin resolves { allowed }, not a bare boolean.
@@ -87,7 +89,6 @@ class AppUpdates {
       this.permissionRequired = false;
       this.error = false;
       this.errorDetail = '';
-      this.downloading = true;
       this.downloaded = 0;
       this.downloadSize = 0;
       let unlisten: { unregister: () => Promise<void> } | undefined;
