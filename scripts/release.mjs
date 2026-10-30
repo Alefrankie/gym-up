@@ -11,7 +11,7 @@ const packageFiles = ['package.json', 'apps/app/package.json', 'apps/api/package
 
 function run(command, args, { cwd = root, capture = false } = {}) {
   console.log(`\n> ${command} ${args.join(' ')}`);
-  const result = spawnSync(command, args, { cwd, shell: isWin, encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' });
+  const result = spawnSync(command, args, { cwd, shell: isWin && command === 'pnpm', encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' });
   if (result.status !== 0) process.exit(result.status ?? 1);
   return (result.stdout ?? '').trim();
 }
