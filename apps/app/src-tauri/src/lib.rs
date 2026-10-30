@@ -2,6 +2,7 @@
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_apk_installer::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

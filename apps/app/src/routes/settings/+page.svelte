@@ -10,6 +10,7 @@
   import SyncBanner from '#lib/components/SyncBanner.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import { i18n, t, type LocalePreference } from '#lib/i18n';
+  import { appUpdates } from '#lib/updates.svelte';
 
   let displayName = $state('');
   let weightUnit = $state<'kg' | 'lbs'>('kg');
@@ -60,6 +61,33 @@
 <main>
   <h1>{t('settings.title')}</h1>
   <SyncBanner />
+  {#if appUpdates.supported}
+  <section class="card">
+    <h2 class="first">{t('update.title')}</h2>
+    <p class="muted hint">
+      {#if appUpdates.checking}
+        {t('update.checking')}
+      {:else if appUpdates.available}
+        {t('update.description', { version: appUpdates.available.version })}
+      {:else if appUpdates.checked}
+        {t('update.current')}
+      {/if}
+    </p>
+    {#if appUpdates.error}<p class="error" role="alert">{t('update.error')}</p>{/if}
+    <div class="update-actions">
+      <button type="button" class="primary" disabled={appUpdates.checking} onclick={() => appUpdates.check(true)}>
+        {appUpdates.checking ? t('update.checking') : t('update.check')}
+      </button>
+      {#if appUpdates.available}
+        <button type="button" disabled={appUpdates.downloading} onclick={() => appUpdates.install()}>
+          {appUpdates.downloading ? t('update.downloading') : t('update.install')}
+        </button>
+      {/if}
+    </div>
+    {#if appUpdates.permissionRequired}<p class="muted hint">{t('update.permission')}</p>{/if}
+  </section>
+  {/if}
+
   <section class="card">
     <h2 class="first">{t('settings.profile')}</h2>
     <form onsubmit={save}>
@@ -154,4 +182,5 @@
     margin: 0.6rem 0 0;
     font-size: var(--t-sm);
   }
+  .update-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 </style>

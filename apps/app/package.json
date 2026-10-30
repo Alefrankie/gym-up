@@ -34,13 +34,17 @@
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/barlow-condensed": "^5.3.0",
     "@gym-up/contracts": "workspace:*",
+    "@lichess-org/vosk-browser": "0.0.3",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-notification": "~2.8.0",
     "chart.js": "^4.6.1",
+    "fflate": "^0.8.3",
     "qrcode": "^1.5.4",
+    "runonweb": "0.1.0",
     "zod": "^4.6.7"
   },
   "imports": {
+    "#lib/updates.svelte": "./src/lib/updates.svelte.ts",
     "#lib/session": "./src/lib/session.svelte.ts",
     "#lib/offline/sync.svelte": "./src/lib/offline/sync.svelte.ts",
     "#lib/offline/rest.svelte": "./src/lib/offline/rest.svelte.ts",

@@ -17,6 +17,8 @@
     { href: '/history', title: 'more.history', hint: 'more.historyHint', icon: 'history' },
     { href: '/supplements', title: 'more.supplements', hint: 'more.supplementsHint', icon: 'check' },
     { href: '/photos', title: 'more.photos', hint: 'more.photosHint', icon: 'camera' },
+    { href: '/feedback', title: 'feedback.title', hint: 'feedback.lead', icon: 'users' },
+    { href: '/voice-benchmark', title: 'more.voiceBenchmark', hint: 'more.voiceBenchmarkHint', icon: 'mic' },
     { href: '/settings', title: 'more.settings', hint: 'more.settingsHint', icon: 'sliders' },
   ];
 </script>

@@ -8,6 +8,7 @@
   import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
   import SyncBanner from './SyncBanner.svelte';
+  import WorkoutVoiceAssistant from './WorkoutVoiceAssistant.svelte';
 
   let { id, children }: { id: string; children: Snippet } = $props();
 
@@ -36,6 +37,7 @@
   <SyncBanner />
   {#if view.error}<p class="error" role="alert">{view.error}</p>{/if}
   {#if !view.snap && !view.error}<p class="muted loading">{t('common.loading')}</p>{/if}
+  <WorkoutVoiceAssistant />
   {#if view.snap}{@render children()}{/if}
 </main>
 

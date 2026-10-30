@@ -25,6 +25,8 @@ pnpm --filter @gym-up/app android:share   # compact, sideloadable APK for sharin
 pnpm --filter @gym-up/app deploy:web      # publish /descarga and the latest share APK to Cloudflare
 ```
 
+For Android releases, increment `version` in `apps/app/src-tauri/tauri.conf.json` before deploying. The deploy generates `update.json` from the signed APK and its Android version metadata; installed Android apps check it on launch and from Settings.
+
 ## Notes
 
 - `apps/app` pins TypeScript 6: SvelteKit 3 and svelte-check still use the TypeScript JS API, which TypeScript 7 no longer ships. The rest of the repo uses TypeScript 7.

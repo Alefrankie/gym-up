@@ -8,7 +8,7 @@
     { href: '/programs', label: 'nav.train', icon: 'dumbbell', match: ['/programs', '/library'] },
     { href: '/progress', label: 'nav.progress', icon: 'chart', match: ['/progress'] },
     { href: '/groups', label: 'nav.groups', icon: 'users', match: ['/groups'] },
-    { href: '/more', label: 'nav.more', icon: 'more', match: ['/more', '/history', '/photos', '/settings', '/nutrition'] },
+    { href: '/more', label: 'nav.more', icon: 'more', match: ['/more', '/history', '/photos', '/settings', '/nutrition', '/feedback'] },
   ];
 </script>
 
