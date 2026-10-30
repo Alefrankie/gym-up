@@ -187,8 +187,14 @@ export class WorkoutsController {
 
   @Post(':id/complete')
   @HttpCode(200)
-  async complete(@CurrentUser() user: User, @Param('id') id: string): Promise<WorkoutDto> {
-    const { workout } = await this.completeWorkout.execute({ userId: user.id, workoutId: id });
+  async complete(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { durationSeconds?: unknown } | undefined,
+  ): Promise<WorkoutDto> {
+    const d = body?.durationSeconds;
+    const durationSeconds = typeof d === 'number' && Number.isFinite(d) && d > 0 ? Math.round(d) : undefined;
+    const { workout } = await this.completeWorkout.execute({ userId: user.id, workoutId: id, durationSeconds });
     return toWorkoutDto(workout);
   }
 }

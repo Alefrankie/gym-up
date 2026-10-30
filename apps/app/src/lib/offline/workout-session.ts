@@ -15,6 +15,8 @@ export interface SetRow {
   completed: boolean;
   /** Missing on snapshots saved before set types existed: read as 'normal'. */
   type?: SetType;
+  /** When the set was ticked (epoch ms): tells when the session really ended if finish was forgotten. */
+  doneAt?: number;
 }
 
 export interface WorkoutSnapshot {

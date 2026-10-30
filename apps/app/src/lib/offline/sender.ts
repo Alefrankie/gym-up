@@ -21,7 +21,10 @@ export const sendCommand: Sender = async (command: Command) => {
       await api(`/workouts/${command.workoutId}`, { method: 'DELETE' });
       return;
     case 'finish-workout':
-      await api(`/workouts/${command.workoutId}/complete`, { method: 'POST' });
+      await api(`/workouts/${command.workoutId}/complete`, {
+        method: 'POST',
+        body: command.durationSeconds ? { durationSeconds: command.durationSeconds } : undefined,
+      });
       return;
     case 'mark-supplement':
       await api(`/supplements/${command.supplementId}/log`, { method: 'PUT', body: { day: command.day, taken: command.taken } });

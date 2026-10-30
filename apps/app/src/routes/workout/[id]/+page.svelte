@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FinishSheet from '#lib/components/FinishSheet.svelte';
   import { page } from '$app/state';
   import { muscleLoad } from '#lib/muscle-load';
   import { useWorkoutView } from '#lib/offline/workout-context';
@@ -16,6 +17,7 @@
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
 
   const view = useWorkoutView();
+  let finishing = $state(false);
   const id = $derived(page.params.id ?? '');
   const exercises = $derived(view.snap?.exercises ?? []);
   const done = $derived(exercises.reduce((n, e) => n + view.progress(e).done, 0));
@@ -110,12 +112,14 @@
 {#if !view.isCompleted}
   <SaveBar dirty={false} saved={false} onsave={() => {}}>
     {#snippet idle()}
-      <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => view.finish()}>
+      <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => (finishing = true)}>
         <Icon name="check" size={18} /> {view.finishing ? t('workout.finishing') : t('workout.finish')}
       </button>
     {/snippet}
   </SaveBar>
 {/if}
+
+{#if finishing}<FinishSheet {view} onclose={() => (finishing = false)} />{/if}
 
 <style>
   .bar {

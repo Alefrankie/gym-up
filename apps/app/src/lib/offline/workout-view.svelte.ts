@@ -222,6 +222,7 @@ export class WorkoutView {
     const r = snap?.rows[rowKey(exerciseId, setNumber)];
     if (!snap || !r) return;
     r.completed = completed;
+    r.doneAt = completed ? Date.now() : undefined;
     await saveSnapshot(snap);
     await sync.enqueue({
       type: 'upsert-set',
@@ -341,7 +342,30 @@ export class WorkoutView {
     await goto('/dashboard', { replaceState: true });
   }
 
-  async finish(): Promise<boolean> {
+  /** Planned sets still not ticked: finishing with them left is allowed, after a warning. */
+  get pendingSets(): number {
+    return (this.snap?.exercises ?? []).reduce((n, e) => n + this.progress(e).total - this.progress(e).done, 0);
+  }
+
+  /**
+   * How long the session took, by the clock, and what we would suggest instead when the clock can't be
+   * trusted: a past day (no clock at all), or a timer left running long after the last set.
+   */
+  get duration(): { clockSeconds: number | null; suggestedSeconds: number; doubtful: boolean } {
+    const snap = this.snap;
+    if (!snap) return { clockSeconds: null, suggestedSeconds: 0, doubtful: false };
+    const rows = Object.values(snap.rows).filter((r) => r.completed);
+    const estimate = Math.max(10, Math.round((rows.length * 135 + 300) / 300) * 5) * 60;
+    if (snap.day) return { clockSeconds: null, suggestedSeconds: estimate, doubtful: true };
+    const clock = Math.max(60, Math.round((Date.now() - snap.startedAt) / 1000));
+    const lastDone = Math.max(0, ...rows.map((r) => r.doneAt ?? 0));
+    // Done the last set and walked away: the session ended a few minutes after it, not now.
+    const byLastSet = lastDone > snap.startedAt ? Math.round((lastDone - snap.startedAt) / 1000) + 300 : estimate;
+    const doubtful = clock > 3 * 3600 || (lastDone > 0 && Date.now() - lastDone > 30 * 60 * 1000);
+    return { clockSeconds: clock, suggestedSeconds: doubtful ? Math.min(byLastSet, clock) : clock, doubtful };
+  }
+
+  async finish(durationSeconds?: number): Promise<boolean> {
     const snap = this.snap;
     if (!snap) return false;
     if (!this.anyCompleted) {
@@ -352,7 +376,7 @@ export class WorkoutView {
     this.error = null;
     snap.status = 'completed';
     await saveSnapshot(snap);
-    await sync.enqueue({ type: 'finish-workout', workoutId: this.#id });
+    await sync.enqueue({ type: 'finish-workout', workoutId: this.#id, durationSeconds });
     await setActiveWorkoutId(null);
     restTimer.skip();
     await goto('/history', { replaceState: true });

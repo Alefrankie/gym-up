@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FinishSheet from '#lib/components/FinishSheet.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { muscle } from '#lib/labels';
@@ -12,6 +13,7 @@
   import { teaseLowerWeight } from '#lib/nudge.svelte';
 
   const view = useWorkoutView();
+  let finishing = $state(false);
   const id = $derived(page.params.id ?? '');
   const exercises = $derived(view.snap?.exercises ?? []);
   const index = $derived(exercises.findIndex((e) => e.exerciseId === page.params.exercise));
@@ -119,7 +121,7 @@
     <div class="pair">
       <button type="button" class="round" disabled={index === 0} onclick={() => go(-1)} aria-label={t('workout.prevExercise')}><Icon name="left" size={20} /></button>
       {#if isLast}
-        <button class="primary" disabled={view.finishing || !view.anyCompleted || view.isCompleted} onclick={() => view.finish()}>
+        <button class="primary" disabled={view.finishing || !view.anyCompleted || view.isCompleted} onclick={() => (finishing = true)}>
           {view.finishing ? t('workout.finishingAlt') : t('workout.finishAlt')}
         </button>
       {:else}
@@ -128,6 +130,8 @@
     </div>
   </div>
 {/if}
+
+{#if finishing}<FinishSheet {view} onclose={() => (finishing = false)} />{/if}
 
 <style>
   .hero {

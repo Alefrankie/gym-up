@@ -30,7 +30,15 @@ export interface CompleteWorkoutInput {
   workoutId: string;
   /** Injectable "now" — used by tests to make `completedAt` deterministic. */
   now?: Date;
+  /**
+   * How long the session really took, when the user corrects the clock (forgot to tap finish,
+   * or logged an earlier day). `completedAt` becomes start + duration instead of now.
+   */
+  durationSeconds?: number;
 }
+
+/** Longest session we accept as a correction: anything beyond is a forgotten timer. */
+export const MAX_DURATION_SECONDS = 6 * 3600;
 
 export interface CompleteWorkoutResult {
   workout: Workout;
@@ -80,9 +88,13 @@ export class CompleteWorkoutUseCase {
 
     // 3. Update workout status to 'completed' and set completedAt.
     const now = input.now ?? new Date();
+    const completedAt =
+      input.durationSeconds != null
+        ? new Date(workout.startedAt.getTime() + Math.min(Math.max(input.durationSeconds, 60), MAX_DURATION_SECONDS) * 1000)
+        : now;
     const updated = await this.workoutRepository.update(
       input.workoutId,
-      { status: 'completed', completedAt: now },
+      { status: 'completed', completedAt },
       input.userId,
     );
 
