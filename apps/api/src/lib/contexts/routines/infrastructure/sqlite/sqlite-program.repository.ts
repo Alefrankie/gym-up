@@ -184,10 +184,10 @@ export class SqliteProgramRepository implements ProgramRepository {
     for (const [i, r] of input.entries()) {
       await this.db
         .insert(routineDays)
-        .values({ id: r.id, routineId: programId, dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes })
+        .values({ id: r.id, routineId: programId, dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes, weekday: r.weekday })
         .onConflictDoUpdate({
           target: routineDays.id,
-          set: { dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes },
+          set: { dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes, weekday: r.weekday },
           setWhere: eq(routineDays.routineId, programId),
         });
       const slotIds = r.slots.map((s) => s.id);

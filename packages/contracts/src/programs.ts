@@ -27,6 +27,8 @@ export const programRoutineDtoSchema = z.object({
   name: z.string(),
   focus: z.string(),
   notes: z.string().nullable(),
+  /** Planned day of the week, 0 = Sunday … 6 = Saturday; null = no fixed day. */
+  weekday: z.number().int().min(0).max(6).nullable().optional(),
   exercises: z.array(programExerciseDtoSchema),
 });
 export type ProgramRoutineDto = z.infer<typeof programRoutineDtoSchema>;
@@ -79,6 +81,7 @@ export const programRoutineInputSchema = z.object({
   name: z.string().trim().min(1).max(60),
   focus: z.string().trim().max(80).default(''),
   notes: z.string().trim().max(500).nullish(),
+  weekday: z.number().int().min(0).max(6).nullish(),
   exercises: z.array(programExerciseInputSchema).max(PROGRAM_LIMITS.exercises),
 });
 export type ProgramRoutineInput = z.infer<typeof programRoutineInputSchema>;

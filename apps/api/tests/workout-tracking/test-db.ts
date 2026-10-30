@@ -72,7 +72,8 @@ const DDL = `
     day_number INTEGER NOT NULL,
     day_name TEXT NOT NULL,
     focus TEXT NOT NULL,
-    notes TEXT
+    notes TEXT,
+    weekday INTEGER
   );
   CREATE TABLE routine_exercises (
     id TEXT PRIMARY KEY,

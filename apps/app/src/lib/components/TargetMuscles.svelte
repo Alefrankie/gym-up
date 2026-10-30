@@ -3,11 +3,12 @@
   import { t } from '#lib/i18n';
   import MuscleFigure from './MuscleFigure.svelte';
 
-  let { muscles }: { muscles: Array<{ muscle: string; pct: number }> } = $props();
+  /** `compact`: no heading and the row stays inside its container (for use inside a card). */
+  let { muscles, compact = false }: { muscles: Array<{ muscle: string; pct: number }>; compact?: boolean } = $props();
 </script>
 
-<section aria-label={t('workout.targetMuscles')}>
-  <h2>{t('workout.targetMuscles')}</h2>
+<section class:compact aria-label={t('workout.targetMuscles')}>
+  {#if !compact}<h2>{t('workout.targetMuscles')}</h2>{/if}
   <ul>
     {#each muscles as m (m.muscle)}
       <li>
@@ -22,6 +23,10 @@
 </section>
 
 <style>
+  .compact ul {
+    margin: 0.5rem -2px 0;
+    padding: 3px 2px 0.35rem;
+  }
   section h2 {
     margin-top: 1.25rem;
   }

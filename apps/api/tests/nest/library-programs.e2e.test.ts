@@ -206,12 +206,13 @@ describe('programs', () => {
       name: 'Mi plan v2',
       description: 'Dos días',
       routines: [
-        { id: dayA, name: 'A', focus: 'Pecho', exercises: [{ exerciseId: idOf('Bench Press'), targetSets: 4, targetReps: 8, warmupSets: 1, restSeconds: 120 }] },
+        { id: dayA, name: 'A', focus: 'Pecho', weekday: 1, exercises: [{ exerciseId: idOf('Bench Press'), targetSets: 4, targetReps: 8, warmupSets: 1, restSeconds: 120 }] },
         { id: dayB, name: 'B', focus: 'Pierna', exercises: [{ exerciseId: idOf('Squat'), targetSets: 5, targetReps: 5, warmupSets: 0 }] },
       ],
     };
     const saved = programDetailDtoSchema.parse((await http('PUT', `/programs/${id}`, { token: s.token, body })).json);
     expect(saved).toMatchObject({ name: 'Mi plan v2', routineCount: 2, daysPerWeek: 2 });
+    expect(saved.routines.map((r) => r.weekday)).toEqual([1, null]);
     expect(saved.routines[0]!.exercises[0]).toMatchObject({ exerciseName: 'Bench Press', targetReps: 8, warmupSets: 1, restSeconds: 120 });
 
     // replaying the same save changes nothing (ids are kept)

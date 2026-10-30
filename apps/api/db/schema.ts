@@ -118,6 +118,8 @@ export const routineDays = sqliteTable('routine_days', {
   dayName: text('day_name').notNull(),
   focus: text('focus').notNull(),
   notes: text('notes'),
+  /** Planned day of the week, 0 = Sunday … 6 = Saturday; null = no fixed day (rotation). */
+  weekday: integer('weekday'),
 });
 
 export type RoutineDay = typeof routineDays.$inferSelect;

@@ -308,6 +308,15 @@ export class WorkoutView {
     await saveSnapshot(snap);
   }
 
+  /** What this set weighed last session (in the user's unit), to compare against; null for warm-ups or no history. */
+  lastWeightFor(ex: RoutineExerciseDto, n: number): number | null {
+    const r = this.row(ex.exerciseId, n);
+    if (!this.snap || !ex.last || r?.type === 'warmup') return null;
+    const working = this.setNumbers(ex).filter((k) => k <= n && this.row(ex.exerciseId, k)?.type !== 'warmup').length || n;
+    const kg = ex.last.sets?.[working - 1]?.weight ?? ex.last.weight;
+    return toDisplay(kg, this.snap.unit);
+  }
+
   /** Adds one more set to an exercise, copying the previous set's reps and weight. */
   async addSet(ex: RoutineExerciseDto) {
     const snap = this.snap;

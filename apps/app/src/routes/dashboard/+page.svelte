@@ -99,7 +99,9 @@
 
   // Weekday programs: Home shows the routine named after today, not the next one in the rotation.
   let planned = $state<TodayWorkoutResponse | null>(null);
-  let restNext = $state<{ name: string; weekday: number } | null>(null);
+  // The routine coming up after today's (shown on rest days and once today's is done).
+  let nextUp = $state<{ name: string; weekday: number } | null>(null);
+  let restDay = $state(false);
   let byWeekday = $state(false);
 
   async function followWeekday() {
@@ -110,8 +112,9 @@
       const pick = routineForDate(program.routines, new Date());
       if (!pick) return;
       byWeekday = true;
+      nextUp = pick.next && pick.nextWeekday !== null ? { name: pick.next.name, weekday: pick.nextWeekday } : null;
       if (!pick.today) {
-        restNext = pick.next && pick.nextWeekday !== null ? { name: pick.next.name, weekday: pick.nextWeekday } : null;
+        restDay = true;
         return;
       }
       if (today?.kind === 'workout_day' && today.routineDay.id === pick.today.id) return;
@@ -159,11 +162,16 @@
   <ActiveWorkoutCard oncancelled={() => location.reload()} />
 
   {#if !live}
-    {#if byWeekday && restNext && !planned}
+    {#if byWeekday && restDay}
+      <!-- A planned rest day never blocks training: plans change, the gym is still open. -->
       <section class="today">
         <span class="label">{t('common.today')}</span>
         <strong>{t('home.restDay')}</strong>
-        <span class="muted">{t('home.nextOn', { name: restNext.name, day: weekdayName(restNext.weekday) })}</span>
+        {#if nextUp}<span class="muted">{t('home.nextOn', { name: nextUp.name, day: weekdayName(nextUp.weekday) })}</span>{/if}
+        <div class="actions">
+          <span></span>
+          <button type="button" class="go secondary" onclick={() => (logDay = localDay())}><Icon name="bolt" size={16} /> {t('home.trainAnyway')}</button>
+        </div>
       </section>
     {:else if (planned ?? today)?.kind === 'workout_day'}
       {@const w = (planned ?? today) as Extract<TodayWorkoutResponse, { kind: 'workout_day' }>}
@@ -172,13 +180,14 @@
           <span class="label ok"><Icon name="check" size={14} /> {t('home.doneToday')}</span>
           <strong>{w.routineDay.dayName}</strong>
           <span class="muted">{t('home.seeSummary')}</span>
+          {#if byWeekday && nextUp}<span class="muted">{t('home.doneNext', { name: nextUp.name, day: weekdayName(nextUp.weekday) })}</span>{/if}
         </a>
       {:else}
         <section class="today">
           <span class="label">{#if byWeekday}{t('home.todayRoutine')}{:else}{t('home.todayIs')}{#if w.week?.target}{' · '}{t('home.dayOf', { n: w.dayNumber, total: w.week.target })}{/if}{/if}</span>
           <strong>{w.routineDay.dayName}</strong>
           <span class="meta">{w.routineDay.focus ? `${w.routineDay.focus} · ` : ''}{sessionSummary(w.exercises)}</span>
-          <TargetMuscles muscles={muscleLoad(w.exercises)} />
+          <TargetMuscles muscles={muscleLoad(w.exercises)} compact />
           <div class="actions">
             <button type="button" class="ghost toggle" aria-expanded={showExercises} onclick={() => (showExercises = !showExercises)}>
               {showExercises ? t('home.hideExercises') : t('home.showExercises')} <Icon name={showExercises ? 'up' : 'down'} size={16} />
@@ -332,6 +341,10 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+  }
+  .secondary {
+    min-height: 44px;
+    border-radius: 999px;
   }
   .rows {
     list-style: none;

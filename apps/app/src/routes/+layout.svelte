@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { sync } from '#lib/offline/sync.svelte';
   import { i18n } from '#lib/i18n';
+  import NudgeToast from '#lib/components/NudgeToast.svelte';
 
   let { children } = $props();
 
@@ -17,3 +18,5 @@
 </script>
 
 {@render children()}
+
+<NudgeToast />

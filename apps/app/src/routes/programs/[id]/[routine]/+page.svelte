@@ -8,6 +8,7 @@
     PROGRAM_LIMITS,
     libraryExerciseListResponseSchema,
     programDetailDtoSchema,
+    todayWorkoutResponseSchema,
     type LibraryExerciseDto,
     type ProgramDetailDto,
     type SetPlan,
@@ -27,6 +28,7 @@
   import SaveBar from '#lib/components/SaveBar.svelte';
   import PastDaySheet from '#lib/components/PastDaySheet.svelte';
   import ExerciseScreen from '#lib/components/ExerciseScreen.svelte';
+  import WeekdayPicker from '#lib/components/WeekdayPicker.svelte';
   import UndoToast from '#lib/components/UndoToast.svelte';
   import { goto } from '$app/navigation';
   import { startRoutine } from '#lib/offline/start-workout';
@@ -64,6 +66,21 @@
   let detail = $state<ProgramDetailDto | null>(null);
   let name = $state('');
   let focus = $state('');
+  // Planned weekday of this routine (0 = Sunday … 6 = Saturday), at most one.
+  let weekday = $state<number[]>([]);
+  // Last session's working-set weights (kg) per exercise, to tease a planned weight that goes below them.
+  let lastWeights = $state<Record<string, number[]>>({});
+  $effect(() => {
+    if (!routineId) return;
+    cachedGet(`/workouts/routine/${routineId}`, todayWorkoutResponseSchema)
+      .then((r) => {
+        if (r.data.kind !== 'workout_day') return;
+        lastWeights = Object.fromEntries(
+          r.data.exercises.filter((e) => e.last).map((e) => [e.exerciseId, e.last!.sets?.map((s) => s.weight) ?? [e.last!.weight]]),
+        );
+      })
+      .catch(() => {});
+  });
   let exercises = $state<Draft[]>([]);
   let library = $state<LibraryExerciseDto[]>([]);
   let error = $state<string | null>(null);
@@ -71,7 +88,7 @@
   // What was last loaded or saved; the save bar shows only when the routine really differs from it.
   let baseline = $state('');
   const fingerprint = () =>
-    JSON.stringify({ name: name.trim(), focus: focus.trim(), exercises: exercises.map((e) => [e.exerciseId, e.sets, e.restSeconds, e.notes]) });
+    JSON.stringify({ name: name.trim(), focus: focus.trim(), weekday: weekday[0] ?? null, exercises: exercises.map((e) => [e.exerciseId, e.sets, e.restSeconds, e.notes]) });
   const dirty = $derived(!!baseline && fingerprint() !== baseline);
   let saved = $state(false);
   // The exercise shown on its own screen (details + its sets).
@@ -92,6 +109,7 @@
         if (!r) return false;
         name = r.name;
         focus = r.focus;
+        weekday = r.weekday === null || r.weekday === undefined ? [] : [r.weekday];
         exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [], sets: planOf(e) }));
         baseline = fingerprint();
         return true;
@@ -162,7 +180,7 @@
     try {
       const routines = detail.routines.map((r) =>
         r.id === routineId
-          ? { ...r, name: name.trim() || r.name, focus, exercises: exercises.map((e) => ({ ...e, muscleGroup: e.muscleGroup, id: e.id ?? crypto.randomUUID() })) }
+          ? { ...r, name: name.trim() || r.name, focus, weekday: weekday[0] ?? null, exercises: exercises.map((e) => ({ ...e, muscleGroup: e.muscleGroup, id: e.id ?? crypto.randomUUID() })) }
           : r,
       );
       detail = await api(`/programs/${programId}`, {
@@ -219,6 +237,10 @@
     {#if editable}
       <input class="title-input" maxlength="60" aria-label={t('routine.name')} placeholder={t('routine.name')} bind:value={name} oninput={touch} />
       <input class="focus" maxlength="80" aria-label={t('routine.focus')} placeholder={t('routine.focusPlaceholder')} bind:value={focus} oninput={touch} />
+      <div class="weekday">
+        <span class="muted">{t('routine.weekday')}</span>
+        <WeekdayPicker bind:selected={weekday} multiple={false} label={t('routine.weekday')} onchange={touch} />
+      </div>
     {:else}
       <h1>{name}</h1>
       <p class="muted">{focus}</p>
@@ -301,7 +323,7 @@
   >
     {#if editable}
       <h2 class="first">{t('routine.setsTitle')}</h2>
-      <SetPlanEditor bind:sets={d.sets} unit={session.user?.weightUnit ?? 'kg'} onchange={() => planChanged(d)} />
+      <SetPlanEditor bind:sets={d.sets} unit={session.user?.weightUnit ?? 'kg'} last={lastWeights[d.exerciseId] ?? []} onchange={() => planChanged(d)} />
     {/if}
   </ExerciseScreen>
 {/if}
@@ -403,5 +425,11 @@
     min-height: 40px;
     font-size: var(--t-sm);
     background: var(--bg);
+  }
+  .weekday {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    font-size: var(--t-sm);
   }
 </style>

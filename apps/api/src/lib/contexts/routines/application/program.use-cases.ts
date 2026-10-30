@@ -28,6 +28,7 @@ export interface ProgramRoutineInput {
   name: string;
   focus: string;
   notes?: string | null;
+  weekday?: number | null;
   exercises: ProgramSlotInput[];
 }
 
@@ -105,6 +106,7 @@ export class AdoptProgramUseCase {
     const copy: NewProgramRoutine[] = source.routines.map((r) => ({
       id: crypto.randomUUID(),
       name: r.day.dayName,
+      weekday: r.day.weekday ?? null,
       focus: r.day.focus,
       notes: r.day.notes,
       slots: r.slots.map((s) => ({
@@ -174,6 +176,7 @@ export class SaveProgramUseCase {
       id: r.id ?? crypto.randomUUID(),
       name: r.name,
       focus: r.focus,
+      weekday: r.weekday ?? null,
       notes: r.notes ?? null,
       slots: r.exercises.map((e) => ({
         id: e.id ?? crypto.randomUUID(),

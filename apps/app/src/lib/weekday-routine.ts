@@ -1,6 +1,7 @@
 /**
- * Programs whose routines are named after weekdays ("Monday", "Lunes, pecho"…) are followed by the calendar:
- * on Friday you train Friday's routine. Programs with other names (Day A / Day B…) keep the rotation.
+ * Programs whose routines have a planned weekday are followed by the calendar: on Friday you train Friday's
+ * routine. The weekday is set when the program is built; older routines named after a weekday ("Monday",
+ * "Lunes, pecho"…) count too. Programs without days keep the rotation.
  */
 
 const NAMES: Record<string, number> = {
@@ -27,14 +28,21 @@ export type ByWeekday<R> = { today: R | null; next: R | null; nextWeekday: numbe
  * When every routine with exercises carries a weekday, returns today's routine (or null on a rest day)
  * and the next one coming up. Returns null for programs that are not organised by weekday.
  */
-export function routineForDate<R extends { name: string; exercises: readonly unknown[] }>(routines: readonly R[], date: Date): ByWeekday<R> | null {
+export function routineForDate<R extends { name: string; weekday?: number | null; exercises: readonly unknown[] }>(
+  routines: readonly R[],
+  date: Date,
+): ByWeekday<R> | null {
   const used = routines.filter((r) => r.exercises.length > 0);
-  if (used.length === 0 || used.some((r) => weekdayOf(r.name) === null)) return null;
+  const dayOf = (r: R) => r.weekday ?? weekdayOf(r.name);
+  // Days set on the routines win; names only matter when no routine has a day yet.
+  const anySet = used.some((r) => r.weekday !== null && r.weekday !== undefined);
+  const planned = anySet ? used.filter((r) => r.weekday !== null && r.weekday !== undefined) : used;
+  if (planned.length === 0 || (!anySet && planned.some((r) => weekdayOf(r.name) === null))) return null;
   const dow = date.getDay();
-  const today = used.find((r) => weekdayOf(r.name) === dow) ?? null;
+  const today = planned.find((r) => dayOf(r) === dow) ?? null;
   for (let i = 1; i <= 7; i++) {
     const d = (dow + i) % 7;
-    const next = used.find((r) => weekdayOf(r.name) === d);
+    const next = planned.find((r) => dayOf(r) === d);
     if (next) return { today, next, nextWeekday: d };
   }
   return { today, next: null, nextWeekday: null };

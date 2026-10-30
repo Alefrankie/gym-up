@@ -8,13 +8,15 @@
   import Icon from './Icon.svelte';
   import ProgramThumb from './ProgramThumb.svelte';
   import Sheet from './Sheet.svelte';
+  import WeekdayPicker from './WeekdayPicker.svelte';
 
-  /** Two ways to start a program: from scratch with N training days, or from a template copied as-is. */
+  /** Two ways to start a program: from scratch on the weekdays you plan to train, or from a template copied as-is. */
   let { templates, onclose }: { templates: ProgramSummaryDto[]; onclose: () => void } = $props();
 
   let from = $state<'empty' | string>('empty');
   let name = $state('');
-  let days = $state(4);
+  // Planned training weekdays, 0 = Sunday … 6 = Saturday. Planned, not fixed: any routine can be done any day.
+  let days = $state<number[]>([1, 3, 5]);
   let busy = $state(false);
   let error = $state<string | null>(null);
 
@@ -42,10 +44,12 @@
           schema: programDetailDtoSchema,
         });
         // One empty routine per training day, named after the weekday: the user fills them in next.
-        const routines = Array.from({ length: days }, (_, i) => ({
+        const ordered = [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+        const routines = ordered.map((wd, i) => ({
           id: crypto.randomUUID(),
           dayNumber: i + 1,
-          name: t(DAY_NAMES[i]!),
+          name: t(DAY_NAMES[(wd + 6) % 7]!),
+          weekday: wd,
           focus: '',
           notes: null,
           exercises: [],
@@ -93,16 +97,13 @@
     {#if from === 'empty'}
       <fieldset>
         <legend>{t('programs.daysPerWeek')}</legend>
-        <div class="days" role="group">
-          {#each [1, 2, 3, 4, 5, 6, 7] as n (n)}
-            <button type="button" class:on={days === n} aria-pressed={days === n} onclick={() => (days = n)}>{n}</button>
-          {/each}
-        </div>
+        <WeekdayPicker bind:selected={days} label={t('programs.daysPerWeek')} />
+        <p class="muted days-hint">{t('programs.planHint')}</p>
       </fieldset>
     {/if}
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <button class="primary" disabled={busy}>{busy ? t('programs.creating') : t('programs.create')}</button>
+    <button class="primary" disabled={busy || (from === 'empty' && days.length === 0)}>{busy ? t('programs.creating') : t('programs.create')}</button>
   </form>
 </Sheet>
 
@@ -156,19 +157,8 @@
     font-size: var(--t-sm);
     font-weight: 400;
   }
-  .days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.35rem;
-  }
-  .days button {
-    min-height: 44px;
-    padding: 0;
-    font-weight: 600;
-  }
-  .days button.on {
-    background: var(--accent);
-    color: var(--accent-ink);
-    box-shadow: none;
+  .days-hint {
+    margin: 0.4rem 0 0;
+    font-size: var(--t-xs);
   }
 </style>

@@ -13,6 +13,7 @@ export function saveBody(
       name: r.name,
       focus: r.focus,
       notes: r.notes,
+      weekday: r.weekday ?? null,
       exercises: r.exercises.map((e) => ({
         id: e.id,
         exerciseId: e.exerciseId,

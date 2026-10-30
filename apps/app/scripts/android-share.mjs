@@ -70,3 +70,8 @@ if (bytes > 25 * 1024 * 1024) {
   console.error('The APK exceeds Cloudflare Workers static asset limit (25 MiB). Host it in R2 or reduce the APK before deployment.');
   process.exit(1);
 }
+
+const shareApk = join(tauriDir, 'target', 'share-artifacts', 'gym-up.apk');
+mkdirSync(join(tauriDir, 'target', 'share-artifacts'), { recursive: true });
+copyFileSync(apk, shareApk);
+console.log(`Saved verified share APK: ${shareApk}`);

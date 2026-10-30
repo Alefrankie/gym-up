@@ -5,8 +5,15 @@
   import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
   import SetTypeCell from './SetTypeCell.svelte';
+  import { teaseLowerWeight } from '#lib/nudge.svelte';
 
-  let { sets = $bindable(), unit = 'kg', onchange }: { sets: SetPlan; unit?: 'kg' | 'lbs'; onchange: () => void } = $props();
+  /** `last`: weights (kg) of the last session's working sets, to tease when a planned weight goes below them. */
+  let {
+    sets = $bindable(),
+    unit = 'kg',
+    last = [],
+    onchange,
+  }: { sets: SetPlan; unit?: 'kg' | 'lbs'; last?: number[]; onchange: () => void } = $props();
 
   const KG_PER_LB = 0.45359237;
   /** The plan stores kilos; the boxes show the user's unit. Empty means "no target weight". */
@@ -92,6 +99,11 @@
         aria-label={t('plan.setWeight', { n: i + 1, unit })}
         onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
         oninput={(e) => setWeight(i, (e.currentTarget as HTMLInputElement).value)}
+        onchange={() => {
+          const kg = sets[i]?.weight;
+          const before = sets[i]?.type === 'warmup' ? undefined : (last[number(i) - 1] ?? last.at(-1));
+          if (kg !== undefined && kg > 0 && before !== undefined && kg < before) teaseLowerWeight();
+        }}
       />
       <button type="button" class="del" disabled={sets.length <= 1} aria-label={t('plan.removeSet', { n: i + 1 })} onclick={() => remove(i)}>
         <Icon name="x" size={18} />

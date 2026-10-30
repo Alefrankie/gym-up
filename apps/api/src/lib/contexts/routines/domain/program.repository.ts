@@ -38,6 +38,7 @@ export interface NewProgramRoutine {
   name: string;
   focus: string;
   notes: string | null;
+  weekday: number | null;
   slots: NewProgramSlot[];
 }
 
