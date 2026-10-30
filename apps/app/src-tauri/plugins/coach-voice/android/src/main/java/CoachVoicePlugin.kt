@@ -32,27 +32,21 @@ class LangArgs {
 }
 
 @InvokeArg
+class ScheduleArgs {
+  lateinit var text: String
+  var lang: String = "es"
+  var voice: String? = null
+  /** Wall-clock time to speak at, in milliseconds since the epoch. */
+  var atMs: Long = 0
+}
+
+@InvokeArg
 class SpeakArgs {
   lateinit var text: String
   var lang: String = "es"
   /** A voice the user picked in Settings; the best male one when missing or no longer installed. */
   var voice: String? = null
 }
-
-// Android does not say which voices are male. Engines that do put it in the name ("#male_1") or the features;
-// the others are matched by the ids of known male voices. Google's were measured by pitch on its own samples
-// (2026-10-30): es-US esd/esf and es-ES eed/eef are male; es-US sfb (the default) and esc, es-ES eea/eec/eee are
-// female. Without a male voice, the default voice of the language speaks lower and the app is told so.
-private val MALE = Regex(
-  "(?<!fe)male|hombre|masculin|es-us-x-es[df]|es-es-x-ee[df]|en-us-x-io[lm]|en-us-x-tpd|en-gb-x-gbd|en-gb-x-rjs|smtm\\d",
-  RegexOption.IGNORE_CASE,
-)
-private val FEMALE = Regex("female|mujer|femenin|smtl\\d|smtf\\d", RegexOption.IGNORE_CASE)
-
-private val COUNTRIES = mapOf(
-  "es" to listOf("VE", "419", "US", "MX", "CO", "AR", "ES"),
-  "en" to listOf("US", "GB", "AU"),
-)
 
 @TauriPlugin
 class CoachVoicePlugin(private val activity: Activity) : Plugin(activity) {
@@ -77,20 +71,10 @@ class CoachVoicePlugin(private val activity: Activity) : Plugin(activity) {
     }
   }
 
-  /** Google lists its voices a moment after binding: wait for the language's voices (up to 1.5 s). */
-  private fun awaitVoices(engine: TextToSpeech, lang: String): List<Voice> {
-    repeat(10) {
-      val v = voicesFor(engine, lang)
-      if (v.isNotEmpty()) return v
-      SystemClock.sleep(150)
-    }
-    return voicesFor(engine, lang)
-  }
-
   // Loads the male Spanish voice into memory with a silent synthesis, so the first real line starts at once.
   private fun warmVoice(engine: TextToSpeech) {
-    awaitVoices(engine, "es")
-    val voice = pick(engine, "es") ?: return
+    CoachVoices.awaitVoices(engine, "es")
+    val voice = CoachVoices.pick(engine, "es") ?: return
     engine.voice = voice
     val f = java.io.File(activity.cacheDir, "coach-warm.wav")
     engine.synthesizeToFile(".", Bundle(), f, "warm-${UUID.randomUUID()}")
@@ -148,36 +132,6 @@ class CoachVoicePlugin(private val activity: Activity) : Plugin(activity) {
 
   private var currentLang = "es"
 
-  private fun voicesFor(engine: TextToSpeech, lang: String): List<Voice> =
-    try {
-      (engine.voices ?: emptySet()).filter {
-        it.locale.language == lang &&
-          !it.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)
-      }
-    } catch (e: Exception) {
-      Log.w(TAG, "voices failed", e)
-      emptyList()
-    }
-
-  private fun isMale(v: Voice): Boolean {
-    val label = "${v.name} ${v.features.joinToString(" ")}"
-    return MALE.containsMatchIn(label) && !FEMALE.containsMatchIn(label)
-  }
-
-  /** Male first, then Venezuelan / Latin American, then voices that work offline, then quality. */
-  private fun pick(engine: TextToSpeech, lang: String): Voice? {
-    val countries = COUNTRIES[lang] ?: emptyList()
-    fun countryRank(v: Voice): Int {
-      val c = v.locale.country.ifEmpty { v.locale.variant }
-      val i = countries.indexOf(c.uppercase(Locale.ROOT))
-      return if (i < 0) countries.size else i
-    }
-    return voicesFor(engine, lang).sortedWith(
-      // Local voices first: no network round trip, so the line starts right after the tap.
-      compareBy<Voice>({ if (isMale(it)) 0 else 1 }, { countryRank(it) }, { if (it.isNetworkConnectionRequired) 1 else 0 }, { -it.quality }),
-    ).firstOrNull()
-  }
-
   private fun statusOf(lang: String): JSObject {
     val result = JSObject()
     val engine = tts
@@ -187,21 +141,21 @@ class CoachVoicePlugin(private val activity: Activity) : Plugin(activity) {
       result.put("voices", JSArray())
       return result
     }
-    val voice = pick(engine, lang)
+    val voice = CoachVoices.pick(engine, lang)
     result.put("available", voice != null || engine.isLanguageAvailable(Locale(lang)) >= TextToSpeech.LANG_AVAILABLE)
-    result.put("male", voice?.let(::isMale) ?: false)
+    result.put("male", voice?.let(CoachVoices::isMale) ?: false)
     result.put("voice", voice?.name)
     result.put("engine", engine.defaultEngine)
     // One entry per voice (Google lists each twice, local and network), male ones first, for the picker in Settings.
     val list = JSArray()
-    voicesFor(engine, lang)
+    CoachVoices.voicesFor(engine, lang)
       .filter { !it.isNetworkConnectionRequired }
-      .sortedWith(compareBy<Voice>({ if (isMale(it)) 0 else 1 }, { it.locale.toString() }, { it.name }))
+      .sortedWith(compareBy<Voice>({ if (CoachVoices.isMale(it)) 0 else 1 }, { it.locale.toString() }, { it.name }))
       .forEach {
         val o = JSObject()
         o.put("name", it.name)
         o.put("locale", it.locale.toLanguageTag())
-        o.put("male", isMale(it))
+        o.put("male", CoachVoices.isMale(it))
         list.put(o)
       }
     result.put("voices", list)
@@ -238,22 +192,16 @@ class CoachVoicePlugin(private val activity: Activity) : Plugin(activity) {
         return
       }
       currentLang = args.lang
-      awaitVoices(engine, args.lang)
-      val chosen = args.voice?.let { name -> voicesFor(engine, args.lang).firstOrNull { it.name == name } }
-      val voice = chosen ?: pick(engine, args.lang)
-      if (voice != null) {
-        engine.voice = voice
-      } else if (engine.setLanguage(Locale(args.lang)) < TextToSpeech.LANG_AVAILABLE) {
+      val applied = CoachVoices.apply(engine, args.lang, args.voice)
+      if (applied == null) {
         invoke.reject("NO_VOICE: no hay voz instalada para el idioma ${args.lang}")
         return
       }
-      // No male voice: the default one, deeper. A voice the user chose is left as it sounds.
-      engine.setPitch(if (chosen != null || (voice != null && isMale(voice))) 1.0f else 0.8f)
-      engine.setSpeechRate(1.05f)
+      val (voice, male) = applied
       val id = UUID.randomUUID().toString()
       results[id] = JSObject()
         .put("available", true)
-        .put("male", voice?.let(::isMale) ?: false)
+        .put("male", male)
         .put("voice", voice?.name)
         .put("engine", engine.defaultEngine)
         .put("voices", JSArray())
@@ -269,13 +217,27 @@ class CoachVoicePlugin(private val activity: Activity) : Plugin(activity) {
         }
       }, START_TIMEOUT_MS)
       val code = engine.speak(args.text, TextToSpeech.QUEUE_FLUSH, Bundle(), id)
-      Log.i(TAG, "speak voice=${voice?.name} male=${voice?.let(::isMale)} code=$code")
+      Log.i(TAG, "speak voice=${voice?.name} male=$male code=$code")
       if (code != TextToSpeech.SUCCESS) {
         pending.remove(id)
         askedAt.remove(id)
         invoke.reject("El motor de voz rechazó la frase")
       }
     }
+  }
+
+  /** Says `text` at `atMs` even if the app is then in the background or the screen is locked (rest end). */
+  @Command
+  fun scheduleSpeak(invoke: Invoke) {
+    val args = invoke.parseArgs(ScheduleArgs::class.java)
+    RestSpeechReceiver.schedule(activity.applicationContext, args.atMs, args.text, args.lang, args.voice)
+    invoke.resolve()
+  }
+
+  @Command
+  fun cancelScheduled(invoke: Invoke) {
+    RestSpeechReceiver.cancel(activity.applicationContext)
+    invoke.resolve()
   }
 
   @Command

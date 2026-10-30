@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the cancel_scheduled command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-cancel-scheduled",
+          "markdownDescription": "Enables the cancel_scheduled command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the cancel_scheduled command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-cancel-scheduled",
+          "markdownDescription": "Denies the cancel_scheduled command without any pre-configured scope."
+        },
+        {
           "description": "Enables the open_settings command without any pre-configured scope.",
           "type": "string",
           "const": "allow-open-settings",
@@ -305,6 +317,18 @@
           "type": "string",
           "const": "deny-open-settings",
           "markdownDescription": "Denies the open_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the schedule_speak command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-schedule-speak",
+          "markdownDescription": "Enables the schedule_speak command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the schedule_speak command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-schedule-speak",
+          "markdownDescription": "Denies the schedule_speak command without any pre-configured scope."
         },
         {
           "description": "Enables the speak command without any pre-configured scope.",
@@ -343,10 +367,10 @@
           "markdownDescription": "Denies the stop command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-speak`\n- `allow-stop`\n- `allow-open-settings`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-speak`\n- `allow-stop`\n- `allow-open-settings`\n- `allow-schedule-speak`\n- `allow-cancel-scheduled`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-speak`\n- `allow-stop`\n- `allow-open-settings`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-speak`\n- `allow-stop`\n- `allow-open-settings`\n- `allow-schedule-speak`\n- `allow-cancel-scheduled`"
         }
       ]
     }

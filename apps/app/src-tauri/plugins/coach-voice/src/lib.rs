@@ -39,7 +39,9 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
       commands::status,
       commands::speak,
       commands::stop,
-      commands::open_settings
+      commands::open_settings,
+      commands::schedule_speak,
+      commands::cancel_scheduled
     ])
     .setup(|app, api| {
       #[cfg(mobile)]

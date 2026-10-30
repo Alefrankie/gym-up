@@ -4,6 +4,7 @@ import { nudge } from '#lib/nudge.svelte';
 import { session } from '#lib/session';
 import type { CoachEvent } from './lines';
 import { pickLine, type CoachVars, type PickedLine } from './pick';
+import { Limiter } from './triggers';
 import { coachVoice } from './voice.svelte';
 
 /** Lines of the same event not repeated while others are left. */
@@ -50,13 +51,22 @@ export function coachLine(event: CoachEvent, vars: CoachVars = {}): PickedLine |
   return line;
 }
 
-/** Shows the Coach's line as a toast and says it aloud when the voice is on. */
+// One line every ~20 s during a workout, so the Coach does not talk over itself (records, rest end and the like
+// always get through).
+const limiter = new Limiter();
+
+/** Shows the Coach's line as a toast and says it aloud when the voice is on; null when the limiter holds it back. */
 export function coachSay(event: CoachEvent, vars: CoachVars = {}): PickedLine | null {
+  if (!limiter.allow(event)) return null;
   const line = coachLine(event, vars);
-  if (!line) return null;
-  nudge.show(line.text, Math.min(6000, 2500 + line.text.length * 40));
-  void coachVoice.speak(line.text, line.locale);
+  if (line) coachAnnounce(line);
   return line;
+}
+
+/** Shows and says a line picked earlier (the rest-end line is chosen when the rest starts). */
+export function coachAnnounce(line: PickedLine, opts: { speak?: boolean } = {}) {
+  nudge.show(line.text, Math.min(6000, 2500 + line.text.length * 40));
+  if (opts.speak !== false) void coachVoice.speak(line.text, line.locale);
 }
 
 /** Says the Home line once per app start (browsers may block speech before the first tap; then it stays silent). */

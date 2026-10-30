@@ -10,6 +10,17 @@ pub struct SpeakRequest {
   pub voice: Option<String>,
 }
 
+/// A line to say later even if the app is in the background (rest end).
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleRequest {
+  pub text: String,
+  pub lang: String,
+  pub voice: Option<String>,
+  /// Wall-clock time, milliseconds since the epoch.
+  pub at_ms: i64,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VoiceInfo {

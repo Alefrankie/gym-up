@@ -8,6 +8,8 @@ Default permissions for the plugin
 - `allow-speak`
 - `allow-stop`
 - `allow-open-settings`
+- `allow-schedule-speak`
+- `allow-cancel-scheduled`
 
 ## Permission Table
 
@@ -17,6 +19,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`coach-voice:allow-cancel-scheduled`
+
+</td>
+<td>
+
+Enables the cancel_scheduled command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`coach-voice:deny-cancel-scheduled`
+
+</td>
+<td>
+
+Denies the cancel_scheduled command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -40,6 +68,32 @@ Enables the open_settings command without any pre-configured scope.
 <td>
 
 Denies the open_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`coach-voice:allow-schedule-speak`
+
+</td>
+<td>
+
+Enables the schedule_speak command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`coach-voice:deny-schedule-speak`
+
+</td>
+<td>
+
+Denies the schedule_speak command without any pre-configured scope.
 
 </td>
 </tr>

@@ -242,6 +242,27 @@ class CoachVoice {
     });
   }
 
+  /**
+   * In the Android app, asks Android to say `text` at `atMs` with the phone voice, so the rest-end line sounds even
+   * with the screen locked (the WebView sleeps then). Android skips it when the app is in front, where the app
+   * speaks itself. A no-op on the web or with the voice off.
+   */
+  async scheduleAt(text: string, locale: CoachLocale, atMs: number): Promise<boolean> {
+    if (!this.inApp || !this.enabled) return false;
+    const voice = this.voiceId.startsWith('native:') ? this.voiceId.slice(7) : undefined;
+    try {
+      await invoke('schedule_speak', { text, lang: locale, atMs, ...(voice ? { voice } : {}) });
+      return true;
+    } catch (e) {
+      console.warn('[coach-voice] could not schedule', e);
+      return false;
+    }
+  }
+
+  async cancelScheduled() {
+    if (this.inApp) await invoke('cancel_scheduled').catch(() => {});
+  }
+
   /** Opens Android's text-to-speech settings to install or choose a voice. */
   async openSystemSettings() {
     await invoke('open_settings').catch(() => {});

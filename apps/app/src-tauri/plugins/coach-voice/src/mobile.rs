@@ -35,6 +35,16 @@ impl<R: Runtime> CoachVoice<R> {
     self.0.run_mobile_plugin("speak", payload).map_err(Into::into)
   }
 
+  pub fn schedule_speak(&self, payload: ScheduleRequest) -> crate::Result<()> {
+    let _: () = self.0.run_mobile_plugin("scheduleSpeak", payload)?;
+    Ok(())
+  }
+
+  pub fn cancel_scheduled(&self) -> crate::Result<()> {
+    let _: () = self.0.run_mobile_plugin("cancelScheduled", ())?;
+    Ok(())
+  }
+
   pub fn stop(&self) -> crate::Result<()> {
     let _: () = self.0.run_mobile_plugin("stop", ())?;
     Ok(())

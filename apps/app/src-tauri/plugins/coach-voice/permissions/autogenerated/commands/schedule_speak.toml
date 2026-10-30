@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-schedule-speak"
+description = "Enables the schedule_speak command without any pre-configured scope."
+commands.allow = ["schedule_speak"]
+
+[[permission]]
+identifier = "deny-schedule-speak"
+description = "Denies the schedule_speak command without any pre-configured scope."
+commands.deny = ["schedule_speak"]

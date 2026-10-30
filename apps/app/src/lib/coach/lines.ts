@@ -1,4 +1,5 @@
 import type { CoachTone } from '@gym-up/contracts';
+import { WORKOUT_LINES, type WorkoutEvent } from './lines-workout';
 
 /**
  * Everything the Coach says, hand-written per tone, language and moment. Nothing is generated live.
@@ -14,8 +15,10 @@ import type { CoachTone } from '@gym-up/contracts';
  * sexuality, jokes about bodies or disability, threats of violence, or pushing through pain (the tests check a
  * blacklist). No emojis or long dashes either: the lines are read aloud.
  */
-export type CoachEvent = 'home' | 'weightDrop' | 'restLong';
-export const COACH_EVENTS: readonly CoachEvent[] = ['home', 'weightDrop', 'restLong'];
+/** In the app and on lowering the weight; the workout reactions live in `lines-workout.ts`. */
+export type AppEvent = 'home' | 'weightDrop' | 'restLong';
+export type CoachEvent = AppEvent | WorkoutEvent;
+export const COACH_EVENTS: readonly CoachEvent[] = ['home', 'weightDrop', 'restLong', 'setDone', 'progressUp', 'pr', 'restHalf', 'restEnd', 'finish'];
 
 export type CoachLocale = 'es' | 'en';
 export type TimeOfDay = 'morning' | 'afternoon' | 'night';
@@ -25,9 +28,9 @@ const am = (text: string): Line => ({ text, time: 'morning' });
 const pm = (text: string): Line => ({ text, time: 'afternoon' });
 const night = (text: string): Line => ({ text, time: 'night' });
 
-type Catalog = Record<CoachTone, Partial<Record<CoachLocale, Record<CoachEvent, Line[]>>>>;
+type Catalog<E extends string> = Record<CoachTone, Partial<Record<CoachLocale, Record<E, Line[]>>>>;
 
-export const LINES: Catalog = {
+const APP_LINES: Catalog<AppEvent> = {
   flower: {
     es: {
       home: [
@@ -641,3 +644,15 @@ export const LINES: Catalog = {
     },
   },
 };
+
+/** Every line, by tone, language and event. */
+export const LINES = Object.fromEntries(
+  (Object.keys(APP_LINES) as CoachTone[]).map((tone) => [
+    tone,
+    Object.fromEntries(
+      (['es', 'en'] as const)
+        .filter((l) => APP_LINES[tone][l] || WORKOUT_LINES[tone][l])
+        .map((l) => [l, { ...APP_LINES[tone][l]!, ...WORKOUT_LINES[tone][l]! }]),
+    ),
+  ]),
+) as Catalog<CoachEvent>;

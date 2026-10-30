@@ -81,6 +81,8 @@ describe('coach catalog', () => {
       // bodies
       'gordo', 'gorda', 'gordito', 'gordita', 'obeso', 'obesa', 'panzon', 'panzona', 'barrigon', 'flaco', 'flaca', 'fofo', 'fofa', 'lonjas', 'fat', 'chubby', 'skinny', 'fatty',
     ];
+    // Word stems match anywhere ("lesionado", "injury"); phrases match whole words.
+    const STEMS = new Set(['lesion', 'injur']);
     const phrases = [
       // threats
       'te mato', 'te voy a matar', 'te parto', 'te reviento', 'te voy a pegar', 'ver las caras', 'kill you', 'beat you',
@@ -91,9 +93,9 @@ describe('coach catalog', () => {
     ];
     for (const { text } of all()) {
       const w = words(text);
-      const flat = w.join(' ');
+      const flat = ` ${w.join(' ')} `;
       for (const bad of words_) expect(w.includes(bad), `"${bad}" in: ${text}`).toBe(false);
-      for (const bad of phrases) expect(flat.includes(bad), `"${bad}" in: ${text}`).toBe(false);
+      for (const bad of phrases) expect(STEMS.has(bad) ? flat.includes(bad) : flat.includes(` ${bad} `), `"${bad}" in: ${text}`).toBe(false);
     }
   });
 

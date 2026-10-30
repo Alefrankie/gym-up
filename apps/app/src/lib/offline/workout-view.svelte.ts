@@ -4,6 +4,7 @@ import { api, ApiRequestError } from '#lib/api/client';
 import { cachedGet } from './cache';
 import { REST_SECONDS, restTimer } from './rest.svelte';
 import { coachSay } from '#lib/coach/coach.svelte';
+import { reactToSet } from '#lib/coach/triggers';
 import { cancelWorkoutById } from './start-workout';
 import { sync } from './sync.svelte';
 import { loadSnapshot, rowKey, saveSnapshot, setActiveWorkoutId, type WorkoutSnapshot } from './workout-session';
@@ -25,6 +26,8 @@ export class WorkoutView {
   now = $state(Date.now());
 
   #id: string;
+  // Exercises the Coach already teased for lowering the weight in this workout (once each).
+  #dropped = new Set<string>();
   #tick: ReturnType<typeof setInterval> | undefined;
   #unsubscribe: (() => void) | undefined;
 
@@ -225,6 +228,7 @@ export class WorkoutView {
     const snap = this.snap;
     const r = snap?.rows[rowKey(exerciseId, setNumber)];
     if (!snap || !r) return;
+    const was = r.completed;
     r.completed = completed;
     r.doneAt = completed ? Date.now() : undefined;
     await saveSnapshot(snap);
@@ -244,9 +248,11 @@ export class WorkoutView {
       },
     });
     if (completed) {
-      // Sets still to do: if the rest runs long, the Coach calls you back to the bar.
-      const exercise = snap.exercises.find((e) => e.exerciseId === exerciseId)?.exerciseName;
-      restTimer.start(REST_SECONDS, this.pendingSets > 0 ? { exercise } : undefined);
+      const ex = snap.exercises.find((e) => e.exerciseId === exerciseId);
+      // Once per set: ticking it, not re-sending an edit.
+      if (ex && !was) this.#reactToSet(ex, setNumber);
+      // Sets still to do: the Coach talks during the rest and calls you back to the bar when it ends.
+      restTimer.start(REST_SECONDS, this.pendingSets > 0 ? { exercise: ex?.exerciseName } : undefined);
     }
   }
 
@@ -263,13 +269,30 @@ export class WorkoutView {
     }
   }
 
-  /** The Coach reacts when a working set goes below what it weighed last session (any amount). */
+  /**
+   * The Coach reacts when a working set goes below what it weighed last session (any amount), once per exercise
+   * in a workout.
+   */
   weightChanged(ex: RoutineExerciseDto, n: number) {
     const r = this.row(ex.exerciseId, n);
     const before = this.lastWeightFor(ex, n);
-    if (r && before !== null && r.weight > 0 && r.weight < before) {
-      coachSay('weightDrop', { exercise: ex.exerciseName, weight: `${r.weight} ${this.unit}`, reps: r.reps });
+    if (r && before !== null && r.weight > 0 && r.weight < before && !this.#dropped.has(ex.exerciseId)) {
+      if (coachSay('weightDrop', { exercise: ex.exerciseName, weight: `${r.weight} ${this.unit}`, reps: r.reps })) this.#dropped.add(ex.exerciseId);
     }
+  }
+
+  /** A record beats a better-than-last-time set, which beats a plain "set done". */
+  #reactToSet(ex: RoutineExerciseDto, n: number) {
+    const r = this.row(ex.exerciseId, n);
+    if (!r) return;
+    const rec = ex.last?.record;
+    const reaction = reactToSet(
+      { weight: r.weight, reps: r.reps, type: r.type },
+      this.lastSetFor(ex, n),
+      rec ? { weight: toDisplay(rec.weight, this.unit), reps: rec.reps } : null,
+      this.doneSets(ex).filter((s) => s.n !== n),
+    );
+    coachSay(reaction, { exercise: ex.exerciseName, weight: `${r.weight} ${this.unit}`, reps: r.reps });
   }
 
   /** Marks a set as warm-up, drop set, to failure or normal; a completed set is re-sent. */
@@ -332,11 +355,16 @@ export class WorkoutView {
 
   /** What this set weighed last session (in the user's unit), to compare against; null for warm-ups or no history. */
   lastWeightFor(ex: RoutineExerciseDto, n: number): number | null {
+    return this.lastSetFor(ex, n)?.weight ?? null;
+  }
+
+  /** The same working set of last session (weight in the user's unit); null for warm-ups or no history. */
+  lastSetFor(ex: RoutineExerciseDto, n: number): { weight: number; reps: number } | null {
     const r = this.row(ex.exerciseId, n);
     if (!this.snap || !ex.last || r?.type === 'warmup') return null;
     const working = this.setNumbers(ex).filter((k) => k <= n && this.row(ex.exerciseId, k)?.type !== 'warmup').length || n;
-    const kg = ex.last.sets?.[working - 1]?.weight ?? ex.last.weight;
-    return toDisplay(kg, this.snap.unit);
+    const set = ex.last.sets?.[working - 1];
+    return { weight: toDisplay(set?.weight ?? ex.last.weight, this.snap.unit), reps: set?.reps ?? ex.last.reps };
   }
 
   /** Adds one more set to an exercise, copying the previous set's reps and weight. */
@@ -485,6 +513,7 @@ export class WorkoutView {
     await sync.enqueue({ type: 'finish-workout', workoutId: this.#id, durationSeconds });
     await setActiveWorkoutId(null);
     restTimer.skip();
+    coachSay('finish');
     await goto('/history', { replaceState: true });
     return true;
   }

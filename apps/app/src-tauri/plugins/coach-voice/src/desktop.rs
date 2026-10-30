@@ -22,6 +22,14 @@ impl<R: Runtime> CoachVoice<R> {
     Err(crate::Error::UnsupportedPlatform)
   }
 
+  pub fn schedule_speak(&self, _payload: ScheduleRequest) -> crate::Result<()> {
+    Ok(())
+  }
+
+  pub fn cancel_scheduled(&self) -> crate::Result<()> {
+    Ok(())
+  }
+
   pub fn stop(&self) -> crate::Result<()> {
     Ok(())
   }
