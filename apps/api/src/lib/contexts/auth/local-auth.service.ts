@@ -3,9 +3,15 @@
 // Local implementation of AuthService.
 // Uses SQLite for session storage and argon2 for password hashing.
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { profiles } from '@db/schema';
 import type { Db } from '@/lib/db/client';
+
+function normalizeEmail(email: string): string {
+  // The request schema uses Zod's ASCII email format, and SQLite/D1 lower() is
+  // ASCII-only. Keep the application-side normalization aligned with the database.
+  return email.trim().replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+}
 
 export class EmailAlreadyRegisteredError extends Error {
   constructor() {
@@ -62,12 +68,13 @@ export class LocalAuthService implements AuthService {
    * and starts a session.
    */
   async register(input: RegisterInput): Promise<Session> {
+    const email = normalizeEmail(input.email);
+
     // Check if user already exists
     const existingUser = await this.db
       .select({ id: profiles.id })
       .from(profiles)
-      .where(eq(profiles.email, input.email))
-      .limit(1);
+      .where(sql`lower(${profiles.email}) = ${email}`);
 
     if (existingUser.length > 0) {
       throw new EmailAlreadyRegisteredError();
@@ -80,7 +87,7 @@ export class LocalAuthService implements AuthService {
     const userId = crypto.randomUUID();
     await this.db.insert(profiles).values({
       id: userId,
-      email: input.email,
+      email,
       passwordHash,
       displayName: input.displayName,
       routineType: input.routineType,
@@ -97,7 +104,7 @@ export class LocalAuthService implements AuthService {
       sessionId,
       user: {
         id: userId,
-        email: input.email,
+        email,
         displayName: input.displayName,
         routineType: input.routineType,
         weightUnit: input.weightUnit,
@@ -112,6 +119,8 @@ export class LocalAuthService implements AuthService {
    * Verifies password, creates session row, sets httpOnly cookie.
    */
   async login(input: LoginInput): Promise<Session> {
+    const email = normalizeEmail(input.email);
+
     // Find user by email
     const userResult = await this.db
       .select({
@@ -125,22 +134,28 @@ export class LocalAuthService implements AuthService {
         createdAt: profiles.createdAt,
       })
       .from(profiles)
-      .where(eq(profiles.email, input.email))
-      .limit(1);
+      .where(sql`lower(${profiles.email}) = ${email}`);
 
     if (userResult.length === 0) {
       throw new InvalidCredentialsError();
     }
 
-    const user = userResult[0];
+    // Legacy registrations may have the same email stored with different casing.
+    // Prefer an exact-casing match if present, then check other case-insensitive matches.
+    const exactEmail = input.email.trim();
+    const candidates = [
+      ...userResult.filter((candidate) => candidate.email === exactEmail),
+      ...userResult.filter((candidate) => candidate.email !== exactEmail),
+    ];
+    let user: (typeof userResult)[number] | undefined;
+    for (const candidate of candidates) {
+      if (await this.passwordHasher.verify(input.password, candidate.passwordHash)) {
+        user = candidate;
+        break;
+      }
+    }
 
-    // Verify password
-    const isValidPassword = await this.passwordHasher.verify(
-      input.password,
-      user.passwordHash
-    );
-
-    if (!isValidPassword) {
+    if (!user) {
       throw new InvalidCredentialsError();
     }
 
