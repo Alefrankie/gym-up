@@ -1,6 +1,47 @@
 import { describe, expect, it } from 'vitest';
 import { parseWorkoutVoiceCommand } from './voice-assistant';
 
+describe('spelled-out numbers (Vosk output)', () => {
+  it('reads reps and weight written as words', () => {
+    expect(parseWorkoutVoiceCommand('hice diez repeticiones con ochenta kilos')).toEqual({
+      type: 'log-set',
+      reps: 10,
+      weight: 80,
+      weightUnit: 'kg',
+    });
+  });
+
+  it('reads compound numbers, decimals and the set number', () => {
+    expect(parseWorkoutVoiceCommand('serie uno hice ocho rex con treinta y dos coma cinco kilos')).toEqual({
+      type: 'log-set',
+      setNumber: 1,
+      reps: 8,
+      weight: 32.5,
+      weightUnit: 'kg',
+    });
+  });
+
+  it('reads "y medio", hundreds and a trailing set number', () => {
+    expect(parseWorkoutVoiceCommand('hice doce repeticiones con ciento veinte y medio kilos en la serie dos')).toEqual({
+      type: 'log-set',
+      setNumber: 2,
+      reps: 12,
+      weight: 120.5,
+      weightUnit: 'kg',
+    });
+  });
+
+  it('accepts Whisper mishearing "serie" as "sería"', () => {
+    expect(parseWorkoutVoiceCommand('Sería 1. Hice 8 reps con 32,5 kg.')).toEqual({
+      type: 'log-set',
+      setNumber: 1,
+      reps: 8,
+      weight: 32.5,
+      weightUnit: 'kg',
+    });
+  });
+});
+
 describe('parseWorkoutVoiceCommand', () => {
   it('parses a spoken set with reps and metric weight', () => {
     expect(parseWorkoutVoiceCommand('Hice 10 repeticiones con 80 kilos')).toEqual({
@@ -49,6 +90,7 @@ describe('parseWorkoutVoiceCommand', () => {
 
   it('does not infer an action from unrelated or incomplete speech', () => {
     expect(parseWorkoutVoiceCommand('sube el peso la próxima vez')).toBeNull();
-    expect(parseWorkoutVoiceCommand('hice diez')).toBeNull();
+    expect(parseWorkoutVoiceCommand('hice unas cuantas')).toBeNull();
+    expect(parseWorkoutVoiceCommand('una serie mas')).toBeNull();
   });
 });
