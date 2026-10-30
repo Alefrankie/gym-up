@@ -195,6 +195,7 @@
           options={(['f', 'm', 'neutral'] as const).map((v) => ({ value: v, label: t(`coach.address.${v}`) }))}
           onchange={(v) => saveCoach({ addressForm: v })}
         />
+        <span class="muted hint">{t('coach.addressHint')}</span>
       </label>
       <div>
         <span class="field">{t('coach.voice')}</span>

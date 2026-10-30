@@ -120,6 +120,19 @@ describe('coach catalog', () => {
   });
 });
 
+describe('rendering the whole catalog', () => {
+  it('never leaves a placeholder, a gender alternative or a raw token, for any address form', () => {
+    const vars = { exercise: 'Sentadilla', weight: '40 kg', reps: 8, prevWeight: '45 kg', prevReps: 10, restSeconds: 90, name: 'Ana' };
+    for (const { tone, locale, text } of all()) {
+      for (const form of ['m', 'f', 'neutral'] as const) {
+        const out = render(text, form, vars);
+        expect(/[{}|]/.test(out), `${tone}/${locale}/${form}: ${out}`).toBe(false);
+        expect(/neutral/i.test(out), `${tone}/${locale}/${form}: ${out}`).toBe(false);
+      }
+    }
+  });
+});
+
 describe('render', () => {
   it('picks the address form, falling back to neutral', () => {
     const tpl = 'Estás {cansado|cansada|sin energía}.';
