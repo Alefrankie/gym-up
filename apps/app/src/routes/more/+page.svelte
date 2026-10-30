@@ -7,6 +7,15 @@
   import { appUpdates } from '#lib/updates.svelte';
   import type { ComponentProps } from 'svelte';
 
+  const landingUrl = new URL(
+    '/descarga',
+    import.meta.env.VITE_LANDING_URL || 'https://gym-up-web.gymup-phase0-spike.workers.dev',
+  ).toString();
+  let qrVisible = $state(false);
+  let qrLoading = $state(false);
+  let qrDataUrl = $state('');
+  let shareMessage = $state('');
+
   type IconName = ComponentProps<typeof Icon>['name'];
 
   onMount(() => {
@@ -23,10 +32,76 @@
     { href: '/voice-benchmark', title: 'more.voiceBenchmark', hint: 'more.voiceBenchmarkHint', icon: 'mic' },
     { href: '/settings', title: 'more.settings', hint: 'more.settingsHint', icon: 'sliders' },
   ];
+
+  async function shareApp() {
+    shareMessage = '';
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Gym Up', text: t('more.shareText'), url: landingUrl });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(landingUrl);
+      shareMessage = t('more.linkCopied');
+    } catch {
+      shareMessage = t('more.copyLinkManually');
+    }
+  }
+
+  async function toggleQr() {
+    if (qrDataUrl) {
+      qrVisible = !qrVisible;
+      return;
+    }
+
+    qrLoading = true;
+    try {
+      const QRCode = (await import('qrcode')).default;
+      qrDataUrl = await QRCode.toDataURL(landingUrl, {
+        width: 240,
+        margin: 2,
+        color: { dark: '#17171a', light: '#ffffff' },
+      });
+      qrVisible = true;
+    } catch {
+      shareMessage = t('more.qrError');
+    } finally {
+      qrLoading = false;
+    }
+  }
 </script>
 
 <main>
   <h1>{t('nav.more')}</h1>
+  <section class="card share-card" aria-labelledby="share-title">
+    <div class="share-heading">
+      <span class="ico"><Icon name="share" size={18} /></span>
+      <div>
+        <h2 id="share-title">{t('more.shareTitle')}</h2>
+        <p class="muted hint">{t('more.shareHint')}</p>
+      </div>
+    </div>
+    <div class="share-actions">
+      <button type="button" class="primary" onclick={shareApp}>
+        <Icon name="share" size={18} />{t('more.sendLink')}
+      </button>
+      <button type="button" class="qr-button" onclick={toggleQr} disabled={qrLoading}>
+        <Icon name="qr" size={18} />{qrLoading ? t('common.loading') : qrVisible ? t('more.hideQr') : t('more.showQr')}
+      </button>
+    </div>
+    {#if shareMessage}<p class="muted share-message" role="status">{shareMessage}</p>{/if}
+    <a class="landing-link" href={landingUrl} target="_blank" rel="noreferrer">{landingUrl}</a>
+    {#if qrVisible && qrDataUrl}
+      <div class="qr-preview">
+        <img src={qrDataUrl} alt={t('more.qrAlt')} width="240" height="240" />
+        <span class="muted hint">{t('more.qrCaption')}</span>
+      </div>
+    {/if}
+  </section>
   <ul class="list">
     {#each links as l}
       <li>
@@ -92,6 +167,66 @@
   }
   .hint {
     font-size: var(--t-sm);
+  }
+  .share-card {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .share-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .share-heading h2 {
+    margin: 0 0 0.15rem;
+  }
+  .share-heading p {
+    margin: 0;
+  }
+  .share-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .share-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 48px;
+    margin: 0;
+    padding-inline: 0.5rem;
+    font-size: var(--t-sm);
+  }
+  .share-actions .primary {
+    width: auto;
+  }
+  .qr-button {
+    background: var(--surface-hi);
+    box-shadow: 0 0 0 1px var(--line-strong) inset;
+  }
+  .share-message {
+    margin: 0;
+    font-size: var(--t-sm);
+  }
+  .landing-link {
+    min-width: 0;
+    font-size: var(--t-xs);
+    overflow-wrap: anywhere;
+  }
+  .qr-preview {
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+  }
+  .qr-preview img {
+    display: block;
+    width: min(240px, 100%);
+    height: auto;
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    background: #fff;
   }
   .updates {
     display: grid;

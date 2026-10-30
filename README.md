@@ -21,7 +21,7 @@ pnpm test        # all packages
 pnpm build       # all packages
 pnpm --filter @gym-up/app dev
 pnpm --filter @gym-up/app android:debug   # debug APK on the connected Android phone
-pnpm --filter @gym-up/app android:share   # compact, sideloadable APK for sharing
+pnpm --filter @gym-up/app android:share   # signed release APK for sharing
 pnpm --filter @gym-up/app deploy:web      # publish /descarga and the latest share APK to Cloudflare
 ```
 

@@ -133,6 +133,26 @@ const buildTools = join(sdk, 'build-tools');
 const apksignerDir = existsSync(buildTools) ? readdirSync(buildTools).sort().at(-1) : undefined;
 const apksigner = apksignerDir ? join(buildTools, apksignerDir, isWin ? 'apksigner.bat' : 'apksigner') : '';
 if (!apksigner || !existsSync(apksigner)) throw new Error(`Android apksigner was not found under ${buildTools}.`);
+const aapt = apksignerDir ? join(buildTools, apksignerDir, isWin ? 'aapt.exe' : 'aapt') : '';
+if (!aapt || !existsSync(aapt)) throw new Error(`Android aapt was not found under ${buildTools}.`);
+const tauriConfig = JSON.parse(readFileSync(join(tauriDir, 'tauri.conf.json'), 'utf8'));
+const androidProperties = Object.fromEntries(
+  readFileSync(join(androidDir, 'app', 'tauri.properties'), 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => line && !line.startsWith('#'))
+    .map((line) => {
+      const separator = line.indexOf('=');
+      return [line.slice(0, separator), line.slice(separator + 1)];
+    }),
+);
+const badging = run(aapt, ['dump', 'badging', apk], { cwd: androidDir, capture: true });
+const badgingOutput = `${badging.stdout ?? ''}${badging.stderr ?? ''}`;
+const packageLine = badgingOutput.split(/\r?\n/).find((line) => line.startsWith('package: ')) ?? '';
+const expectedPackage = `package: name='${tauriConfig.identifier}' versionCode='${androidProperties['tauri.android.versionCode']}' versionName='${tauriConfig.version}'`;
+if (badging.status !== 0 || !packageLine.startsWith(expectedPackage)) {
+  throw new Error(`Release APK metadata mismatch. Expected "${expectedPackage}"; received "${packageLine}".`);
+}
+console.log(`Verified release package metadata: ${packageLine}`);
 const verification = run(apksigner, ['verify', '--verbose', '--print-certs', apk], { cwd: androidDir, capture: true });
 const verificationOutput = `${verification.stdout ?? ''}${verification.stderr ?? ''}`;
 process.stdout.write(verificationOutput);

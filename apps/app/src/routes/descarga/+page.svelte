@@ -3,8 +3,10 @@
   import QRCode from 'qrcode';
 
   let qrDataUrl = $state('');
-  let apkHref = $state('/downloads/gym-up.apk');
+  let apkHref = $state('');
   let apkName = $state('gym-up-android.apk');
+  let apkVersion = $state('');
+  let downloadUnavailable = $state(false);
   let downloadStarted = $state(false);
 
   function onDownloadClick(event: MouseEvent) {
@@ -17,17 +19,24 @@
     setTimeout(() => (downloadStarted = false), 5000);
   }
 
-  onMount(async () => {
-    // Versioned file name so repeated downloads don't become gym-up(1).apk.
-    fetch('/update.json', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((manifest) => {
-        if (typeof manifest?.version !== 'string' || typeof manifest?.apkUrl !== 'string') return;
-        apkHref = manifest.apkUrl;
-        apkName = `gym-up-${manifest.version}.apk`;
-      })
-      .catch(() => {});
+  async function loadRelease() {
+    try {
+      const response = await fetch('/update.json', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Update manifest unavailable');
+      const manifest = await response.json();
+      if (typeof manifest?.version !== 'string' || manifest.apkUrl !== `/downloads/gym-up-${manifest.version}.apk`) {
+        throw new Error('Invalid release manifest');
+      }
+      apkVersion = manifest.version;
+      apkHref = manifest.apkUrl;
+      apkName = `gym-up-${manifest.version}.apk`;
+    } catch {
+      downloadUnavailable = true;
+    }
+  }
 
+  onMount(async () => {
+    void loadRelease();
     try {
       qrDataUrl = await QRCode.toDataURL(`${window.location.origin}/descarga`, {
         errorCorrectionLevel: 'H',
@@ -68,16 +77,22 @@
         Gym Up también funciona cuando no tienes cobertura en el gimnasio.
       </p>
 
-      <a class="download-button" href={apkHref} download={apkName} aria-disabled={downloadStarted} onclick={onDownloadClick}>
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-          <path d="M12 3.75v11.5m0 0 4.25-4.25M12 15.25 7.75 11M4.75 16.5v2.25c0 .83.67 1.5 1.5 1.5h11.5c.83 0 1.5-.67 1.5-1.5V16.5" />
-        </svg>
-        <span>Descargar para Android</span>
-        <svg class="button-arrow" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-          <path d="M5 12h14m-6-6 6 6-6 6" />
-        </svg>
-      </a>
-      <p class="file-note">APK release firmado · Android 7 o posterior, 64 bits</p>
+      {#if apkHref}
+        <a class="download-button" href={apkHref} download={apkName} aria-disabled={downloadStarted} onclick={onDownloadClick}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3.75v11.5m0 0 4.25-4.25M12 15.25 7.75 11M4.75 16.5v2.25c0 .83.67 1.5 1.5 1.5h11.5c.83 0 1.5-.67 1.5-1.5V16.5" />
+          </svg>
+          <span>Descargar Gym Up {apkVersion} para Android</span>
+          <svg class="button-arrow" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12h14m-6-6 6 6-6 6" />
+          </svg>
+        </a>
+        <p class="file-note">Versión {apkVersion} · APK release firmado · Android 7 o posterior, 64 bits</p>
+      {:else if downloadUnavailable}
+        <p class="download-error" role="alert">No se pudo cargar el APK release. Recarga la página e inténtalo de nuevo.</p>
+      {:else}
+        <p class="file-note" role="status">Cargando la última versión release…</p>
+      {/if}
 
       {#if qrDataUrl}
         <div class="qr-prompt">
@@ -284,6 +299,12 @@
     margin: 12px 0 0;
     color: var(--muted);
     font-size: 12px;
+  }
+
+  .download-error {
+    max-width: 420px;
+    color: var(--danger);
+    font-size: 13px;
   }
 
   .qr-prompt {
