@@ -56,8 +56,8 @@ for (const file of packageFiles) {
   writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
 }
 
-run('pnpm', ['--filter', '@gym-up/api', 'deploy']);
-run('pnpm', ['--filter', '@gym-up/app', 'deploy:web']);
+run('pnpm', ['--filter', '@gym-up/api', 'run', 'deploy']);
+run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web']);
 
 run('git', ['add', tauriConfigPath, ...packageFiles]);
 run('git', ['commit', '-m', `chore(release): v${next}`]);
