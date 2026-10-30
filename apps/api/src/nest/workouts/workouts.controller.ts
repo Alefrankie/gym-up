@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   Inject,
+  NotFoundException,
   Param,
   Post,
   Put,
@@ -24,7 +25,11 @@ import {
   type WorkoutEntryDto,
   type WorkoutHistoryResponse,
 } from '@gym-up/contracts';
+import { and, eq, gt, sql } from 'drizzle-orm';
+import { workoutEntries, workouts } from '@db/schema';
+import type { Db } from '@/lib/db/client';
 import type { User } from '@/lib/contexts/auth/auth.types';
+import { DB } from '../tokens';
 import { DiscardWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/discard-workout.use-case';
 import { CompleteWorkoutUseCase } from '@/lib/contexts/workout-tracking/application/complete-workout.use-case';
 import { GetNextWorkoutUseCase, type NextWorkoutResult } from '@/lib/contexts/routines/application/get-next-workout.use-case';
@@ -70,6 +75,7 @@ export class WorkoutsController {
     @Inject(GetNextWorkoutUseCase) private readonly getToday: GetNextWorkoutUseCase,
     @Inject(GetWorkoutDetailUseCase) private readonly getDetail: GetWorkoutDetailUseCase,
     @Inject(GetWorkoutHistoryUseCase) private readonly getHistory: GetWorkoutHistoryUseCase,
+    @Inject(DB) private readonly db: Db,
   ) {}
 
   /** What the dashboard shows for today. */
@@ -183,6 +189,24 @@ export class WorkoutsController {
       setType: body.setType,
     });
     return toWorkoutEntryDto(result.entry);
+  }
+
+  /** Removes one set; later sets of that exercise move up one number. Replaying it after the shift is a no-op only if nothing was logged there since. */
+  @Delete(':id/sets/:exerciseId/:setNumber')
+  @HttpCode(204)
+  async removeSet(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Param('exerciseId') exerciseId: string,
+    @Param('setNumber') setNumberParam: string,
+  ): Promise<void> {
+    const setNumber = Number.parseInt(setNumberParam, 10);
+    if (!Number.isInteger(setNumber) || setNumber < 1) throw new BadRequestException('setNumber must be a positive integer');
+    const [owned] = await this.db.select({ id: workouts.id }).from(workouts).where(and(eq(workouts.id, id), eq(workouts.userId, user.id))).limit(1);
+    if (!owned) throw new NotFoundException('Workout not found');
+    const sameExercise = and(eq(workoutEntries.workoutId, id), eq(workoutEntries.exerciseId, exerciseId));
+    await this.db.delete(workoutEntries).where(and(sameExercise, eq(workoutEntries.setNumber, setNumber)));
+    await this.db.update(workoutEntries).set({ setNumber: sql`${workoutEntries.setNumber} - 1` }).where(and(sameExercise, gt(workoutEntries.setNumber, setNumber)));
   }
 
   @Post(':id/complete')

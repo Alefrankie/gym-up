@@ -17,6 +17,7 @@ import { idb } from './idb';
 export type Command =
   | { type: 'start-workout'; id: string; routineDayId: string; date?: string }
   | { type: 'upsert-set'; workoutId: string; set: UpsertSetRequest }
+  | { type: 'remove-set'; workoutId: string; exerciseId: string; setNumber: number }
   | { type: 'finish-workout'; workoutId: string; durationSeconds?: number }
   | { type: 'discard-workout'; workoutId: string }
   | { type: 'mark-supplement'; supplementId: string; day: string; taken: boolean };
@@ -70,6 +71,7 @@ function retargeted(c: Command, remap: Remap): Command {
       return c.id === remap.from ? { ...c, id: remap.to } : c;
     case 'upsert-set':
       return c.workoutId === remap.from ? { ...c, workoutId: remap.to } : c;
+    case 'remove-set':
     case 'finish-workout':
     case 'discard-workout':
       return c.workoutId === remap.from ? { ...c, workoutId: remap.to } : c;
@@ -134,6 +136,11 @@ export class Outbox {
       if (i.command.type === 'upsert-set' && i.command.workoutId === workoutId) ids.add(i.command.set.id);
     }
     return ids;
+  }
+
+  /** True while a set removal of this workout has not reached the server: its set numbers there are still the old ones. */
+  async hasPendingRemoval(workoutId: string): Promise<boolean> {
+    return (await this.items()).some((i) => i.command.type === 'remove-set' && i.command.workoutId === workoutId);
   }
 
   async failed(): Promise<FailedItem[]> {

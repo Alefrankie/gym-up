@@ -215,6 +215,28 @@ describe('workouts', () => {
     expect((await http('DELETE', `/workouts/${done}`, { token: owner.token })).status).toBe(409);
   });
 
+  it('removes a set and moves the later sets up one number', async () => {
+    const s = await register('remove-set@example.com');
+    const other = await register('remove-set-other@example.com');
+    const dayId = await firstRoutineDayId();
+    const exercise = (await db.select().from(schema.exercises).limit(1))[0]!;
+    const id = crypto.randomUUID();
+    await http('POST', '/workouts', { token: s.token, body: { id, routineDayId: dayId } });
+    for (const [setNumber, reps] of [[1, 10], [2, 8], [3, 6]] as const) {
+      await http('PUT', `/workouts/${id}/sets`, {
+        token: s.token,
+        body: { id: crypto.randomUUID(), exerciseId: exercise.id, setNumber, reps, weight: 40, weightUnit: 'kg', completed: true, notes: null },
+      });
+    }
+
+    expect((await http('DELETE', `/workouts/${id}/sets/${exercise.id}/2`, { token: other.token })).status).toBe(404);
+    expect((await http('DELETE', `/workouts/${id}/sets/${exercise.id}/0`, { token: s.token })).status).toBe(400);
+    expect((await http('DELETE', `/workouts/${id}/sets/${exercise.id}/2`, { token: s.token })).status).toBe(204);
+
+    const detail = workoutDetailSchema.parse((await http('GET', `/workouts/${id}`, { token: s.token })).json);
+    expect(detail.entries.map((e) => [e.setNumber, e.reps]).sort()).toEqual([[1, 10], [2, 6]]);
+  });
+
   it('runs the full flow: start, log sets idempotently, detail, complete, history', async () => {
     const s = await register('flow@example.com');
     const dayId = await firstRoutineDayId();
