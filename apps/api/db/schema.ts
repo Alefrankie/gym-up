@@ -422,3 +422,67 @@ export const coachRecordings = sqliteTable('coach_recordings', {
   bytes: integer('bytes').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
+
+/** People the admin let into the voice studio (besides the admin). */
+export const studioMembers = sqliteTable('studio_members', {
+  userId: text('user_id').primaryKey(),
+  grantedBy: text('granted_by').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+/** One take per person per line of the voice studio. `lineId` = hash of the voice slot and the rendered line. */
+export const studioTakes = sqliteTable('studio_takes', {
+  id: text('id').primaryKey(),
+  lineId: text('line_id').notNull(),
+  authorId: text('author_id').notNull(),
+  tone: text('tone').notNull(),
+  locale: text('locale').notNull(),
+  event: text('event').notNull(),
+  form: text('form'),
+  text: text('text').notNull(),
+  contentType: text('content_type').notNull(),
+  audio: blob('audio', { mode: 'buffer' }).notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+/** The take the app plays for a line, picked by the admin. */
+export const studioActive = sqliteTable('studio_active', {
+  lineId: text('line_id').primaryKey(),
+  takeId: text('take_id').notNull(),
+  chosenBy: text('chosen_by').notNull(),
+  chosenAt: integer('chosen_at').notNull(),
+});
+
+export const studioVotes = sqliteTable(
+  'studio_votes',
+  {
+    takeId: text('take_id').notNull(),
+    userId: text('user_id').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.takeId, t.userId] })],
+);
+
+/** Opinions on a line (optionally about one take). */
+export const studioComments = sqliteTable('studio_comments', {
+  id: text('id').primaryKey(),
+  lineId: text('line_id').notNull(),
+  takeId: text('take_id'),
+  authorId: text('author_id').notNull(),
+  text: text('text').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+/** Writes and uploaded bytes per person per UTC day (free-tier guard). */
+export const studioUsage = sqliteTable(
+  'studio_usage',
+  {
+    userId: text('user_id').notNull(),
+    day: text('day').notNull(),
+    writes: integer('writes').notNull().default(0),
+    bytes: integer('bytes').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);

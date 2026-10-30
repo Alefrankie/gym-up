@@ -1,8 +1,8 @@
-import { coachRecordingListSchema, coachRecordingSchema, type CoachRecordingDto, type CoachTone } from '@gym-up/contracts';
+import { coachRecordingListSchema, type CoachRecordingDto, type CoachTone } from '@gym-up/contracts';
 import { API_URL } from '#lib/api/config';
 import { tokenStore } from '#lib/api/token';
 import { cachedGet } from '#lib/offline/cache';
-import { recordingId, STUDIO_SLOT, type StudioLine } from './studio';
+import { recordingId, STUDIO_SLOT } from './studio';
 
 const AUDIO_CACHE = 'coach-recordings-v1';
 
@@ -12,7 +12,8 @@ const auth = (): Record<string, string> => {
 };
 
 /**
- * The Coach's lines recorded in the voice studio. The list comes from the API (and is kept for offline use); each
+ * The Coach's lines recorded in the voice studio, as the app plays them (the take the admin made active for each
+ * line). The list comes from the API (and is kept for offline use); each
  * recording is downloaded once and kept in Cache Storage, so it plays at once and with no signal.
  */
 class CoachRecordings {
@@ -80,29 +81,6 @@ class CoachRecordings {
         return; // no signal: try again next time
       }
     }
-  }
-
-  /** Admin: saves (or replaces) the take of a studio line. */
-  async save(line: StudioLine, take: Blob): Promise<CoachRecordingDto> {
-    const id = await recordingId(line.text, STUDIO_SLOT);
-    const query = new URLSearchParams({ tone: line.tone, locale: line.locale, event: line.event, text: line.text, ...(line.form ? { form: line.form } : {}) });
-    const res = await fetch(`${API_URL}/coach/recordings/${id}?${query}`, {
-      method: 'PUT',
-      headers: { ...auth(), 'content-type': take.type || 'audio/webm' },
-      body: take,
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`no se pudo guardar (${res.status})`);
-    const saved = coachRecordingSchema.parse(await res.json());
-    this.#set([...this.items.filter((i) => i.id !== id), saved]);
-    return saved;
-  }
-
-  /** Admin: deletes a take; the line goes back to the cloud or phone voice. */
-  async remove(id: string): Promise<void> {
-    const res = await fetch(`${API_URL}/coach/recordings/${id}`, { method: 'DELETE', headers: auth(), signal: AbortSignal.timeout(10_000) });
-    if (!res.ok && res.status !== 404) throw new Error(`no se pudo borrar (${res.status})`);
-    this.#set(this.items.filter((i) => i.id !== id));
   }
 }
 

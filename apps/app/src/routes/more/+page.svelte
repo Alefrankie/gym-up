@@ -5,6 +5,7 @@
   import AppNav from '#lib/components/AppNav.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import { appUpdates } from '#lib/updates.svelte';
+  import { studioApi } from '#lib/coach/studio-api';
   import type { ComponentProps } from 'svelte';
 
   const landingUrl = new URL(
@@ -32,9 +33,13 @@
     { href: '/voice-benchmark', title: 'more.voiceBenchmark', hint: 'more.voiceBenchmarkHint', icon: 'mic' },
     { href: '/settings', title: 'more.settings', hint: 'more.settingsHint', icon: 'sliders' },
   ];
-  // The voice studio is only for admins (they record the Coach's lines for everyone).
+  // The voice studio is for the admin and the people the admin let in.
+  let studioAllowed = $state(false);
+  onMount(() => {
+    void studioApi.access().then((a) => (studioAllowed = a.allowed)).catch(() => {});
+  });
   const visibleLinks = $derived(
-    session.user?.isAdmin
+    session.user?.isAdmin || studioAllowed
       ? [...links.slice(0, -1), { href: '/voice-studio', title: 'more.voiceStudio', hint: 'more.voiceStudioHint', icon: 'mic' } as const, links.at(-1)!]
       : links,
   );
