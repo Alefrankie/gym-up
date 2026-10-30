@@ -167,6 +167,75 @@ export function searchScore(e: LibraryExerciseDto, query: string): number {
   return total - ix.full[0]!.length * 0.01;
 }
 
+/** Words a spoken command wraps around the exercise name ("ahora toca el ejercicio de sentadilla"). */
+const SPOKEN_FILLER = new Set(['ejercicio', 'ejercicios', 'ahora', 'toca', 'hacer', 'hago', 'vamos', 'voy', 'por', 'favor', 'un', 'una', 'lo', 'le', 'que']);
+
+/**
+ * Folds Spanish spelling and the way Spanish speakers say English names, so speech-to-text slips still meet:
+ * "banca/vanca", "jalón/halón", "sentadilla/sentadiya", "squat/escuat", "press/pres", "hip thrust/jip trust".
+ */
+function sound(w: string): string {
+  return w
+    .replace(/^es(?=[^aeiou])/, 's')
+    .replace(/qu/g, 'k')
+    .replace(/c(?=[aou]|$)/g, 'k')
+    .replace(/c(?=[ei])/g, 's')
+    .replace(/z/g, 's')
+    .replace(/v/g, 'b')
+    .replace(/w/g, 'u')
+    .replace(/ll/g, 'y')
+    .replace(/th/g, 't')
+    .replace(/[hj]/g, '')
+    .replace(/(.)\1+/g, '$1');
+}
+
+const spokenCache = new Map<string, string[][]>();
+
+/** Each name of an exercise (English, Spanish, aliases) as folded words. */
+function spokenNames(name: string): string[][] {
+  let names = spokenCache.get(name);
+  if (!names) {
+    names = [name, ...(EXERCISE_NAMES_ES[name] ?? [])].map((n) => words(n).map(sound)).filter((n) => n.length);
+    spokenCache.set(name, names);
+  }
+  return names;
+}
+
+/**
+ * How well a spoken phrase names this exercise; 0 = it does not. More forgiving than the search box: speech adds
+ * filler words and mishears letters, so half the spoken words and half the words of one name must meet.
+ */
+export function spokenNameScore(name: string, spoken: string): number {
+  const qs = words(spoken)
+    .filter((w) => !SPOKEN_FILLER.has(w))
+    .map(sound);
+  if (!qs.length) return 0;
+  let best = 0;
+  for (const ws of spokenNames(name)) {
+    let total = 0;
+    let heard = 0;
+    const covered = new Set<number>();
+    for (const q of qs) {
+      let top = 0;
+      let at = -1;
+      ws.forEach((w, i) => {
+        const s = wordScore(q, w);
+        if (s > top) [top, at] = [s, i];
+      });
+      if (top) {
+        total += top;
+        heard++;
+        covered.add(at);
+      }
+    }
+    const said = heard / qs.length;
+    const coverage = covered.size / ws.length;
+    if (said < 0.5 || coverage < 0.5) continue;
+    best = Math.max(best, total * said * (0.5 + 0.5 * coverage));
+  }
+  return best;
+}
+
 /**
  * The catalog is a few hundred items, so search runs on the phone: instant, and it works offline. Matches are
  * accent and typo tolerant, understand Spanish and English names and aliases, and come best first; with no query

@@ -1,6 +1,9 @@
+import { spokenNameScore } from './exercise-filter';
+
 export type WorkoutVoiceCommand =
-  | { type: 'log-set'; setNumber?: number; reps: number; weight?: number; weightUnit?: 'kg' | 'lbs' }
+  | { type: 'log-set'; setNumber?: number; reps: number; weight?: number; weightUnit?: 'kg' | 'lbs'; exercise?: string }
   | { type: 'next-exercise' }
+  | { type: 'go-to-exercise'; query: string }
   | { type: 'mark-supplement'; query: string };
 
 function normalize(text: string): string {
@@ -100,17 +103,50 @@ export function parseWorkoutVoiceCommand(input: string): WorkoutVoiceCommand | n
   const setWord = text.match(/\b(?:seri[ea]|se dio)\s*(\d+|un[oa]?)\b/)?.[1];
   const setNumber = setWord && /^\d+$/.test(setWord) ? setWord : setWord ? '1' : undefined;
   const repsMatch = text.match(/\b(\d+)\s*(?:repeticiones?|reps?|rex)\b/) ?? text.match(/\b(?:hice|he hecho|complete|registre)\s+(\d+)\b/);
-  if (!repsMatch) return null;
+  if (!repsMatch) {
+    // "vamos con press de banca", "cambia a sentadilla", "ahora toca jalón al pecho".
+    const goTo = text.match(
+      /\b(?:ir a|ve a|vamos (?:a|con)|pasa(?:r|me)? a|cambia(?:r|me)? a|abre|ahora (?:toca|hago|voy con)|toca|voy con|empiezo con|sigo con)\s+(?:al?\s+|el\s+|la\s+|los\s+|las\s+)?(.+)$/,
+    );
+    const query = goTo?.[1]?.trim();
+    return query ? { type: 'go-to-exercise', query } : null;
+  }
 
   const weightMatch = text.match(/\b(?:con|como|a)\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|kilogramos?|lbs?|libras?)\b/);
   const weight = weightMatch ? parseNumber(weightMatch[1]!) : undefined;
   const weightUnit = weightMatch ? (/^(?:lb|lbs|libra|libras)$/.test(weightMatch[2]!) ? 'lbs' : 'kg') : undefined;
+  // "hice 10 repeticiones de press de banca con 60 kilos": the exercise follows the reps.
+  const afterReps = text.slice(repsMatch.index! + repsMatch[0].length);
+  const exercise = afterReps
+    .match(/^\s+(?:de|en)\s+(?:el\s+|la\s+)?(.+?)(?=\s+(?:con|como|a)\s*\d|\s+(?:seri[ea]|se dio)\b|$)/)?.[1]
+    ?.trim();
   return {
     type: 'log-set',
     ...(setNumber ? { setNumber: Number(setNumber) } : {}),
     reps: Number(repsMatch[1]),
     ...(weight !== undefined ? { weight, weightUnit } : {}),
+    ...(exercise && !/^\d/.test(exercise) ? { exercise } : {}),
   };
+}
+
+export type ExerciseMatch<T> = { kind: 'match'; exercise: T } | { kind: 'ambiguous'; options: T[] } | { kind: 'none' };
+
+/**
+ * Finds the exercise a spoken phrase names among the ones in this workout, by its English name, Spanish name or
+ * aliases, tolerating accents and speech-to-text slips. Two close candidates ("press" with bench and shoulder
+ * press in the session) come back as ambiguous rather than guessed.
+ */
+export function matchSpokenExercise<T extends { exerciseName: string }>(query: string, exercises: readonly T[]): ExerciseMatch<T> {
+  const ranked = exercises
+    .map((exercise) => ({ exercise, score: spokenNameScore(exercise.exerciseName, query) }))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score);
+  if (!ranked.length) return { kind: 'none' };
+  const [top, second] = ranked;
+  if (second && second.score >= top!.score * 0.85) {
+    return { kind: 'ambiguous', options: ranked.filter((r) => r.score >= top!.score * 0.85).map((r) => r.exercise) };
+  }
+  return { kind: 'match', exercise: top!.exercise };
 }
 
 export function normalizeSupplementName(name: string): string {

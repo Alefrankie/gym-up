@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseWorkoutVoiceCommand } from './voice-assistant';
+import { matchSpokenExercise, parseWorkoutVoiceCommand } from './voice-assistant';
 
 describe('spelled-out numbers (Vosk output)', () => {
   it('reads reps and weight written as words', () => {
@@ -108,5 +108,71 @@ describe('parseWorkoutVoiceCommand', () => {
     expect(parseWorkoutVoiceCommand('sube el peso la próxima vez')).toBeNull();
     expect(parseWorkoutVoiceCommand('hice unas cuantas')).toBeNull();
     expect(parseWorkoutVoiceCommand('una serie mas')).toBeNull();
+  });
+});
+
+describe('exercise names by voice', () => {
+  const session = [
+    'Bench Press',
+    'Shoulder Press',
+    'Squat',
+    'Bulgarian Squat',
+    'Lat Pulldown',
+    'Hip Thrust',
+    'Romanian Deadlift',
+    'Hammer Curl',
+    'My Custom Thing',
+  ].map((exerciseName) => ({ exerciseId: exerciseName, exerciseName }));
+  const pick = (query: string) => {
+    const m = matchSpokenExercise(query, session);
+    return m.kind === 'match' ? m.exercise.exerciseName : m.kind === 'ambiguous' ? m.options.map((o) => o.exerciseName) : null;
+  };
+
+  it('parses going to a named exercise', () => {
+    expect(parseWorkoutVoiceCommand('Vamos con press de banca')).toEqual({ type: 'go-to-exercise', query: 'press de banca' });
+    expect(parseWorkoutVoiceCommand('cambia a la sentadilla búlgara')).toEqual({ type: 'go-to-exercise', query: 'sentadilla bulgara' });
+    expect(parseWorkoutVoiceCommand('Ahora toca jalón al pecho.')).toEqual({ type: 'go-to-exercise', query: 'jalon al pecho' });
+    expect(parseWorkoutVoiceCommand('vamos con el siguiente')).toEqual({ type: 'next-exercise' });
+  });
+
+  it('parses the exercise named with a set', () => {
+    expect(parseWorkoutVoiceCommand('Hice 10 repeticiones de press de banca con 60 kilos')).toEqual({
+      type: 'log-set',
+      reps: 10,
+      weight: 60,
+      weightUnit: 'kg',
+      exercise: 'press de banca',
+    });
+    expect(parseWorkoutVoiceCommand('doce reps en sentadilla')).toEqual({ type: 'log-set', reps: 12, exercise: 'sentadilla' });
+    expect(parseWorkoutVoiceCommand('Hice 10 repeticiones con 80 kilos')).not.toHaveProperty('exercise');
+  });
+
+  it('matches Spanish names, aliases and English names', () => {
+    expect(pick('press de banca')).toBe('Bench Press');
+    expect(pick('press militar')).toBe('Shoulder Press');
+    expect(pick('jalón al pecho')).toBe('Lat Pulldown');
+    expect(pick('peso muerto rumano')).toBe('Romanian Deadlift');
+    expect(pick('curl martillo')).toBe('Hammer Curl');
+    expect(pick('hip thrust')).toBe('Hip Thrust');
+    expect(pick('bench press')).toBe('Bench Press');
+    expect(pick('my custom thing')).toBe('My Custom Thing');
+  });
+
+  it('tolerates speech-to-text slips', () => {
+    expect(pick('pres de vanca')).toBe('Bench Press');
+    expect(pick('sentadiya bulgara')).toBe('Bulgarian Squat');
+    expect(pick('escuat')).toBe('Squat');
+    expect(pick('jip trust')).toBe('Hip Thrust');
+    expect(pick('halon al pecho')).toBe('Lat Pulldown');
+    expect(pick('el ejercicio de rumano')).toBe('Romanian Deadlift');
+  });
+
+  it('asks instead of guessing when two exercises fit', () => {
+    expect(pick('press')).toEqual(expect.arrayContaining(['Bench Press', 'Shoulder Press']));
+  });
+
+  it('finds nothing for unrelated words', () => {
+    expect(pick('bicicleta')).toBeNull();
+    expect(pick('hola que tal')).toBeNull();
   });
 });
