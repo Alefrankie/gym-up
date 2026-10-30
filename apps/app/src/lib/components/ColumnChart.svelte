@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   /** Vertical columns with a label under each (workouts per week, volume per session…). The last column is "now". */
-  let { values, labels, label, empty = 'Aún no hay datos' }: { values: number[]; labels: string[]; label: string; empty?: string } = $props();
+  let { values, labels, label, empty = t('common.noData') }: { values: number[]; labels: string[]; label: string; empty?: string } = $props();
   const max = $derived(Math.max(1, ...values));
   const isEmpty = $derived(values.every((v) => v === 0));
   // With nothing to show yet, faint example columns keep the shape of the chart instead of a blank box.

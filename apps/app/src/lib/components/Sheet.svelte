@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import type { Snippet } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
@@ -15,7 +16,7 @@
   <span class="grip" aria-hidden="true"></span>
   <header>
     <h2>{title}</h2>
-    <button type="button" class="icon ghost" aria-label="Cerrar" onclick={onclose}><Icon name="x" size={20} /></button>
+    <button type="button" class="icon ghost" aria-label={t('common.close')} onclick={onclose}><Icon name="x" size={20} /></button>
   </header>
   {@render children()}
 </div>

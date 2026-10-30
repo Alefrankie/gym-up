@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import Icon, { type IconName } from './Icon.svelte';
@@ -6,7 +7,7 @@
   /** A ⋯ button with a small menu of secondary actions (cancel, archive…). Destructive items go in red. */
   let {
     items,
-    label = 'Más opciones',
+    label = t('common.moreOptions'),
   }: { items: { label: string; icon: IconName; danger?: boolean; disabled?: boolean; onselect: () => void }[]; label?: string } = $props();
 
   let open = $state(false);

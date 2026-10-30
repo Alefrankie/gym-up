@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { onMount } from 'svelte';
   import { workoutHistoryResponseSchema, type WorkoutHistoryResponse } from '@gym-up/contracts';
   import { ApiRequestError, NetworkError } from '#lib/api/client';
@@ -24,10 +25,10 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y sin historial guardado todavía.'
+          ? t('history.offlineEmpty')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudo cargar el historial';
+            : t('history.loadError');
     }
   }
 
@@ -38,17 +39,17 @@
 </script>
 
 <main>
-  <h1>Historial</h1>
+  <h1>{t('history.title')}</h1>
   <SyncBanner />
-  {#if stale}<p class="muted">Sin conexión: mostrando el último historial descargado.</p>{/if}
+  {#if stale}<p class="muted">{t('history.stale')}</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !history && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if history && history.items.length === 0}
     <section class="card empty">
       <Icon name="dumbbell" size={20} />
-      <p>Todavía no hay entrenamientos.</p>
-      <a href="/dashboard">Empieza el de hoy</a>
+      <p>{t('history.empty')}</p>
+      <a href="/dashboard">{t('history.startToday')}</a>
     </section>
   {:else if history}
     <ul class="list">
@@ -58,9 +59,9 @@
     </ul>
     {#if history.totalPages > 1}
       <div class="pager">
-        <button disabled={page <= 1} onclick={() => load(page - 1)}>Anterior</button>
+        <button disabled={page <= 1} onclick={() => load(page - 1)}>{t('history.prev')}</button>
         <span class="muted">{page} / {history.totalPages}</span>
-        <button disabled={page >= history.totalPages} onclick={() => load(page + 1)}>Siguiente</button>
+        <button disabled={page >= history.totalPages} onclick={() => load(page + 1)}>{t('history.next')}</button>
       </div>
     {/if}
   {/if}

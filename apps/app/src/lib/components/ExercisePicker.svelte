@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import type { LibraryExerciseDto } from '@gym-up/contracts';
   import { equipment, muscle } from '#lib/labels';
   import Icon from './Icon.svelte';
   import MuscleFigure from './MuscleFigure.svelte';
+  import ExerciseFilters from './ExerciseFilters.svelte';
+  import { emptyFilter, filterExercises } from '#lib/exercise-filter';
 
   let {
     exercises,
@@ -18,14 +21,8 @@
     onclose: () => void;
   } = $props();
 
-  let q = $state('');
-  let input = $state<HTMLInputElement>();
-  const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  const matches = $derived(exercises.filter((e) => !q || norm(e.name).includes(norm(q))).slice(0, 60));
-
-  $effect(() => {
-    input?.focus();
-  });
+  let filter = $state(emptyFilter());
+  const matches = $derived(filterExercises(exercises, filter).slice(0, 80));
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
@@ -33,12 +30,9 @@
 <div class="sheet" transition:fly={{ y: 40, duration: 300, easing: cubicOut }} role="dialog" aria-modal="true" aria-label={title}>
   <header>
     <h2>{title}</h2>
-    <button class="icon ghost" onclick={onclose} aria-label="Cerrar"><Icon name="x" size={18} /></button>
+    <button class="icon ghost" onclick={onclose} aria-label={t('common.close')}><Icon name="x" size={18} /></button>
   </header>
-  <div class="search">
-    <Icon name="search" size={16} />
-    <input bind:this={input} type="search" placeholder="Buscar ejercicio" aria-label="Buscar ejercicio" bind:value={q} />
-  </div>
+  <ExerciseFilters bind:filter autofocus />
   <ul>
     {#each matches as ex (ex.id)}
       <li>
@@ -51,7 +45,7 @@
         </button>
       </li>
     {:else}
-      <li class="muted empty">Ningún ejercicio coincide.</li>
+      <li class="muted empty">{t('library.noMatch')}</li>
     {/each}
   </ul>
 </div>
@@ -75,21 +69,6 @@
   header h2 {
     margin: 0.4rem 0;
     font-size: var(--t-lg);
-  }
-  .search {
-    position: relative;
-    display: flex;
-    align-items: center;
-    color: var(--faint);
-  }
-  .search :global(svg) {
-    position: absolute;
-    left: 0.75rem;
-    pointer-events: none;
-  }
-  .search input {
-    flex: 1;
-    padding-left: 2.3rem;
   }
   ul {
     flex: 1;

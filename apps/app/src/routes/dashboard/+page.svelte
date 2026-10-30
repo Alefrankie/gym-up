@@ -31,6 +31,7 @@
   import WorkoutHistoryRow from '#lib/components/WorkoutHistoryRow.svelte';
   import { randomQuote } from '#lib/quotes';
   import { localDay } from '#lib/dates';
+  import { t, tn } from '#lib/i18n';
 
   let today = $state<TodayWorkoutResponse | null>(null);
   let stale = $state(false);
@@ -65,10 +66,10 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y todavía no hay datos guardados. Conéctate una vez para descargar tu rutina.'
+          ? t('home.noDataOffline')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudo cargar el entrenamiento de hoy';
+            : t('home.loadError');
     }
   });
 
@@ -90,16 +91,16 @@
   });
 
   /** Starts (or resumes) today's workout and opens the chosen exercise, or the first one. */
-  async function start(t: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>, exerciseId?: string) {
+  async function start(w: Extract<TodayWorkoutResponse, { kind: 'workout_day' }>, exerciseId?: string) {
     if (busy) return;
     busy = true;
     error = null;
     try {
-      const id = await beginWorkout(t);
-      const first = exerciseId ?? t.exercises[0]?.exerciseId;
+      const id = await beginWorkout(w);
+      const first = exerciseId ?? w.exercises[0]?.exerciseId;
       await goto(first ? `/workout/${id}/${first}` : `/workout/${id}`);
     } catch {
-      error = 'No se pudo iniciar el entrenamiento';
+      error = t('home.startError');
       busy = false;
     }
   }
@@ -108,7 +109,7 @@
 <main>
   <header class="top">
     <p class="date">{dateLabel}</p>
-    <h1>Hola{session.user ? `, ${session.user.displayName.split(' ')[0]}` : ''}</h1>
+    <h1>{session.user ? t('home.helloName', { name: session.user.displayName.split(' ')[0]! }) : t('home.hello')}</h1>
     <p class="quote">“{quote}”</p>
     {#if today?.kind === 'workout_day' && today.programName}
       <a class="program" href="/programs"><Icon name="dumbbell" size={14} />{today.programName}</a>
@@ -116,36 +117,36 @@
   </header>
 
   <SyncBanner />
-  {#if stale}<p class="muted">Sin conexión: mostrando lo último descargado.</p>{/if}
+  {#if stale}<p class="muted">{t('common.offline')}</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <ActiveWorkoutCard oncancelled={() => location.reload()} />
 
   {#if !live}
     {#if today?.kind === 'workout_day'}
-      {@const t = today}
-      {#if t.workoutStatus === 'completed'}
-        <a class="today done" href={t.existingWorkoutId ? `/workout/${t.existingWorkoutId}` : '/history'}>
-          <span class="label ok"><Icon name="check" size={14} /> Hecho hoy</span>
-          <strong>{t.routineDay.dayName}</strong>
-          <span class="muted">Ver el resumen</span>
+      {@const w = today}
+      {#if w.workoutStatus === 'completed'}
+        <a class="today done" href={w.existingWorkoutId ? `/workout/${w.existingWorkoutId}` : '/history'}>
+          <span class="label ok"><Icon name="check" size={14} /> {t('home.doneToday')}</span>
+          <strong>{w.routineDay.dayName}</strong>
+          <span class="muted">{t('home.seeSummary')}</span>
         </a>
       {:else}
         <section class="today">
-          <span class="label">Hoy toca</span>
-          <strong>{t.routineDay.dayName}</strong>
-          <span class="meta">{t.routineDay.focus ? `${t.routineDay.focus} · ` : ''}{sessionSummary(t.exercises)}</span>
-          <TargetMuscles muscles={muscleLoad(t.exercises)} />
+          <span class="label">{t('home.todayIs')}</span>
+          <strong>{w.routineDay.dayName}</strong>
+          <span class="meta">{w.routineDay.focus ? `${w.routineDay.focus} · ` : ''}{sessionSummary(w.exercises)}</span>
+          <TargetMuscles muscles={muscleLoad(w.exercises)} />
           <div class="actions">
             <button type="button" class="ghost toggle" aria-expanded={showExercises} onclick={() => (showExercises = !showExercises)}>
-              {showExercises ? 'Ocultar ejercicios' : 'Ver ejercicios'} <Icon name={showExercises ? 'up' : 'down'} size={16} />
+              {showExercises ? t('home.hideExercises') : t('home.showExercises')} <Icon name={showExercises ? 'up' : 'down'} size={16} />
             </button>
-            <button class="primary go" disabled={busy} onclick={() => start(t)}><Icon name="bolt" size={16} /> Empezar</button>
+            <button class="primary go" disabled={busy} onclick={() => start(w)}><Icon name="bolt" size={16} /> {t('home.start')}</button>
           </div>
           {#if showExercises}
             <ul class="rows" transition:slide={{ duration: 240, easing: cubicOut }}>
-              {#each t.exercises as ex (ex.id)}
-                <li><ExerciseRow {ex} unit={t.weightUnit} onclick={() => start(t, ex.exerciseId)} /></li>
+              {#each w.exercises as ex (ex.id)}
+                <li><ExerciseRow {ex} unit={w.weightUnit} onclick={() => start(w, ex.exerciseId)} /></li>
               {/each}
             </ul>
           {/if}
@@ -153,14 +154,14 @@
       {/if}
     {:else if today?.kind === 'no_routine'}
       <a class="today" href="/programs">
-        <span class="label">Empieza aquí</span>
-        <strong>Elige un programa</strong>
-        <span class="muted">Usa una plantilla o crea el tuyo y aquí verás qué toca cada día.</span>
+        <span class="label">{t('home.startHere')}</span>
+        <strong>{t('home.pickProgram')}</strong>
+        <span class="muted">{t('home.pickProgramHint')}</span>
       </a>
     {:else if today?.kind === 'rest_day'}
       <section class="today">
-        <span class="label">Hoy</span>
-        <strong>Día de descanso</strong>
+        <span class="label">{t('common.today')}</span>
+        <strong>{t('home.restDay')}</strong>
       </section>
     {/if}
   {/if}
@@ -169,9 +170,9 @@
 
   <section class="block">
     <div class="block-head">
-      <h2>Esta semana</h2>
+      <h2>{t('home.thisWeek')}</h2>
       {#if today?.kind === 'workout_day' && today.week && today.week.target > 0}
-        <span class="muted">{Math.min(today.week.done, today.week.target)} de {today.week.target} entrenos</span>
+        <span class="muted">{t('home.weekProgress', { done: Math.min(today.week.done, today.week.target), target: today.week.target })}</span>
       {/if}
     </div>
     <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} today={localDay()} />
@@ -179,14 +180,14 @@
 
   {#if calendar.length}
     <section class="block card">
-      <div class="block-head"><h2>Entrenos por semana</h2><a href="/progress">Progreso</a></div>
-      <ColumnChart values={perWeek.map((w) => w.value)} labels={perWeek.map((w) => w.label)} label="Entrenos por semana, últimas 8 semanas" empty="Termina tu primer entrenamiento y aquí aparecerán tus semanas" />
+      <div class="block-head"><h2>{t('home.perWeek')}</h2><a href="/progress">{t('nav.progress')}</a></div>
+      <ColumnChart values={perWeek.map((w) => w.value)} labels={perWeek.map((w) => w.label)} label={t('home.perWeekLabel')} empty={t('home.perWeekEmpty')} />
     </section>
   {/if}
 
   {#if recent.length}
     <section class="block">
-      <div class="block-head"><h2>Últimos entrenamientos</h2><a href="/history">Ver todo</a></div>
+      <div class="block-head"><h2>{t('home.recent')}</h2><a href="/history">{t('common.seeAll')}</a></div>
       <ul class="recent">
         {#each recent as item (item.id)}<li><WorkoutHistoryRow {item} /></li>{/each}
       </ul>

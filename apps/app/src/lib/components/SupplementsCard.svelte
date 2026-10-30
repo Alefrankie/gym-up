@@ -5,6 +5,7 @@
   import { shortDay } from '#lib/dates';
   import { localDay } from '#lib/dates';
   import { loadSupplements, persistMark, withMark } from '#lib/supplements';
+  import { t, tn } from '#lib/i18n';
   import Icon from './Icon.svelte';
 
   /** Today's supplement checklist: one tap to say "taken", so there is no more wondering about the creatine. */
@@ -21,12 +22,13 @@
 
   /** The 7 days ending today, oldest first, with their weekday letter. */
   function last7(today: string) {
-    const L = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
-    const t = new Date(`${today}T12:00:00`);
+    // Weekday letters come Monday-first; getDay() counts from Sunday.
+    const L = t('week.letters');
+    const base = new Date(`${today}T12:00:00`);
     return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(t);
-      d.setDate(t.getDate() - (6 - i));
-      return { key: localDay(d), letter: L[d.getDay()]! };
+      const d = new Date(base);
+      d.setDate(base.getDate() - (6 - i));
+      return { key: localDay(d), letter: L[(d.getDay() + 6) % 7]! };
     });
   }
 
@@ -44,13 +46,13 @@
 </script>
 
 {#if list && list.items.length}
-  <section class="supps" aria-label="Suplementos de hoy">
+  <section class="supps" aria-label={t('supps.todayLabel')}>
     <header>
       <div class="title">
-        <h2>Suplementos</h2>
-        <span class="muted count">Hoy, {shortDay(list.day)} · {done} de {list.items.length} tomados</span>
+        <h2>{t('supps.title')}</h2>
+        <span class="muted count">{t('supps.summary', { day: shortDay(list.day), done, total: list.items.length })}</span>
       </div>
-      <a class="manage" href="/supplements">Historial <Icon name="right" size={16} /></a>
+      <a class="manage" href="/supplements">{t('supps.history')} <Icon name="right" size={16} /></a>
     </header>
     {#if list.items.length <= 2}
       <!-- With one or two supplements a chip looks lost: each gets a full row with its last 7 days. -->
@@ -61,10 +63,10 @@
             <span class="info">
               <strong>{s.name}</strong>
               <span class="muted">
-                {#if s.taken}Listo por hoy{:else}Toca para marcar{/if}{#if s.streak > 1} · <span class="streak-text">{s.streak} días seguidos</span>{/if}
+                {#if s.taken}{t('supps.doneToday')}{:else}{t('supps.tapToMark')}{/if}{#if s.streak > 1} · <span class="streak-text">{tn('supps.streak', s.streak)}</span>{/if}
               </span>
             </span>
-            <span class="week" aria-label="Últimos 7 días">
+            <span class="week" aria-label={t('supps.last7')}>
               {#each last7(list.day) as d (d.key)}
                 <span class="wd"><i class:on={s.days.includes(d.key)} class:today={d.key === list.day}></i><small>{d.letter}</small></span>
               {/each}

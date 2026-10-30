@@ -92,7 +92,7 @@ describe('exercise library', () => {
   it('lists the seeded system exercises with the new taxonomy and filters them', async () => {
     const s = await register('lib1@example.com');
     const all = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises', { token: s.token })).json);
-    expect(all.items).toHaveLength(35);
+    expect(all.items).toHaveLength(97);
     const squat = all.items.find((e) => e.name === 'Squat')!;
     expect(squat).toMatchObject({ primaryMuscle: 'quadriceps', equipment: 'barbell', isCustom: false });
     expect(squat.secondaryMuscles).toEqual(['glutes', 'hamstrings']);
@@ -102,9 +102,10 @@ describe('exercise library', () => {
     // primary or secondary
     expect(glutes.items.map((e) => e.name)).toEqual(expect.arrayContaining(['Hip Thrust', 'Squat']));
     const search = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=curl&equipment=cable', { token: s.token })).json);
-    expect(search.items).toEqual([]);
+    expect(search.items.map((e) => e.name)).toEqual(['Cable Curl']);
     const curls = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=curl', { token: s.token })).json);
-    expect(curls.items.map((e) => e.name).sort()).toEqual(['Barbell Bicep Curl', 'Bicep Curl', 'Hammer Curl', 'Leg Curl', 'Seated Leg Curl']);
+    expect(curls.items.map((e) => e.name)).toEqual(expect.arrayContaining(['Hammer Curl', 'Leg Curl', 'Lying Leg Curl', 'Seated Leg Curl', 'Preacher Curl']));
+    expect(curls.items.every((e) => /curl/i.test(e.name))).toBe(true);
   });
 
   it('creates custom exercises (idempotent by id), visible to everyone, editable by the owner only', async () => {
@@ -250,8 +251,8 @@ describe('programs', () => {
     await http('POST', '/programs', { token: s.token, body: { id, name: 'Plan' } });
     const sets = [
       { reps: 12, type: 'warmup' },
-      { reps: 8, type: 'normal' },
-      { reps: 6, type: 'failure' },
+      { reps: 8, type: 'normal', weight: 100 },
+      { reps: 6, type: 'failure', weight: 102.5 },
       { reps: 10, type: 'drop' },
     ];
     const body = { name: 'Plan', routines: [{ name: 'A', exercises: [{ exerciseId: squat, targetSets: 4, targetReps: 8, warmupSets: 1, sets }] }] };

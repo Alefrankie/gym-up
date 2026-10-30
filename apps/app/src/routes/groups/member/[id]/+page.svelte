@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, dateLocale } from '#lib/i18n';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { memberProfileSchema, type MemberProfileDto } from '@gym-up/contracts';
@@ -19,22 +20,22 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y todavía no hay datos guardados.'
+          ? t('groups.offlineMember')
           : e instanceof ApiRequestError && e.status === 404
-            ? 'Solo puedes ver a quienes comparten un grupo contigo.'
-            : 'No se pudo cargar el perfil';
+            ? t('groups.memberForbidden')
+            : t('groups.loadMemberError');
     }
   });
 
   const fmt = (d: string) =>
-    new Date(d + 'T00:00:00Z').toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    new Date(d + 'T00:00:00Z').toLocaleDateString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 </script>
 
 <main>
-  <p><button class="ghost back" onclick={() => history.back()}><Icon name="left" size={18} /> Volver</button></p>
+  <p><button class="ghost back" onclick={() => history.back()}><Icon name="left" size={18} /> {t('common.back')}</button></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !member && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if member}
     <header class="who">
       <Avatar name={member.profile.displayName} size={48} />
@@ -44,17 +45,17 @@
     <section class="card hero stats">
       <div>
         <span class="big-number">{member.stats.totalWorkouts}</span>
-        <span class="muted">entrenamientos</span>
+        <span class="muted">{t('groups.workoutsLabel')}</span>
       </div>
       <div>
         <span class="big-number streak"><Icon name="flame" size={20} />{member.stats.currentStreak}</span>
-        <span class="muted">racha</span>
+        <span class="muted">{t('groups.streakLabel')}</span>
       </div>
     </section>
 
-    <h2>Entrenamientos</h2>
+    <h2>{t('groups.workoutsTitle')}</h2>
     {#if member.workouts.length === 0}
-      <p class="muted">Todavía no ha terminado ninguno.</p>
+      <p class="muted">{t('groups.memberNoWorkouts')}</p>
     {:else}
       <ul class="list">
         {#each member.workouts as w (w.id)}

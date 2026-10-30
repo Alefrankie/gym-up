@@ -7,6 +7,7 @@ import { cancelWorkoutById } from './start-workout';
 import { sync } from './sync.svelte';
 import { loadSnapshot, rowKey, saveSnapshot, setActiveWorkoutId, type WorkoutSnapshot } from './workout-session';
 import { session } from '#lib/session';
+import { t } from '#lib/i18n';
 
 const KG_TO_LBS = 2.20462;
 export const toDisplay = (kg: number, u: 'kg' | 'lbs') => (u === 'lbs' ? Math.round(kg * KG_TO_LBS * 10) / 10 : kg);
@@ -102,7 +103,15 @@ export class WorkoutView {
       id: crypto.randomUUID(),
       reps: before?.reps ?? planned?.reps ?? ex.targetReps,
       type,
-      weight: before ? toDisplay(before.weight, s.unit) : ex.last ? toDisplay(ex.last.weight, s.unit) : 0,
+      // A weight written in the routine plan wins; otherwise the last session's, so the number to beat is there.
+      weight:
+        planned?.weight !== undefined
+          ? toDisplay(planned.weight, s.unit)
+          : before
+            ? toDisplay(before.weight, s.unit)
+            : ex.last && type !== 'warmup'
+              ? toDisplay(ex.last.weight, s.unit)
+              : 0,
       completed: false,
     };
   }
@@ -183,7 +192,7 @@ export class WorkoutView {
       this.snap = built;
     } catch (e) {
       this.error =
-        e instanceof ApiRequestError ? e.message : 'Sin conexión. Este entrenamiento no está guardado en el teléfono.';
+        e instanceof ApiRequestError ? e.message : t('workout.notOnDevice');
     }
   }
 
@@ -277,7 +286,7 @@ export class WorkoutView {
     const snap = this.snap;
     if (!snap) return false;
     if (!this.anyCompleted) {
-      this.error = 'Registra al menos una serie antes de finalizar';
+      this.error = t('workout.logOneSet');
       return false;
     }
     this.finishing = true;

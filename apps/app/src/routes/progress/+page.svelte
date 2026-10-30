@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn, dateLocale, type MessageKey } from '#lib/i18n';
   import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
   import {
@@ -22,18 +23,17 @@
   import Icon from '#lib/components/Icon.svelte';
 
   const KG_TO_LBS = 2.20462;
-  const RANGES: Array<{ value: DateRange; label: string }> = [
-    { value: '7d', label: '7 días' },
-    { value: '30d', label: '30 días' },
-    { value: 'all', label: 'Todo' },
+  const RANGES: Array<{ value: DateRange; label: MessageKey }> = [
+    { value: '7d', label: 'progress.range7' },
+    { value: '30d', label: 'progress.range30' },
+    { value: 'all', label: 'progress.rangeAll' },
   ];
 
   let streak = $state<StreakDto | null>(null);
   let calendar = $state<CalendarDayDto[]>([]);
 
-  const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  const DAYS = ['Lun', '', 'Mié', '', 'Vie', '', 'Dom'];
+  const monthName = (m: number, month: 'short' | 'long') => new Date(2000, m, 1).toLocaleDateString(dateLocale(), { month });
+  const DAYS = $derived(t('progress.dayLabels').split(','));
   const now = new Date();
   const ymd = (d: Date) => d.toISOString().slice(0, 10);
   const monthKey = ymd(now).slice(0, 7);
@@ -71,7 +71,7 @@
   const monthLabel = (col: { date: string }[], i: number) => {
     const m = Number(col[0]!.date.slice(5, 7)) - 1;
     const prev = i > 0 ? Number(weeks[i - 1]![0]!.date.slice(5, 7)) - 1 : -1;
-    return m !== prev ? MONTHS[m] : '';
+    return m !== prev ? monthName(m, 'short').replace('.', '') : '';
   };
 
   let heat = $state<HTMLElement>();
@@ -95,7 +95,7 @@
   function fail(e: unknown, fallback: string) {
     error =
       e instanceof NetworkError
-        ? 'Sin conexión y todavía no hay datos guardados.'
+        ? t('progress.offlineEmpty')
         : e instanceof ApiRequestError
           ? e.message
           : fallback;
@@ -111,7 +111,7 @@
       points = res.data;
       stale ||= res.stale;
     } catch (e) {
-      fail(e, 'No se pudo cargar el historial del ejercicio');
+      fail(e, t('progress.historyError'));
     }
   }
 
@@ -130,44 +130,44 @@
       exerciseId = exercises[0]?.id ?? '';
       await loadHistory();
     } catch (e) {
-      fail(e, 'No se pudo cargar tu progreso');
+      fail(e, t('progress.loadError'));
     }
   });
 </script>
 
 <main>
-  <h1>Progreso</h1>
+  <h1>{t('nav.progress')}</h1>
   <SyncBanner />
-  {#if stale}<p class="muted">Sin conexión: mostrando los últimos datos descargados.</p>{/if}
+  {#if stale}<p class="muted">{t('progress.stale')}</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if streak}
     <div class="tiles">
       <a class="tile" href="/history">
         <span class="ico ember"><Icon name="flame" size={20} /></span>
-        <strong>{streak.current > 0 ? `${streak.current} ${streak.current === 1 ? 'día' : 'días'}` : 'Sin racha'}</strong>
-        <span class="muted">Racha actual</span>
+        <strong>{streak.current > 0 ? tn('progress.days', streak.current) : t('progress.noStreak')}</strong>
+        <span class="muted">{t('progress.currentStreak')}</span>
       </a>
       <a class="tile" href="/history">
         <span class="ico"><Icon name="bolt" size={20} /></span>
-        <strong>{thisWeek} {thisWeek === 1 ? 'entreno' : 'entrenos'}</strong>
-        <span class="muted">Esta semana</span>
+        <strong>{tn('progress.workouts', thisWeek)}</strong>
+        <span class="muted">{t('progress.thisWeek')}</span>
       </a>
       <a class="tile month" href="/history">
         <span class="watermark" aria-hidden="true">{now.getDate()}</span>
-        <strong>{MONTH_NAMES[now.getMonth()]}</strong>
-        <span class="muted">{thisMonth} {thisMonth === 1 ? 'entreno' : 'entrenos'}</span>
+        <strong>{monthName(now.getMonth(), 'long').replace(/^./, (c) => c.toUpperCase())}</strong>
+        <span class="muted">{tn('progress.workouts', thisMonth)}</span>
       </a>
       <a class="tile" href="/history">
         <span class="ico"><Icon name="dumbbell" size={20} /></span>
         <strong>{streak.total}</strong>
-        <span class="muted">Entrenos en total</span>
+        <span class="muted">{t('progress.totalWorkouts')}</span>
       </a>
     </div>
 
     <section class="card year">
       <div class="year-head">
-        <h2 class="first">{thisYear} {thisYear === 1 ? 'entreno' : 'entrenos'}</h2>
+        <h2 class="first">{tn('progress.workouts', thisYear)}</h2>
         <span class="muted">{yearKey}</span>
       </div>
       <div class="heat-wrap">
@@ -175,7 +175,7 @@
           <span></span>
           {#each DAYS as d, i (i)}<span>{d}</span>{/each}
         </div>
-        <div class="heat" bind:this={heat} aria-label="Entrenamientos del último año">
+        <div class="heat" bind:this={heat} aria-label={t('progress.yearLabel')}>
           {#each weeks as col, i (col[0]!.date)}
             <div class="col">
               <span class="m">{monthLabel(col, i)}</span>
@@ -189,42 +189,42 @@
     </section>
 
     <section class="card">
-      <h2 class="first">Entrenos por semana</h2>
-      <p class="muted chart-sub">Últimas 12 semanas</p>
+      <h2 class="first">{t('progress.perWeek')}</h2>
+      <p class="muted chart-sub">{t('progress.last12Weeks')}</p>
       <ColumnChart
         values={weeks.slice(-12).map((col) => col.filter((d) => d.on).length)}
         labels={weeks.slice(-12).map((col) => String(Number(col[0]!.date.slice(8))))}
-        label="Entrenos por semana"
+        label={t('progress.perWeek')}
       />
     </section>
 
     <section class="card">
-      <h2 class="first">Evolución por ejercicio</h2>
+      <h2 class="first">{t('progress.byExercise')}</h2>
       {#if exercises.length === 0}
-        <p class="muted">Registra tu primer entrenamiento y aquí verás tu evolución.</p>
+        <p class="muted">{t('progress.noExercises')}</p>
       {:else}
         <label>
-          Ejercicio
+          {t('progress.exercise')}
           <Select bind:value={exerciseId} options={exercises.map((ex) => ({ value: ex.id, label: ex.name }))} onchange={loadHistory} />
         </label>
-        <div class="tabs" role="group" aria-label="Rango">
+        <div class="tabs" role="group" aria-label={t('progress.range')}>
           {#each RANGES as r (r.value)}
-            <button type="button" class:active={range === r.value} onclick={() => { range = r.value; loadHistory(); }}>{r.label}</button>
+            <button type="button" class:active={range === r.value} onclick={() => { range = r.value; loadHistory(); }}>{t(r.label)}</button>
           {/each}
         </div>
-        <div class="tabs" role="group" aria-label="Métrica">
-          <button type="button" class:active={metric === 'weight'} onclick={() => (metric = 'weight')}>Peso máximo</button>
-          <button type="button" class:active={metric === 'volume'} onclick={() => (metric = 'volume')}>Volumen</button>
+        <div class="tabs" role="group" aria-label={t('progress.metric')}>
+          <button type="button" class:active={metric === 'weight'} onclick={() => (metric = 'weight')}>{t('progress.maxWeight')}</button>
+          <button type="button" class:active={metric === 'volume'} onclick={() => (metric = 'volume')}>{t('progress.volume')}</button>
         </div>
         {#if points.length === 0}
-          <p class="muted">Sin datos en este rango.</p>
+          <p class="muted">{t('progress.noData')}</p>
         {:else}
-          <ProgressChart {labels} {values} label={metric === 'weight' ? `Peso máximo (${unit})` : `Volumen (${unit})`} />
+          <ProgressChart {labels} {values} label={metric === 'weight' ? `${t('progress.maxWeight')} (${unit})` : `${t('progress.volume')} (${unit})`} />
         {/if}
       {/if}
     </section>
   {:else if !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {/if}
 </main>
 

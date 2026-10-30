@@ -20,7 +20,7 @@ export interface ProgramSlotInput {
   warmupSets: number;
   restSeconds?: number | null;
   notes?: string | null;
-  sets?: { reps: number; type: 'normal' | 'warmup' | 'drop' | 'failure' }[] | null;
+  sets?: { reps: number; type: 'normal' | 'warmup' | 'drop' | 'failure'; weight?: number }[] | null;
 }
 
 export interface ProgramRoutineInput {

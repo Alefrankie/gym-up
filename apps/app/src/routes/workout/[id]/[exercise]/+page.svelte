@@ -5,6 +5,7 @@
   import { REST_SECONDS } from '#lib/offline/rest.svelte';
   import { useWorkoutView } from '#lib/offline/workout-context';
   import { toDisplay } from '#lib/offline/workout-view.svelte';
+  import { t, tn } from '#lib/i18n';
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
   import SetTypeCell from '#lib/components/SetTypeCell.svelte';
@@ -20,7 +21,7 @@
   const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const ago = (iso: string) => {
     const days = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86_400_000));
-    return days === 0 ? 'Hoy' : days === 1 ? 'Ayer' : `Hace ${days} días`;
+    return days === 0 ? t('common.today') : days === 1 ? t('common.yesterday') : tn('workout.daysAgo', days);
   };
 
   function go(delta: number) {
@@ -32,19 +33,19 @@
 
 
 {#if !ex}
-  <p class="muted">Este ejercicio no está en el entrenamiento.</p>
-  <p><a class="back" href={`/workout/${id}`}><Icon name="left" size={18} /> Volver a la rutina</a></p>
+  <p class="muted">{t('workout.notInWorkout')}</p>
+  <p><a class="back" href={`/workout/${id}`}><Icon name="left" size={18} /> {t('workout.backToRoutine')}</a></p>
 {:else}
   <section class="hero" aria-label={ex.exerciseName}>
-    <a class="round back-btn" href={`/workout/${id}`} aria-label="Volver a la rutina"><Icon name="left" size={20} /></a>
+    <a class="round back-btn" href={`/workout/${id}`} aria-label={t('workout.backToRoutine')}><Icon name="left" size={20} /></a>
     {#if view.elapsed}
-      <span class="elapsed" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={14} />{view.elapsed}</span>
+      <span class="elapsed" role="timer" aria-label={t('workout.elapsed')}><Icon name="timer" size={14} />{view.elapsed}</span>
     {/if}
     <div class="figs">
       <MuscleFigure primary={ex.muscleGroup} secondary={ex.secondaryMuscles ?? []} view="both" size={60} />
     </div>
     <div class="title">
-      <span class="count">Ejercicio {index + 1} de {exercises.length}</span>
+      <span class="count">{t('workout.exerciseOf', { n: index + 1, total: exercises.length })}</span>
       <h1>{ex.exerciseName}</h1>
     </div>
   </section>
@@ -54,18 +55,18 @@
     <span class="chip">{muscle(ex.muscleGroup)}</span>
     {#if ex.last}
       <span class="chip on"><Icon name="history" size={14} />{ago(ex.last.date)}: {toDisplay(ex.last.weight, view.unit)} {view.unit} × {ex.last.reps}</span>
-      {#if ex.last.record}<span class="chip record"><Icon name="flame" size={14} />Récord: {toDisplay(ex.last.record.weight, view.unit)} {view.unit} × {ex.last.record.reps}</span>{/if}
+      {#if ex.last.record}<span class="chip record"><Icon name="flame" size={14} />{t('workout.record')}: {toDisplay(ex.last.record.weight, view.unit)} {view.unit} × {ex.last.record.reps}</span>{/if}
     {:else}
-      <span class="chip">Primera vez</span>
+      <span class="chip">{t('workout.firstTime')}</span>
     {/if}
-    <a class="chip link" href={`/library/${ex.exerciseId}`}><Icon name="book" size={14} />Cómo se hace</a>
+    <a class="chip link" href={`/library/${ex.exerciseId}`}><Icon name="book" size={14} />{t('workout.howTo')}</a>
   </div>
 
-  <h2>Series</h2>
-  <div class="table" role="group" aria-label="Series">
+  <h2>{t('workout.sets')}</h2>
+  <div class="table" role="group" aria-label={t('workout.sets')}>
     <div class="heads">
-      <span>Serie</span>
-      <span>Reps</span>
+      <span>{t('workout.set')}</span>
+      <span>{t('workout.reps')}</span>
       <span>{view.unit.toUpperCase()}</span>
       <span></span>
     </div>
@@ -82,7 +83,7 @@
             bind:value={r.reps}
             disabled={view.isCompleted}
             onchange={() => view.edited(ex.exerciseId, n)}
-            aria-label={`Serie ${n}: repeticiones`}
+            aria-label={t('workout.setReps', { n })}
           />
           <input
             type="number"
@@ -92,32 +93,32 @@
             bind:value={r.weight}
             disabled={view.isCompleted}
             onchange={() => view.edited(ex.exerciseId, n)}
-            aria-label={`Serie ${n}: peso (${view.unit})`}
+            aria-label={t('workout.setWeight', { n, unit: view.unit })}
           />
           <button
             type="button"
             class="check"
             disabled={view.isCompleted}
             onclick={() => view.commit(ex.exerciseId, n, !r.completed)}
-            aria-label={r.completed ? `Desmarcar serie ${n}` : `Completar serie ${n}`}
+            aria-label={r.completed ? t('workout.uncheckSet', { n }) : t('workout.checkSet', { n })}
           ><Icon name="check" size={18} /></button>
         </div>
       {/if}
     {/each}
     {#if !view.isCompleted}
-      <button type="button" class="addset" onclick={() => view.addSet(ex)}><Icon name="plus" size={16} /> Añadir serie</button>
+      <button type="button" class="addset" onclick={() => view.addSet(ex)}><Icon name="plus" size={16} /> {t('workout.addSet')}</button>
     {/if}
   </div>
 
   <div class="cta">
     <div class="pair">
-      <button type="button" class="round" disabled={index === 0} onclick={() => go(-1)} aria-label="Ejercicio anterior"><Icon name="left" size={20} /></button>
+      <button type="button" class="round" disabled={index === 0} onclick={() => go(-1)} aria-label={t('workout.prevExercise')}><Icon name="left" size={20} /></button>
       {#if isLast}
         <button class="primary" disabled={view.finishing || !view.anyCompleted || view.isCompleted} onclick={() => view.finish()}>
-          {view.finishing ? 'Finalizando…' : 'Finalizar entrenamiento'}
+          {view.finishing ? t('workout.finishingAlt') : t('workout.finishAlt')}
         </button>
       {:else}
-        <button class="primary" onclick={() => go(1)}>Siguiente ejercicio <Icon name="right" size={16} /></button>
+        <button class="primary" onclick={() => go(1)}>{t('workout.nextExercise')} <Icon name="right" size={16} /></button>
       {/if}
     </div>
   </div>

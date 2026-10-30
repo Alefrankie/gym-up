@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, dateLocale } from '#lib/i18n';
   import { onMount } from 'svelte';
   import {
     analyzeMealResponseSchema,
@@ -33,10 +34,10 @@
   let busy = $state(false);
 
   function describe(e: unknown, fallback: string): string {
-    if (e instanceof NetworkError) return 'Esta función necesita conexión a internet.';
+    if (e instanceof NetworkError) return t('nutrition.needsConnection');
     if (e instanceof ApiRequestError) {
-      if (e.status === 503) return 'El análisis con IA todavía no está activado. Puedes agregar la comida a mano.';
-      if (e.status === 422) return 'No se reconoció comida en la foto. Prueba con otra o agrégala a mano.';
+      if (e.status === 503) return t('nutrition.aiDisabled');
+      if (e.status === 422) return t('nutrition.noFood');
       return e.message;
     }
     return fallback;
@@ -52,7 +53,7 @@
       entries = h.data;
       goalInput = s.data.goal ? String(s.data.goal) : '';
     } catch (e) {
-      error = describe(e, 'No se pudo cargar tu alimentación');
+      error = describe(e, t('nutrition.loadError'));
     }
   }
 
@@ -77,7 +78,7 @@
       });
       draft = { ...result, id: crypto.randomUUID(), userEdited: false, image };
     } catch (e) {
-      error = describe(e, 'No se pudo analizar la foto');
+      error = describe(e, t('nutrition.analyzeError'));
     } finally {
       busy = false;
     }
@@ -102,29 +103,29 @@
         ...meal,
         foodItems: meal.foodItems.length
           ? meal.foodItems
-          : [{ name: 'Comida', calories: meal.totalCalories, protein: meal.totalProtein, carbs: meal.totalCarbs, fat: meal.totalFat }],
+          : [{ name: t('nutrition.meal'), calories: meal.totalCalories, protein: meal.totalProtein, carbs: meal.totalCarbs, fat: meal.totalFat }],
         ...(image ? { imageBase64: await blobToBase64(image), mimeType: 'image/jpeg' } : {}),
       };
       await api('/nutrition/entries', { body, schema: nutritionEntrySchema, timeoutMs: 45_000 });
       draft = null;
-      notice = 'Comida guardada.';
+      notice = t('nutrition.saved');
       await invalidateCache(['/nutrition']);
       await load();
     } catch (e) {
-      error = describe(e, 'No se pudo guardar la comida');
+      error = describe(e, t('nutrition.saveError'));
     } finally {
       busy = false;
     }
   }
 
   async function removeEntry(e: NutritionEntryDto) {
-    if (!confirm('¿Borrar esta comida?')) return;
+    if (!confirm(t('nutrition.confirmDelete'))) return;
     try {
       await deleteRequest(`/nutrition/entries/${e.id}`);
       await invalidateCache(['/nutrition']);
       await load();
     } catch (err) {
-      error = describe(err, 'No se pudo borrar');
+      error = describe(err, t('nutrition.deleteError'));
     }
   }
 
@@ -134,7 +135,7 @@
     const value = goalInput.trim() === '' ? null : Number(goalInput);
     const parsed = calorieGoalSchema.safeParse({ dailyCalorieGoal: value });
     if (!parsed.success) {
-      error = 'La meta debe ser un número entre 1 y 10000 kcal.';
+      error = t('nutrition.goalInvalid');
       return;
     }
     try {
@@ -142,27 +143,27 @@
       await invalidateCache(['/nutrition']);
       await load();
     } catch (e) {
-      error = describe(e, 'No se pudo guardar la meta');
+      error = describe(e, t('nutrition.goalSaveError'));
     }
   }
 
   const todayMacros = $derived.by(() => {
     const day = new Date().toDateString();
-    const t = { p: 0, c: 0, g: 0 };
+    const m = { p: 0, c: 0, g: 0 };
     for (const e of entries) {
       if (new Date(e.loggedAt).toDateString() !== day) continue;
-      t.p += e.totalProtein;
-      t.c += e.totalCarbs;
-      t.g += e.totalFat;
+      m.p += e.totalProtein;
+      m.c += e.totalCarbs;
+      m.g += e.totalFat;
     }
-    return t;
+    return m;
   });
-  const time = (iso: string) => new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const time = (iso: string) => new Date(iso).toLocaleString(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 </script>
 
 <main>
-  <p><a class="back" href="/more"><Icon name="left" size={18} /> Más</a></p>
-  <h1>Alimentación</h1>
+  <p><a class="back" href="/more"><Icon name="left" size={18} /> {t('nav.more')}</a></p>
+  <h1>{t('nutrition.title')}</h1>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if notice}<p class="ok" role="status">{notice}</p>{/if}
 
@@ -170,7 +171,7 @@
     {@const goal = summary.goal}
     {@const over = goal !== null && summary.consumed > goal}
     <section class="card hero">
-      <p class="eyebrow">Hoy</p>
+      <p class="eyebrow">{t('common.today')}</p>
       <p class="total">
         <span class="big-number kcal" class:over>{Math.round(summary.consumed)}</span>
         <span class="muted">{goal ? `/ ${goal} kcal` : 'kcal'}</span>
@@ -179,55 +180,55 @@
         <div class="track" role="progressbar" aria-valuemin="0" aria-valuemax={goal} aria-valuenow={Math.min(summary.consumed, goal)}>
           <div class="fill" class:over style="width: {Math.min(100, (summary.consumed / goal) * 100)}%"></div>
         </div>
-        <p class="muted left">{summary.remaining !== null && summary.remaining >= 0 ? `Faltan ${summary.remaining} kcal` : `Te pasaste ${Math.abs(summary.remaining ?? 0)} kcal`}</p>
+        <p class="muted left">{summary.remaining !== null && summary.remaining >= 0 ? t('nutrition.remaining', { n: summary.remaining }) : t('nutrition.over', { n: Math.abs(summary.remaining ?? 0) })}</p>
       {:else}
-        <p class="muted left">Sin meta todavía. Define una abajo para ver tu progreso.</p>
+        <p class="muted left">{t('nutrition.noGoal')}</p>
       {/if}
       <div class="macros">
-        <div><span class="big-number">{Math.round(todayMacros.p)}</span><span class="muted">Proteína g</span></div>
-        <div><span class="big-number">{Math.round(todayMacros.c)}</span><span class="muted">Carbos g</span></div>
-        <div><span class="big-number">{Math.round(todayMacros.g)}</span><span class="muted">Grasa g</span></div>
+        <div><span class="big-number">{Math.round(todayMacros.p)}</span><span class="muted">{t('nutrition.proteinG')}</span></div>
+        <div><span class="big-number">{Math.round(todayMacros.c)}</span><span class="muted">{t('nutrition.carbsG')}</span></div>
+        <div><span class="big-number">{Math.round(todayMacros.g)}</span><span class="muted">{t('nutrition.fatG')}</span></div>
       </div>
       <form class="goal" onsubmit={saveGoal}>
-        <label>Meta diaria (kcal)<input inputmode="numeric" bind:value={goalInput} placeholder="Sin meta" /></label>
-        <button type="submit">Guardar</button>
+        <label>{t('nutrition.dailyGoal')}<input inputmode="numeric" bind:value={goalInput} placeholder={t('nutrition.noGoalPlaceholder')} /></label>
+        <button type="submit">{t('common.save')}</button>
       </form>
     </section>
   {:else if !error}
-    <section class="card hero loading"><p class="muted">Cargando tu día…</p></section>
+    <section class="card hero loading"><p class="muted">{t('nutrition.loadingDay')}</p></section>
   {/if}
 
   {#if draft}
     <section class="card">
-      <h2>Revisa la comida</h2>
+      <h2>{t('nutrition.review')}</h2>
       {#each draft.foodItems as item}
         <p class="muted">{item.name} · {Math.round(item.calories)} kcal</p>
       {/each}
       <div class="fields">
-        <label>Calorías<input type="number" min="0" bind:value={draft.totalCalories} oninput={touched} /></label>
-        <label>Proteína (g)<input type="number" min="0" bind:value={draft.totalProtein} oninput={touched} /></label>
-        <label>Carbohidratos (g)<input type="number" min="0" bind:value={draft.totalCarbs} oninput={touched} /></label>
-        <label>Grasa (g)<input type="number" min="0" bind:value={draft.totalFat} oninput={touched} /></label>
+        <label>{t('nutrition.calories')}<input type="number" min="0" bind:value={draft.totalCalories} oninput={touched} /></label>
+        <label>{t('nutrition.protein')}<input type="number" min="0" bind:value={draft.totalProtein} oninput={touched} /></label>
+        <label>{t('nutrition.carbs')}<input type="number" min="0" bind:value={draft.totalCarbs} oninput={touched} /></label>
+        <label>{t('nutrition.fat')}<input type="number" min="0" bind:value={draft.totalFat} oninput={touched} /></label>
       </div>
       <div class="row">
-        <button type="button" onclick={() => (draft = null)}>Cancelar</button>
-        <button type="button" class="primary" disabled={busy} onclick={save}>{busy ? 'Guardando…' : 'Guardar'}</button>
+        <button type="button" onclick={() => (draft = null)}>{t('common.cancel')}</button>
+        <button type="button" class="primary" disabled={busy} onclick={save}>{busy ? t('common.saving') : t('common.save')}</button>
       </div>
     </section>
   {:else}
     <div class="row">
       <label class="cta" class:disabled={busy}>
         <Icon name="camera" size={18} />
-        {busy ? 'Analizando…' : 'Foto de la comida'}
+        {busy ? t('nutrition.analyzing') : t('nutrition.photo')}
         <input type="file" accept="image/*" capture="environment" onchange={analyze} disabled={busy} hidden />
       </label>
-      <button type="button" onclick={manual}><Icon name="plus" size={16} /> Agregar a mano</button>
+      <button type="button" onclick={manual}><Icon name="plus" size={16} /> {t('nutrition.manual')}</button>
     </div>
   {/if}
 
-  <h2>Últimas comidas</h2>
+  <h2>{t('nutrition.recent')}</h2>
   {#if entries.length === 0}
-    <p class="muted">Todavía no registraste comidas. Saca una foto o agrégala a mano.</p>
+    <p class="muted">{t('nutrition.empty')}</p>
   {:else}
     <ul class="list">
       {#each entries as e (e.id)}
@@ -236,11 +237,11 @@
             <Icon name="utensils" size={18} />
             <span class="grow">
               <strong>{Math.round(e.totalCalories)} kcal</strong>
-              <span class="muted">P {Math.round(e.totalProtein)} · C {Math.round(e.totalCarbs)} · G {Math.round(e.totalFat)}</span>
-              <span class="muted">{e.foodItems.map((f) => f.name).join(', ') || 'Comida'} · {time(e.loggedAt)}</span>
+              <span class="muted">{t('nutrition.macrosShort', { p: Math.round(e.totalProtein), c: Math.round(e.totalCarbs), f: Math.round(e.totalFat) })}</span>
+              <span class="muted">{e.foodItems.map((f) => f.name).join(', ') || t('nutrition.meal')} · {time(e.loggedAt)}</span>
             </span>
           </div>
-          <button type="button" class="icon ghost" onclick={() => removeEntry(e)} aria-label="Borrar comida"><Icon name="trash" size={18} /></button>
+          <button type="button" class="icon ghost" onclick={() => removeEntry(e)} aria-label={t('nutrition.deleteLabel')}><Icon name="trash" size={18} /></button>
         </li>
       {/each}
     </ul>

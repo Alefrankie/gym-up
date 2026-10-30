@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
@@ -53,10 +54,10 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y este programa no está guardado.'
+          ? t('programs.offlineNotSaved')
           : e instanceof ApiRequestError && e.status === 404
-            ? 'Programa no encontrado'
-            : 'No se pudo cargar el programa';
+            ? t('programs.notFound')
+            : t('programs.loadOneError');
     }
   });
 
@@ -101,7 +102,7 @@
       saved = true;
       return true;
     } catch (e) {
-      error = e instanceof NetworkError ? 'Sin conexión: conéctate para guardar el programa.' : e instanceof ApiRequestError ? e.message : 'No se pudo guardar';
+      error = e instanceof NetworkError ? t('programs.saveOffline') : e instanceof ApiRequestError ? e.message : t('programs.saveError');
       return false;
     } finally {
       busy = false;
@@ -111,7 +112,7 @@
   /** A new day is saved right away so its editor can load it from the server. */
   async function addRoutine() {
     if (!program || routines.length >= PROGRAM_LIMITS.routines) return;
-    const fresh: RoutineDto = { id: crypto.randomUUID(), dayNumber: routines.length + 1, name: `Día ${routines.length + 1}`, focus: '', notes: null, exercises: [] };
+    const fresh: RoutineDto = { id: crypto.randomUUID(), dayNumber: routines.length + 1, name: t('programs.dayN', { n: routines.length + 1 }), focus: '', notes: null, exercises: [] };
     routines.push(fresh);
     if (await persist()) await goto(`/programs/${id}/${fresh.id}`);
     else routines.pop();
@@ -133,43 +134,43 @@
       await api(`/programs/${id}/activate`, { method: 'POST' });
       await invalidateCache(['/programs', '/workouts/today']);
       activeId = id;
-    }, 'Necesitas conexión para activar el programa');
+    }, t('programs.activateOffline'));
 
   const adopt = () =>
     act(async () => {
       const copy = await api<ProgramDetailDto>(`/programs/${id}/adopt`, { method: 'POST', schema: programDetailDtoSchema });
       await invalidateCache(['/programs', '/workouts/today']);
       await goto(`/programs/${copy.id}`);
-    }, 'Necesitas conexión para usar esta plantilla');
+    }, t('programs.adoptOffline'));
 
   async function archive() {
-    if (!confirm('¿Archivar este programa? Tu historial no se borra.')) return;
+    if (!confirm(t('programs.archiveConfirm'))) return;
     await act(async () => {
       await api(`/programs/${id}`, { method: 'DELETE' });
       await invalidateCache(['/programs', '/workouts/today']);
       await goto('/programs');
-    }, 'No se pudo archivar');
+    }, t('programs.archiveError'));
   }
 </script>
 
 <main>
-  <p><a class="back" href="/programs"><Icon name="left" size={16} /> Entrenar</a></p>
+  <p><a class="back" href="/programs"><Icon name="left" size={16} /> {t('nav.train')}</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !program && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if program}
     <header class="hero">
       <ProgramThumb muscles={perMuscle.map(([k]) => k)} size={72} />
       <div class="hero-text">
         {#if editable}
-          <input class="title-input" maxlength="60" aria-label="Nombre del programa" bind:value={name} oninput={() => (saved = false)} />
+          <input class="title-input" maxlength="60" aria-label={t('programs.nameLabel')} bind:value={name} oninput={() => (saved = false)} />
         {:else}
           <h1>{program.name}</h1>
         {/if}
         {#if isActive}
-          <span class="active"><span class="dot"></span>Programa activo</span>
+          <span class="active"><span class="dot"></span>{t('programs.active')}</span>
         {:else if editable && routines.length > 0}
-          <button type="button" class="ghost activate" disabled={busy} onclick={activate}>Hacer activo</button>
+          <button type="button" class="ghost activate" disabled={busy} onclick={activate}>{t('programs.makeActive')}</button>
         {:else if program.description}
           <span class="muted desc">{program.description}</span>
         {/if}
@@ -177,9 +178,9 @@
     </header>
 
     <div class="stats">
-      <div><strong>{routines.length}</strong><span>{routines.length === 1 ? 'día' : 'días'}</span></div>
-      <div><strong>{allExercises.length}</strong><span>ejercicios</span></div>
-      <div><strong>{setsTotal}</strong><span>series / semana</span></div>
+      <div><strong>{routines.length}</strong><span>{tn('programs.dayWord', routines.length)}</span></div>
+      <div><strong>{allExercises.length}</strong><span>{tn('programs.exerciseWord', allExercises.length)}</span></div>
+      <div><strong>{setsTotal}</strong><span>{t('programs.setsPerWeek')}</span></div>
     </div>
 
     {#if allExercises.length}
@@ -187,16 +188,16 @@
     {/if}
 
     <div class="head">
-      <h2>Días</h2>
+      <h2>{t('programs.daysTitle')}</h2>
       {#if editable}
-        <button class="icon add" onclick={addRoutine} disabled={busy || routines.length >= PROGRAM_LIMITS.routines} aria-label="Añadir día">
+        <button class="icon add" onclick={addRoutine} disabled={busy || routines.length >= PROGRAM_LIMITS.routines} aria-label={t('programs.addDay')}>
           <Icon name="plus" size={18} />
         </button>
       {/if}
     </div>
 
     {#if routines.length === 0}
-      <button type="button" class="empty" disabled={!editable} onclick={addRoutine}><Icon name="plus" size={18} /> Añade el primer día</button>
+      <button type="button" class="empty" disabled={!editable} onclick={addRoutine}><Icon name="plus" size={18} /> {t('programs.addFirstDay')}</button>
     {:else}
       <SortableRows items={routines} key={(r) => r.id} disabled={!editable} onreorder={(next) => ((routines = next), (saved = false))} onremove={editable ? remove : undefined}>
         {#snippet row(r, i)}
@@ -206,9 +207,9 @@
               <strong>{r.name}</strong>
               <span class="muted">
                 {#if r.exercises.length}
-                  {r.focus ? `${r.focus} · ` : ''}{r.exercises.length} ejercicios · ≈ {estimateMinutes(r.exercises)} min
+                  {r.focus ? `${r.focus} · ` : ''}{tn('programs.exercises', r.exercises.length)} · ≈ {t('programs.minutes', { n: estimateMinutes(r.exercises) })}
                 {:else}
-                  Sin ejercicios todavía
+                  {t('programs.noExercisesYet')}
                 {/if}
               </span>
             </span>
@@ -217,20 +218,20 @@
         {/snippet}
       </SortableRows>
       {#if editable}
-        <p class="hint muted">Toca un día para verlo, editarlo o empezarlo · mantén pulsado para moverlo · desliza a la derecha para quitarlo</p>
+        <p class="hint muted">{t('programs.daysHint')}</p>
       {/if}
     {/if}
 
     {#if setsPerMuscle.length}
       <section class="card chart">
-        <h2 class="first">Series por músculo</h2>
-        <p class="muted sub">En una semana completa del programa</p>
+        <h2 class="first">{t('programs.setsPerMuscle')}</h2>
+        <p class="muted sub">{t('programs.setsPerMuscleSub')}</p>
         <BarList items={setsPerMuscle} />
       </section>
     {/if}
 
     {#if editable}
-      <p class="archive"><button class="ghost danger-text" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> Archivar programa</button></p>
+      <p class="archive"><button class="ghost danger-text" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> {t('programs.archive')}</button></p>
     {/if}
   {/if}
 </main>
@@ -240,13 +241,13 @@
 {:else if program}
   <SaveBar dirty={false} saved={false} onsave={() => {}}>
     {#snippet idle()}
-      <button class="primary" disabled={busy} onclick={adopt}>Usar este programa</button>
+      <button class="primary" disabled={busy} onclick={adopt}>{t('programs.useThis')}</button>
     {/snippet}
   </SaveBar>
 {/if}
 
 {#if removed}
-  <UndoToast message={`${removed.item.name} eliminado`} onundo={undo} ondismiss={() => (removed = null)} />
+  <UndoToast message={t('programs.removed', { name: removed.item.name })} onundo={undo} ondismiss={() => (removed = null)} />
 {/if}
 
 <style>

@@ -146,7 +146,7 @@ export const routineExercises = sqliteTable('routine_exercises', {
   restSeconds: integer('rest_seconds'),
   notes: text('notes'),
   /** JSON [{ reps, type }] per set; null means targetSets normal sets of targetReps. */
-  setPlan: text('set_plan', { mode: 'json' }).$type<{ reps: number; type: 'normal' | 'warmup' | 'drop' | 'failure' }[]>(),
+  setPlan: text('set_plan', { mode: 'json' }).$type<{ reps: number; type: 'normal' | 'warmup' | 'drop' | 'failure'; weight?: number }[]>(),
 });
 
 export type RoutineExercise = typeof routineExercises.$inferSelect;

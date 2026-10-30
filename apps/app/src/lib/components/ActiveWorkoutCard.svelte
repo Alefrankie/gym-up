@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { getActiveWorkoutId, loadSnapshot, type WorkoutSnapshot } from '#lib/offline/workout-session';
   import { cancelWorkoutById } from '#lib/offline/start-workout';
+  import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
   import OverflowMenu from './OverflowMenu.svelte';
 
@@ -34,7 +35,7 @@
   });
 
   async function cancel() {
-    if (!snap || !confirm(`¿Cancelar "${snap.dayName}"? Se borra todo lo registrado en él.`)) return;
+    if (!snap || !confirm(t('workout.cancelNamedConfirm', { name: snap.dayName }))) return;
     busy = true;
     await cancelWorkoutById(snap.workoutId);
     snap = null;
@@ -45,10 +46,10 @@
 
 {#if snap}
   <div class="wrap">
-    <a class="live" href={`/workout/${snap.workoutId}`} aria-label={`Continuar ${snap.dayName}`}>
+    <a class="live" href={`/workout/${snap.workoutId}`} aria-label={t('workout.continueNamed', { name: snap.dayName })}>
       <div class="top">
         <span class="dot" aria-hidden="true"></span>
-        <span class="label">En curso</span>
+        <span class="label">{t('workout.inProgress')}</span>
         <span class="time" role="timer"><Icon name="timer" size={14} />{elapsed}</span>
       </div>
       <span class="row">
@@ -56,9 +57,9 @@
         <Icon name="right" size={20} />
       </span>
       <span class="bar" aria-hidden="true"><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></span>
-      <span class="muted meta">{done} de {total} series</span>
+      <span class="muted meta">{t('workout.setsOf', { done, total })}</span>
     </a>
-    <div class="more"><OverflowMenu items={[{ label: 'Cancelar entrenamiento', icon: 'trash', danger: true, disabled: busy, onselect: cancel }]} /></div>
+    <div class="more"><OverflowMenu items={[{ label: t('workout.cancel'), icon: 'trash', danger: true, disabled: busy, onselect: cancel }]} /></div>
   </div>
 {/if}
 

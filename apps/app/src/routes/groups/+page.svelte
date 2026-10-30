@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { groupListResponseSchema, groupSummarySchema, type GroupSummaryDto } from '@gym-up/contracts';
@@ -25,10 +26,10 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y todavía no hay grupos guardados.'
+          ? t('groups.offlineEmpty')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudieron cargar los grupos';
+            : t('groups.loadError');
     }
   }
 
@@ -46,32 +47,31 @@
     } catch (e) {
       formError =
         e instanceof NetworkError
-          ? 'Necesitas conexión para esto.'
+          ? t('common.needsConnection')
           : e instanceof ApiRequestError
             ? e.status === 404
-              ? 'No existe ningún grupo con ese código.'
+              ? t('groups.codeNotFound')
               : e.message
-            : 'No se pudo completar';
+            : t('groups.actionError');
       busy = false;
     }
   }
 </script>
 
 <main>
-  <h1>Grupos</h1>
+  <h1>{t('nav.groups')}</h1>
   <SyncBanner />
-  {#if stale}<p class="muted">Sin conexión: mostrando los últimos grupos descargados.</p>{/if}
+  {#if stale}<p class="muted">{t('groups.stale')}</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if !groups && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if groups}
     {#if groups.length === 0}
       <section class="card hero intro">
-        <h2>Entrena acompañado</h2>
+        <h2>{t('groups.introTitle')}</h2>
         <p class="muted">
-          Crea un grupo y comparte su código con tus amigos, o únete con el código que te den. Solo los miembros del grupo
-          ven las rachas y los entrenamientos de los demás.
+          {t('groups.introBody')}
         </p>
       </section>
     {:else}
@@ -82,7 +82,7 @@
               <span class="tile"><Icon name="users" size={18} /></span>
               <span class="grow">
                 <strong>{g.name}</strong>
-                <span class="muted">{g.memberCount} {g.memberCount === 1 ? 'miembro' : 'miembros'}</span>
+                <span class="muted">{tn('groups.members', g.memberCount)}</span>
               </span>
               <span class="chev"><Icon name="right" size={16} /></span>
             </a>
@@ -92,7 +92,7 @@
     {/if}
 
     <section class="card">
-      <h3>Crear un grupo</h3>
+      <h3>{t('groups.createTitle')}</h3>
       <form
         onsubmit={(e) => {
           e.preventDefault();
@@ -100,15 +100,15 @@
         }}
       >
         <label>
-          Nombre
-          <input required minlength="2" maxlength="40" placeholder="Los del gym" bind:value={newName} />
+          {t('auth.name')}
+          <input required minlength="2" maxlength="40" placeholder={t('groups.namePlaceholder')} bind:value={newName} />
         </label>
-        <button class="primary" disabled={busy}>Crear grupo</button>
+        <button class="primary" disabled={busy}>{t('groups.create')}</button>
       </form>
     </section>
 
     <section class="card">
-      <h3>Unirme con un código</h3>
+      <h3>{t('groups.joinTitle')}</h3>
       <form
         onsubmit={(e) => {
           e.preventDefault();
@@ -116,7 +116,7 @@
         }}
       >
         <label>
-          Código de 6 caracteres
+          {t('groups.codeLabel')}
           <input
             required
             minlength="6"
@@ -128,7 +128,7 @@
             bind:value={code}
           />
         </label>
-        <button class="primary" disabled={busy}>Unirme</button>
+        <button class="primary" disabled={busy}>{t('groups.join')}</button>
       </form>
     </section>
     {#if formError}<p class="error" role="alert">{formError}</p>{/if}

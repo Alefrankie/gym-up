@@ -3,6 +3,7 @@
   import { scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { SET_TYPES, setTypeOf } from '#lib/set-types';
+  import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
   import SetTypeBadge from './SetTypeBadge.svelte';
 
@@ -16,11 +17,11 @@
 
   let open = $state(false);
   let root: HTMLElement;
-  const t = $derived(setTypeOf(type));
+  const st = $derived(setTypeOf(type));
 
   function pick(v: SetType) {
     open = false;
-    if (v !== t.value) onpick(v);
+    if (v !== st.value) onpick(v);
   }
 </script>
 
@@ -29,20 +30,20 @@
 <div class="cell" bind:this={root}>
   <button
     type="button"
-    class="n st-{t.value}"
+    class="n st-{st.value}"
     {disabled}
     aria-haspopup="menu"
     aria-expanded={open}
-    aria-label={`Serie ${n}: ${t.label}. Cambiar tipo`}
+    aria-label={t('sets.changeType', { n, type: st.label })}
     onclick={() => (open = !open)}
-  >{t.short || n}</button>
+  >{st.short || n}</button>
   {#if open}
     <div class="menu" role="menu" transition:scale={{ start: 0.96, duration: 160, easing: cubicOut }}>
       {#each SET_TYPES as o (o.value)}
-        <button type="button" role="menuitemradio" aria-checked={o.value === t.value} class:sel={o.value === t.value} onclick={() => pick(o.value)}>
+        <button type="button" role="menuitemradio" aria-checked={o.value === st.value} class:sel={o.value === st.value} onclick={() => pick(o.value)}>
           <SetTypeBadge type={o.value} {n} size="md" />
           <span class="text"><strong>{o.label}</strong><small>{o.hint}</small></span>
-          {#if o.value === t.value}<Icon name="check" size={16} />{/if}
+          {#if o.value === st.value}<Icon name="check" size={16} />{/if}
         </button>
       {/each}
     </div>

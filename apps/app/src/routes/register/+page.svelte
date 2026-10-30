@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { sessionResponseSchema } from '@gym-up/contracts';
   import { api, ApiRequestError } from '#lib/api/client';
@@ -26,34 +27,34 @@
       await session.set(res.user);
       await goto('/dashboard', { replaceState: true });
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'No hay conexión con el servidor. Revisa tu señal e inténtalo otra vez.';
+      error = e instanceof ApiRequestError ? e.message : t('auth.noServer');
     } finally {
       busy = false;
     }
   }
 </script>
 
-<svelte:head><title>Crear cuenta · Gym Up</title></svelte:head>
+<svelte:head><title>{t('auth.register')} · Gym Up</title></svelte:head>
 
-<AuthShell title="Crear cuenta" lead="Elige tu plan inicial y registra tu primera serie hoy.">
+<AuthShell title={t('auth.register')} lead={t('auth.registerLead')}>
   <form id="auth" onsubmit={submit}>
     <label>
-      Nombre
+      {t('auth.name')}
       <input bind:value={displayName} autocomplete="name" required />
     </label>
     <label>
-      Email
+      {t('auth.email')}
       <input type="email" bind:value={email} autocomplete="email" inputmode="email" required />
     </label>
-    <PasswordField bind:value={password} label="Contraseña (mínimo 8 caracteres)" autocomplete="new-password" minlength={8} />
+    <PasswordField bind:value={password} label={t('auth.passwordMin')} autocomplete="new-password" minlength={8} />
     <fieldset>
-      <legend>Plan inicial</legend>
+      <legend>{t('auth.initialPlan')}</legend>
       <div class="seg">
         <label class:on={routineType === 'hombre'}>
-          <input type="radio" name="routine" value="hombre" bind:group={routineType} /> Hombre
+          <input type="radio" name="routine" value="hombre" bind:group={routineType} /> {t('auth.planMen')}
         </label>
         <label class:on={routineType === 'mujer'}>
-          <input type="radio" name="routine" value="mujer" bind:group={routineType} /> Mujer
+          <input type="radio" name="routine" value="mujer" bind:group={routineType} /> {t('auth.planWomen')}
         </label>
       </div>
     </fieldset>
@@ -61,8 +62,8 @@
   </form>
 
   {#snippet actions()}
-    <button class="primary" type="submit" form="auth" disabled={busy}>{busy ? 'Creando…' : 'Crear cuenta'}</button>
-    <p class="alt">¿Ya tienes cuenta? <a href="/login">Entrar</a></p>
+    <button class="primary" type="submit" form="auth" disabled={busy}>{busy ? t('auth.creating') : t('auth.register')}</button>
+    <p class="alt">{t('auth.haveAccount')} <a href="/login">{t('auth.login')}</a></p>
   {/snippet}
 </AuthShell>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
@@ -20,17 +21,17 @@
       // Always fresh from the server: the form must not start from a stale cached copy.
       const fresh = await api(`/exercises/${id}`, { schema: libraryExerciseDtoSchema });
       if (!fresh.isCustom || fresh.ownerId !== session.user?.id) {
-        error = 'Solo puedes editar tus propios ejercicios.';
+        error = t('exercise.onlyOwn');
         return;
       }
       exercise = fresh;
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión: conéctate para editar el ejercicio.'
+          ? t('exercise.editOffline')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudo cargar el ejercicio';
+            : t('exercise.loadError');
     }
   });
 
@@ -48,23 +49,23 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión: conéctate para guardar los cambios.'
+          ? t('exercise.saveOffline')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudo guardar';
+            : t('programs.saveError');
       busy = false;
     }
   }
 </script>
 
 <main>
-  <p><a class="back" href={`/library/${id}`}><Icon name="left" size={16} /> Ejercicio</a></p>
-  <h1>Editar ejercicio</h1>
+  <p><a class="back" href={`/library/${id}`}><Icon name="left" size={16} /> {t('exercise.back')}</a></p>
+  <h1>{t('exercise.edit')}</h1>
   {#if exercise}
-    <ExerciseForm initial={exercise} {busy} {error} submitLabel="Guardar cambios" onsubmit={submit} />
+    <ExerciseForm initial={exercise} {busy} {error} submitLabel={t('common.saveChanges')} onsubmit={submit} />
   {:else if error}
     <p class="error" role="alert">{error}</p>
   {:else}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {/if}
 </main>

@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { EQUIPMENT, EXERCISE_TYPES, MUSCLE_GROUPS, type LibraryExerciseDto } from '@gym-up/contracts';
   import { EQUIPMENT_LABELS, MUSCLE_LABELS, TYPE_LABELS } from '#lib/labels';
 
@@ -56,13 +57,13 @@
 </script>
 
 <form onsubmit={submit}>
-  <label>Nombre <input required minlength="2" maxlength="60" bind:value={name} /></label>
+  <label>{t('programs.name')} <input required minlength="2" maxlength="60" bind:value={name} /></label>
   <label>
-    Músculo principal
+    {t('exercise.primaryMuscle')}
     <Select bind:value={primaryMuscle} options={MUSCLE_GROUPS.map((m) => ({ value: m, label: MUSCLE_LABELS[m] }))} />
   </label>
   <fieldset>
-    <legend class="muted">Músculos secundarios</legend>
+    <legend class="muted">{t('exercise.secondaryMuscles')}</legend>
     <div class="chips">
       {#each MUSCLE_GROUPS.filter((m) => m !== primaryMuscle) as m}
         <button type="button" class="chip" class:on={secondary.includes(m)} aria-pressed={secondary.includes(m)} onclick={() => toggleSecondary(m)}>
@@ -72,15 +73,15 @@
     </div>
   </fieldset>
   <label>
-    Equipo
+    {t('library.equipment')}
     <Select bind:value={equipment} options={EQUIPMENT.map((e) => ({ value: e, label: EQUIPMENT_LABELS[e] }))} />
   </label>
   <label>
-    Tipo
-    <Select bind:value={exerciseType} options={EXERCISE_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))} />
+    {t('exercise.type')}
+    <Select bind:value={exerciseType} options={EXERCISE_TYPES.map((ty) => ({ value: ty, label: TYPE_LABELS[ty] }))} />
   </label>
-  <label>Instrucciones (opcional) <textarea rows="4" maxlength="2000" bind:value={instructions}></textarea></label>
-  <label>Enlace de vídeo (opcional) <input type="url" maxlength="300" bind:value={videoUrl} /></label>
+  <label>{t('exercise.instructions')} <textarea rows="4" maxlength="2000" bind:value={instructions}></textarea></label>
+  <label>{t('exercise.videoUrl')} <input type="url" maxlength="300" bind:value={videoUrl} /></label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <button class="primary" disabled={busy}>{submitLabel}</button>
 </form>

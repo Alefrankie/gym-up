@@ -1,11 +1,24 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { PROGRAM_LIMITS, type SetPlan, type SetType } from '@gym-up/contracts';
   import { slide } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
   import SetTypeCell from './SetTypeCell.svelte';
 
-  let { sets = $bindable(), onchange }: { sets: SetPlan; onchange: () => void } = $props();
+  let { sets = $bindable(), unit = 'kg', onchange }: { sets: SetPlan; unit?: 'kg' | 'lbs'; onchange: () => void } = $props();
+
+  const KG_PER_LB = 0.45359237;
+  /** The plan stores kilos; the boxes show the user's unit. Empty means "no target weight". */
+  const shown = (kg: number | undefined) => (kg === undefined ? '' : unit === 'lbs' ? Math.round((kg / KG_PER_LB) * 10) / 10 : kg);
+
+  function setWeight(i: number, raw: string) {
+    const v = raw.trim() === '' ? undefined : Math.max(0, Number(raw));
+    const kg = v === undefined || Number.isNaN(v) ? undefined : unit === 'lbs' ? Math.round(v * KG_PER_LB * 10) / 10 : v;
+    const { weight: _old, ...rest } = sets[i]!;
+    sets[i] = kg === undefined ? rest : { ...rest, weight: kg };
+    onchange();
+  }
 
   function setReps(i: number, reps: number) {
     sets[i] = { ...sets[i]!, reps: Math.min(PROGRAM_LIMITS.maxReps, Math.max(1, reps)) };
@@ -29,7 +42,11 @@
   function add() {
     if (sets.length >= PROGRAM_LIMITS.maxSets) return;
     const last = sets[sets.length - 1];
-    sets.push({ reps: last?.reps ?? 10, type: last?.type === 'warmup' ? 'normal' : (last?.type ?? 'normal') });
+    sets.push({
+      reps: last?.reps ?? 10,
+      type: last?.type === 'warmup' ? 'normal' : (last?.type ?? 'normal'),
+      ...(last?.weight !== undefined && last.type !== 'warmup' ? { weight: last.weight } : {}),
+    });
     onchange();
   }
 
@@ -42,8 +59,9 @@
 
 <div class="plan">
   <div class="head">
-    <span>Serie</span>
-    <span>Reps</span>
+    <span>{t('plan.set')}</span>
+    <span>{t('plan.reps')}</span>
+    <span>{unit.toUpperCase()}</span>
     <span></span>
   </div>
   {#each sets as s, i (i)}
@@ -56,19 +74,31 @@
         min="1"
         max={PROGRAM_LIMITS.maxReps}
         value={s.reps}
-        aria-label={`Serie ${i + 1}: repeticiones`}
+        aria-label={t('plan.setReps', { n: i + 1 })}
         onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
         oninput={(e) => {
           const v = Number((e.currentTarget as HTMLInputElement).value);
           if (v >= 1) setReps(i, v);
         }}
       />
-      <button type="button" class="del" disabled={sets.length <= 1} aria-label={`Quitar serie ${i + 1}`} onclick={() => remove(i)}>
+      <input
+        class="reps"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.5"
+        placeholder="–"
+        value={shown(s.weight)}
+        aria-label={t('plan.setWeight', { n: i + 1, unit })}
+        onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
+        oninput={(e) => setWeight(i, (e.currentTarget as HTMLInputElement).value)}
+      />
+      <button type="button" class="del" disabled={sets.length <= 1} aria-label={t('plan.removeSet', { n: i + 1 })} onclick={() => remove(i)}>
         <Icon name="x" size={18} />
       </button>
     </div>
   {/each}
-  <button type="button" class="add" disabled={sets.length >= PROGRAM_LIMITS.maxSets} onclick={add}><Icon name="plus" size={16} /> Añadir serie</button>
+  <button type="button" class="add" disabled={sets.length >= PROGRAM_LIMITS.maxSets} onclick={add}><Icon name="plus" size={16} /> {t('plan.addSet')}</button>
 </div>
 
 <style>
@@ -79,7 +109,7 @@
   .head,
   .row {
     display: grid;
-    grid-template-columns: 48px 1fr 48px;
+    grid-template-columns: 48px 1fr 1fr 40px;
     gap: 0.5rem;
     align-items: center;
   }

@@ -1,15 +1,16 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
 
   /** This week, Monday to Sunday: a filled circle for each day trained, a ring around today. */
   let { trained, today }: { trained: string[]; today: string } = $props();
 
-  const LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
   const days = $derived.by(() => {
+    const LETTERS = [...t('week.letters')];
     const on = new Set(trained);
-    const t = new Date(`${today}T12:00:00`);
-    const monday = new Date(t);
-    monday.setDate(t.getDate() - ((t.getDay() + 6) % 7));
+    const base = new Date(`${today}T12:00:00`);
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
     return LETTERS.map((letter, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
@@ -20,9 +21,9 @@
   });
 </script>
 
-<ol class="week" aria-label="Días entrenados esta semana">
+<ol class="week" aria-label={t('week.label')}>
   {#each days as d (d.key)}
-    <li class:on={d.on} class:today={d.isToday} class:future={d.future} aria-label={`${d.letter} ${d.num}${d.on ? ', entrenado' : ''}`}>
+    <li class:on={d.on} class:today={d.isToday} class:future={d.future} aria-label={`${d.letter} ${d.num}${d.on ? t('week.trained') : ''}`}>
       <span class="letter">{d.letter}</span>
       <span class="dot">{#if d.on}<Icon name="check" size={16} />{:else}{d.num}{/if}</span>
     </li>

@@ -1,4 +1,6 @@
-/** One-liners for Home: motivating, a bit cheeky, never preachy. A new one each time the app opens. */
+import { i18n } from '#lib/i18n';
+
+/** One-liners for Home: motivating, a bit cheeky, never preachy. A new one each time the app opens, in Spanish or English. */
 export const QUOTES = [
   'Las pesas no se levantan solas. Créeme, lo he intentado.',
   'Hoy no es día de pierna… dijo nadie que tuviera glúteos de acero.',
@@ -42,4 +44,51 @@ export const QUOTES = [
   'Cuerpo de verano se cocina a fuego lento.',
 ] as const;
 
-export const randomQuote = () => QUOTES[Math.floor(Math.random() * QUOTES.length)]!;
+export const QUOTES_EN = [
+  'The weights won’t lift themselves. Trust me, I tried.',
+  'Skip leg day? Your glutes have filed a complaint.',
+  'The couch misses you. The mirror will thank you.',
+  'Sweat now, flex later.',
+  'Future you is already clapping. Quietly, but clapping.',
+  'One more set. The others won’t find out.',
+  'Your creatine won’t take itself. Neither will your workout.',
+  'If it were easy, it would be called a nap.',
+  'Use it or your muscles go on vacation.',
+  'Today we suffer, but with style.',
+  'That’s not fatigue, that’s your muscles asking for more.',
+  'Tomorrow’s soreness is today’s progress, running late.',
+  'Put some weight behind your dreams. Literally.',
+  'Excuses burn zero calories.',
+  'Train like your ex is watching.',
+  'Breathe, brace, lift. Repeat until the coffee kicks in.',
+  'Small plates, big changes.',
+  'You’re only competing with yesterday’s you. And yesterday’s you was nothing special.',
+  'The gym doesn’t bite. Squats do, a little.',
+  'Put the phone down, grab the bar. Well, log the set first.',
+  'Let your biceps do the talking.',
+  'Cardio is a scary word. Today we lift.',
+  'Consistency beats motivation. A bit of both never hurts.',
+  'Abs are made in the kitchen and shown off here.',
+  'No cold, no rain, no laziness: today we train.',
+  'Every rep is an “I told you so” to your lazy side.',
+  'Today is not up for negotiation. Today we lift.',
+  'Stronger than your 6 a.m. alarm.',
+  'The best pre-workout is getting started.',
+  'You bring the effort; gravity does the rest.',
+  'Shaky legs mean you’re doing it right.',
+  'Rest is training too. Just not today.',
+  'Your PR is one set away.',
+  'Drink water, lift iron, repeat.',
+  'Don’t count the days, make the days count reps.',
+  'The iron never lies.',
+  'Today the weight feels lighter. Or that’s what we’re telling ourselves.',
+  'Warm up properly: your knees will send a thank-you note.',
+  'The hardest set isn’t the last one. It’s leaving the house.',
+  'Summer bodies are slow-cooked.',
+] as const;
+
+/** A random line in the app's current language. */
+export function randomQuote(): string {
+  const list = i18n.locale === 'en' ? QUOTES_EN : QUOTES;
+  return list[Math.floor(Math.random() * list.length)]!;
+}

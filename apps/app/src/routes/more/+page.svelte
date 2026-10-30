@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, type MessageKey } from '#lib/i18n';
   import { onMount } from 'svelte';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
@@ -11,25 +12,25 @@
     void session.require();
   });
 
-  const links: Array<{ href: string; title: string; hint: string; icon: IconName }> = [
-    { href: '/nutrition', title: 'Comida', hint: 'Lo que comes cada día', icon: 'utensils' },
-    { href: '/history', title: 'Historial', hint: 'Todos tus entrenamientos', icon: 'history' },
-    { href: '/supplements', title: 'Suplementos', hint: 'Creatina, proteína y lo que tomes cada día', icon: 'check' },
-    { href: '/photos', title: 'Fotos de progreso', hint: 'Privadas, solo para ti', icon: 'camera' },
-    { href: '/settings', title: 'Ajustes', hint: 'Nombre, unidad de peso, rutina y cuenta', icon: 'sliders' },
+  const links: Array<{ href: string; title: MessageKey; hint: MessageKey; icon: IconName }> = [
+    { href: '/nutrition', title: 'more.nutrition', hint: 'more.nutritionHint', icon: 'utensils' },
+    { href: '/history', title: 'more.history', hint: 'more.historyHint', icon: 'history' },
+    { href: '/supplements', title: 'more.supplements', hint: 'more.supplementsHint', icon: 'check' },
+    { href: '/photos', title: 'more.photos', hint: 'more.photosHint', icon: 'camera' },
+    { href: '/settings', title: 'more.settings', hint: 'more.settingsHint', icon: 'sliders' },
   ];
 </script>
 
 <main>
-  <h1>Más</h1>
+  <h1>{t('nav.more')}</h1>
   <ul class="list">
     {#each links as l}
       <li>
         <a href={l.href}>
           <span class="ico"><Icon name={l.icon} size={18} /></span>
           <span class="grow">
-            <strong>{l.title}</strong>
-            <span class="muted hint">{l.hint}</span>
+            <strong>{t(l.title)}</strong>
+            <span class="muted hint">{t(l.hint)}</span>
           </span>
           <span class="muted"><Icon name="right" size={16} /></span>
         </a>

@@ -1,18 +1,19 @@
 <script lang="ts">
   import type { WorkoutHistoryItemDto } from '@gym-up/contracts';
+  import { dateLocale, t, tn } from '#lib/i18n';
   import Icon from './Icon.svelte';
   import SetTypeBadge from './SetTypeBadge.svelte';
 
   /** One past workout: when, which routine, how many exercises, its volume and any warm-up / drop / failure sets. */
   let { item }: { item: WorkoutHistoryItemDto } = $props();
-  const date = $derived(new Date(item.workoutDate).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }).replaceAll('.', ''));
+  const date = $derived(new Date(item.workoutDate).toLocaleDateString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short' }).replaceAll('.', ''));
 </script>
 
 <a class="row" href={`/workout/${item.id}`}>
   <span class="ico"><Icon name="dumbbell" size={18} /></span>
   <span class="grow">
-    <strong>{item.routineDayName} {#if item.status === 'in_progress'}<span class="badge">En curso</span>{/if}</strong>
-    <span class="muted meta">{date} · {item.exerciseCount} {item.exerciseCount === 1 ? "ejercicio" : "ejercicios"}</span>
+    <strong>{item.routineDayName} {#if item.status === 'in_progress'}<span class="badge">{t('workout.inProgress')}</span>{/if}</strong>
+    <span class="muted meta">{date} · {tn('workout.exerciseCount', item.exerciseCount)}</span>
     {#if item.warmupSets || item.dropSets || item.failureSets}
       <span class="kinds">
         {#if item.warmupSets}<span class="kind"><SetTypeBadge type="warmup" />{item.warmupSets}</span>{/if}

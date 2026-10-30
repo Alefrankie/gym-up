@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { slide } from 'svelte/transition';
@@ -93,18 +94,18 @@
       };
       const res = await cachedGet(`/programs/${programId}`, programDetailDtoSchema, { onCached: (c) => void show(c.data) });
       if (!show(res.data)) {
-        error = 'Rutina no encontrada';
+        error = t('routine.notFound');
         return;
       }
-      if (res.stale) error = 'Sin conexión: puedes ver la rutina, pero guardar necesita conexión.';
+      if (res.stale) error = t('routine.staleReadOnly');
       if (!res.data.isTemplate) library = (await cachedGet('/exercises', libraryExerciseListResponseSchema)).data.items;
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión: conéctate para ver y editar la rutina.'
+          ? t('routine.offline')
           : e instanceof ApiRequestError && e.status === 404
-            ? 'Programa no encontrado'
-            : 'No se pudo cargar la rutina';
+            ? t('programs.notFound')
+            : t('routine.loadError');
     }
   });
 
@@ -173,10 +174,10 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión: conéctate para guardar.'
+          ? t('routine.saveOffline')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudo guardar';
+            : t('programs.saveError');
     }
     busy = false;
   }
@@ -188,28 +189,28 @@
     starting = true;
     error = null;
     try {
-      const out = await startRoutine(routineId, (n) => confirm(`Tienes "${n}" en curso. ¿Cancelarlo y empezar "${name}"?`));
+      const out = await startRoutine(routineId, (n) => confirm(t('routine.replaceConfirm', { current: n, name })));
       if (out.kind === 'started') {
         await goto(out.firstExerciseId ? `/workout/${out.workoutId}/${out.firstExerciseId}` : `/workout/${out.workoutId}`);
         return;
       }
-      if (out.kind === 'missing') error = 'No se pudo cargar la rutina';
+      if (out.kind === 'missing') error = t('routine.loadError');
     } catch (e) {
-      error = e instanceof NetworkError ? 'Necesitas conexión para empezar una rutina nueva.' : e instanceof ApiRequestError ? e.message : 'No se pudo empezar la rutina';
+      error = e instanceof NetworkError ? t('routine.startOffline') : e instanceof ApiRequestError ? e.message : t('routine.startError');
     }
     starting = false;
   }
 </script>
 
 <main>
-  <p><a class="back" href={`/programs/${programId}`}><Icon name="left" size={16} /> {detail?.name ?? 'Programa'}</a></p>
+  <p><a class="back" href={`/programs/${programId}`}><Icon name="left" size={16} /> {detail?.name ?? t('routine.program')}</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !detail && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if detail}
     {#if editable}
-      <input class="title-input" maxlength="60" aria-label="Nombre de la rutina" placeholder="Nombre de la rutina" bind:value={name} oninput={touch} />
-      <input class="focus" maxlength="80" aria-label="Enfoque" placeholder="Enfoque (ej. Pecho y tríceps)" bind:value={focus} oninput={touch} />
+      <input class="title-input" maxlength="60" aria-label={t('routine.name')} placeholder={t('routine.name')} bind:value={name} oninput={touch} />
+      <input class="focus" maxlength="80" aria-label={t('routine.focus')} placeholder={t('routine.focusPlaceholder')} bind:value={focus} oninput={touch} />
     {:else}
       <h1>{name}</h1>
       <p class="muted">{focus}</p>
@@ -220,9 +221,9 @@
     {/if}
 
     <div class="head">
-      <h2>{exercises.length} {exercises.length === 1 ? 'ejercicio' : 'ejercicios'}</h2>
+      <h2>{tn('programs.exercises', exercises.length)}</h2>
       {#if editable}
-        <button class="icon add" onclick={() => (picker = { mode: 'add' })} disabled={exercises.length >= PROGRAM_LIMITS.exercises} aria-label="Añadir ejercicio">
+        <button class="icon add" onclick={() => (picker = { mode: 'add' })} disabled={exercises.length >= PROGRAM_LIMITS.exercises} aria-label={t('routine.addExercise')}>
           <Icon name="plus" size={18} />
         </button>
       {/if}
@@ -230,8 +231,8 @@
 
     {#if exercises.length === 0}
       <section class="card empty">
-        <p>Esta rutina no tiene ejercicios.</p>
-        {#if editable}<button class="primary" onclick={() => (picker = { mode: 'add' })}>Añadir el primero</button>{/if}
+        <p>{t('routine.empty')}</p>
+        {#if editable}<button class="primary" onclick={() => (picker = { mode: 'add' })}>{t('routine.addFirst')}</button>{/if}
       </section>
     {:else}
       <SortableRows
@@ -251,20 +252,20 @@
               <span class="tile"><MuscleFigure primary={e.muscleGroup} secondary={e.secondaryMuscles} size={22} /></span>
               <span class="grow">
                 <strong>{e.exerciseName}</strong>
-                <span class="muted">{muscle(e.muscleGroup)} · {e.targetSets} series · {e.targetReps} reps{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: 'C', drop: 'D', failure: 'F' })[s.type as 'warmup']).join(' ')}{/if}</span>
+                <span class="muted">{muscle(e.muscleGroup)} · {tn('routine.sets', e.targetSets)} · {t('routine.reps', { n: e.targetReps })}{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: t('plan.short.warmup'), drop: t('plan.short.drop'), failure: t('plan.short.failure') })[s.type as 'warmup']).join(' ')}{/if}</span>
               </span>
               {#if editable}<Icon name={open === e.key ? 'up' : 'down'} size={18} />{/if}
             </button>
             {#if editable && open === e.key}
               <div class="steppers" data-nodrag transition:slide={{ duration: 260, easing: cubicOut }}>
-                <SetPlanEditor bind:sets={e.sets} onchange={() => planChanged(e)} />
+                <SetPlanEditor bind:sets={e.sets} unit={session.user?.weightUnit ?? 'kg'} onchange={() => planChanged(e)} />
               </div>
             {/if}
           </div>
         {/snippet}
       </SortableRows>
       {#if editable}
-        <p class="hint muted">Mantén pulsado para mover · desliza a la derecha para eliminar · a la izquierda para reemplazar</p>
+        <p class="hint muted">{t('routine.hint')}</p>
       {/if}
     {/if}
 
@@ -272,10 +273,10 @@
 </main>
 
 {#if detail && editable}
-  <SaveBar {dirty} {saved} {busy} disabled={!name.trim()} label="Guardar rutina" onsave={save}>
+  <SaveBar {dirty} {saved} {busy} disabled={!name.trim()} label={t('routine.save')} onsave={save}>
     {#snippet idle()}
       {#if exercises.length}
-        <button class="primary go" disabled={starting} onclick={start}><Icon name="bolt" size={16} /> {starting ? 'Empezando…' : 'Empezar rutina'}</button>
+        <button class="primary go" disabled={starting} onclick={start}><Icon name="bolt" size={16} /> {starting ? t('routine.starting') : t('routine.start')}</button>
       {/if}
     {/snippet}
   </SaveBar>
@@ -284,13 +285,13 @@
 {#if picker}
   <ExercisePicker
     exercises={library}
-    title={picker.mode === 'replace' ? `Reemplazar ${picker.target.exerciseName}` : 'Añadir ejercicio'}
+    title={picker.mode === 'replace' ? t('routine.replace', { name: picker.target.exerciseName }) : t('routine.addExercise')}
     onpick={pick}
     onclose={() => (picker = null)}
   />
 {/if}
 {#if removed}
-  <UndoToast message={`${removed.item.exerciseName} eliminado`} onundo={undo} ondismiss={() => (removed = null)} />
+  <UndoToast message={t('programs.removed', { name: removed.item.exerciseName })} onundo={undo} ondismiss={() => (removed = null)} />
 {/if}
 
 <style>

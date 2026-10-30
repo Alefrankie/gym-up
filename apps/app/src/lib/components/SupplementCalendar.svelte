@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, dateLocale } from '#lib/i18n';
   import type { SupplementDto } from '@gym-up/contracts';
   import Icon from './Icon.svelte';
 
@@ -13,10 +14,10 @@
 
   let offset = $state(0); // 0 = this month, -1 = last month
   const month = $derived.by(() => {
-    const t = new Date(`${today}T12:00:00`);
-    return new Date(t.getFullYear(), t.getMonth() + offset, 1);
+    const base = new Date(`${today}T12:00:00`);
+    return new Date(base.getFullYear(), base.getMonth() + offset, 1);
   });
-  const title = $derived(month.toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase()));
+  const title = $derived(month.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase()));
 
   const cells = $derived.by(() => {
     const p = (n: number) => String(n).padStart(2, '0');
@@ -41,17 +42,17 @@
 
 <section class="cal">
   <header>
-    <button type="button" class="icon ghost" aria-label="Mes anterior" disabled={offset <= -1} onclick={() => offset--}><Icon name="left" size={18} /></button>
+    <button type="button" class="icon ghost" aria-label={t('supplements.prevMonth')} disabled={offset <= -1} onclick={() => offset--}><Icon name="left" size={18} /></button>
     <strong>{title}</strong>
-    <button type="button" class="icon ghost" aria-label="Mes siguiente" disabled={offset >= 0} onclick={() => offset++}><Icon name="right" size={18} /></button>
+    <button type="button" class="icon ghost" aria-label={t('supplements.nextMonth')} disabled={offset >= 0} onclick={() => offset++}><Icon name="right" size={18} /></button>
   </header>
-  <div class="grid" role="grid" aria-label={`Suplementos de ${title}`}>
-    {#each ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as l (l)}<span class="wd">{l}</span>{/each}
+  <div class="grid" role="grid" aria-label={t('supplements.monthLabel', { month: title })}>
+    {#each t('supplements.weekdays').split(',') as l, i (i)}<span class="wd">{l}</span>{/each}
     {#each cells as c, i (c?.key ?? `pad-${i}`)}
       {#if c}
         <span class="day" class:today={c.key === today} class:future={c.future} class:full={c.taken.length === items.length && items.length > 0}>
           <span class="num">{c.num}</span>
-          <span class="dots">{#each c.taken as t (t)}<i style:background={colorOf(t)}></i>{/each}</span>
+          <span class="dots">{#each c.taken as ti (ti)}<i style:background={colorOf(ti)}></i>{/each}</span>
         </span>
       {:else}
         <span></span>

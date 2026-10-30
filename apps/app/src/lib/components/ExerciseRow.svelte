@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { RoutineExerciseDto, SetType } from '@gym-up/contracts';
   import { toDisplay } from '#lib/offline/workout-view.svelte';
+  import { t, tn } from '#lib/i18n';
   import Icon from './Icon.svelte';
   import MuscleFigure from './MuscleFigure.svelte';
   import SetTypeBadge from './SetTypeBadge.svelte';
@@ -44,7 +45,7 @@
         <span class="setbars" aria-hidden="true">
           {#each Array.from({ length: Math.min(ex.targetSets, 5) }, (_, i) => i) as i (i)}<i></i>{/each}
         </span>
-        {ex.targetSets} series · {ex.targetReps} reps{#if ex.last} · {toDisplay(ex.last.weight, unit)} {unit}{/if}
+        {tn('sets.count', ex.targetSets)} · {t('sets.repsTarget', { reps: ex.targetReps })}{#if ex.last} · {toDisplay(ex.last.weight, unit)} {unit}{/if}
       </span>
     {/if}
   </span>

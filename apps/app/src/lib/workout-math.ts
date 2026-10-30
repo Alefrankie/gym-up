@@ -1,3 +1,5 @@
+import { t, tn } from '#lib/i18n';
+
 /** Planned sets of a list of routine exercises. */
 export const totalSets = (exercises: readonly { targetSets: number }[]) => exercises.reduce((n, e) => n + e.targetSets, 0);
 
@@ -10,4 +12,8 @@ export const estimateMinutes = (exercises: readonly { targetSets: number; restSe
 
 /** "≈ 45 min · 5 ejercicios · 20 series" */
 export const sessionSummary = (exercises: readonly { targetSets: number; restSeconds?: number | null }[]) =>
-  `≈ ${estimateMinutes(exercises)} min · ${exercises.length} ${exercises.length === 1 ? 'ejercicio' : 'ejercicios'} · ${totalSets(exercises)} series`;
+  t('workout.summary', {
+    min: estimateMinutes(exercises),
+    exercises: tn('workout.exerciseCount', exercises.length),
+    sets: tn('sets.count', totalSets(exercises)),
+  });

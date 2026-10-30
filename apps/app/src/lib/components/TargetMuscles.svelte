@@ -1,12 +1,13 @@
 <script lang="ts">
   import { muscle as muscleLabel } from '#lib/labels';
+  import { t } from '#lib/i18n';
   import MuscleFigure from './MuscleFigure.svelte';
 
   let { muscles }: { muscles: Array<{ muscle: string; pct: number }> } = $props();
 </script>
 
-<section aria-label="Músculos objetivo">
-  <h2>Músculos objetivo</h2>
+<section aria-label={t('workout.targetMuscles')}>
+  <h2>{t('workout.targetMuscles')}</h2>
   <ul>
     {#each muscles as m (m.muscle)}
       <li>

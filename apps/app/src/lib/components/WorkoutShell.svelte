@@ -5,6 +5,7 @@
   import { restTimer } from '#lib/offline/rest.svelte';
   import { WorkoutView } from '#lib/offline/workout-view.svelte';
   import { provideWorkoutView } from '#lib/offline/workout-context';
+  import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
   import SyncBanner from './SyncBanner.svelte';
 
@@ -25,16 +26,16 @@
 </script>
 
 {#if restTimer.seconds > 0}
-  <div class="rest" role="timer" aria-label="Descanso">
-    <span class="clock"><Icon name="timer" size={16} /> Descanso <strong>{restTimer.label}</strong></span>
-    <button type="button" class="skip" onclick={() => restTimer.skip()}>Omitir</button>
+  <div class="rest" role="timer" aria-label={t('workout.rest')}>
+    <span class="clock"><Icon name="timer" size={16} /> {t('workout.rest')} <strong>{restTimer.label}</strong></span>
+    <button type="button" class="skip" onclick={() => restTimer.skip()}>{t('workout.skip')}</button>
   </div>
 {/if}
 
 <main>
   <SyncBanner />
   {#if view.error}<p class="error" role="alert">{view.error}</p>{/if}
-  {#if !view.snap && !view.error}<p class="muted loading">Cargando…</p>{/if}
+  {#if !view.snap && !view.error}<p class="muted loading">{t('common.loading')}</p>{/if}
   {#if view.snap}{@render children()}{/if}
 </main>
 

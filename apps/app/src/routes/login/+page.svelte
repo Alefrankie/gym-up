@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { sessionResponseSchema, type LoginRequest } from '@gym-up/contracts';
   import { api, ApiRequestError } from '#lib/api/client';
@@ -24,28 +25,28 @@
       await session.set(res.user);
       await goto('/dashboard', { replaceState: true });
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'No hay conexión con el servidor. Revisa tu señal e inténtalo otra vez.';
+      error = e instanceof ApiRequestError ? e.message : t('auth.noServer');
     } finally {
       busy = false;
     }
   }
 </script>
 
-<svelte:head><title>Entrar · Gym Up</title></svelte:head>
+<svelte:head><title>{t('auth.login')} · Gym Up</title></svelte:head>
 
-<AuthShell title="Entrar" lead="Tu rutina de hoy te está esperando.">
+<AuthShell title={t('auth.login')} lead={t('auth.loginLead')}>
   <form id="auth" onsubmit={submit}>
     <label>
-      Email
+      {t('auth.email')}
       <input type="email" bind:value={email} autocomplete="email" inputmode="email" required />
     </label>
-    <PasswordField bind:value={password} label="Contraseña" autocomplete="current-password" />
+    <PasswordField bind:value={password} label={t('auth.password')} autocomplete="current-password" />
     {#if error}<p class="error" role="alert"><Icon name="alert" size={20} /> {error}</p>{/if}
   </form>
 
   {#snippet actions()}
-    <button class="primary" type="submit" form="auth" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
-    <p class="alt">¿Primera vez? <a href="/register">Crear cuenta</a></p>
+    <button class="primary" type="submit" form="auth" disabled={busy}>{busy ? t('auth.loggingIn') : t('auth.login')}</button>
+    <p class="alt">{t('auth.firstTime')} <a href="/register">{t('auth.register')}</a></p>
   {/snippet}
 </AuthShell>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from '#lib/i18n';
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
@@ -13,7 +14,7 @@
 
 <div class="toast" role="status" in:fly={{ y: 24, duration: 340, easing: cubicOut }} out:fade={{ duration: 160 }}>
   <span>{message}</span>
-  <button type="button" onclick={onundo}>Deshacer</button>
+  <button type="button" onclick={onundo}>{tr('common.undo')}</button>
 </div>
 
 <style>

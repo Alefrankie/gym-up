@@ -1,4 +1,5 @@
 <script lang="ts" generics="T">
+  import { t } from '#lib/i18n';
   import { onMount, tick, type Snippet } from 'svelte';
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
@@ -166,8 +167,8 @@
       oncontextmenu={(e) => e.preventDefault()}
     >
       {#if swipeKey === k}
-        <span class="act remove" class:on={swipeX > COMMIT} style:opacity={swipeX > 0 ? 1 : 0}><Icon name="trash" size={22} /> Eliminar</span>
-        <span class="act replace" class:on={swipeX < -COMMIT} style:opacity={swipeX < 0 ? 1 : 0}>Reemplazar <Icon name="swap" size={22} /></span>
+        <span class="act remove" class:on={swipeX > COMMIT} style:opacity={swipeX > 0 ? 1 : 0}><Icon name="trash" size={22} /> {t('plan.delete')}</span>
+        <span class="act replace" class:on={swipeX < -COMMIT} style:opacity={swipeX < 0 ? 1 : 0}>{t('plan.replace')} <Icon name="swap" size={22} /></span>
       {/if}
       <div
         class="face"

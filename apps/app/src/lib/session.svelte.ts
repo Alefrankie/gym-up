@@ -1,3 +1,4 @@
+import { tn } from '#lib/i18n';
 import { goto } from '$app/navigation';
 import { userSchema, type UserDto } from '@gym-up/contracts';
 import { api, ApiRequestError, NetworkError } from '#lib/api/client';
@@ -46,7 +47,7 @@ class Session {
   }
 
   async signOut(): Promise<void> {
-    if (sync.pending > 0 && !confirm(`Tienes ${sync.pending} cambios sin enviar. Si sales ahora se perderán. ¿Salir de todos modos?`)) {
+    if (sync.pending > 0 && !confirm(tn('auth.logoutPending', sync.pending))) {
       return;
     }
     try {

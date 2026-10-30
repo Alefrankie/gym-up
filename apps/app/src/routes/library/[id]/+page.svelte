@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
@@ -24,10 +25,10 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y este ejercicio no está guardado.'
+          ? t('exercise.offlineNotSaved')
           : e instanceof ApiRequestError && e.status === 404
-            ? 'Ejercicio no encontrado'
-            : 'No se pudo cargar el ejercicio';
+            ? t('exercise.notFound')
+            : t('exercise.loadError');
     }
   });
 
@@ -50,25 +51,25 @@
   );
 
   async function archive() {
-    if (!confirm('¿Archivar este ejercicio? Seguirá apareciendo en tus entrenamientos anteriores.')) return;
+    if (!confirm(t('exercise.archiveConfirm'))) return;
     busy = true;
     try {
       await api(`/exercises/${id}`, { method: 'DELETE' });
       await invalidateCache(['/exercises']);
       await goto('/library');
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'No se pudo archivar';
+      error = e instanceof ApiRequestError ? e.message : t('programs.archiveError');
       busy = false;
     }
   }
 </script>
 
 <main>
-  <p><a class="back" href="/library"><Icon name="left" size={16} /> Biblioteca</a></p>
+  <p><a class="back" href="/library"><Icon name="left" size={16} /> {t('library.title')}</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if exercise}
     <h1>{exercise.name}</h1>
-    {#if exercise.isArchived}<p class="muted">Archivado</p>{/if}
+    {#if exercise.isArchived}<p class="muted">{t('exercise.archived')}</p>{/if}
 
     <section class="card hero figure">
       <MuscleFigure
@@ -76,32 +77,32 @@
         secondary={exercise.secondaryMuscles}
         view="both"
         size={84}
-        label={`Músculos trabajados: ${muscle(exercise.primaryMuscle)}`}
+        label={t('exercise.musclesWorked', { muscle: muscle(exercise.primaryMuscle) })}
       />
       <dl>
-        <dt>Principal</dt>
+        <dt>{t('exercise.primary')}</dt>
         <dd class="main">{muscle(exercise.primaryMuscle)}</dd>
         {#if exercise.secondaryMuscles.length}
-          <dt>Secundarios</dt>
+          <dt>{t('exercise.secondary')}</dt>
           <dd>{exercise.secondaryMuscles.map(muscle).join(', ')}</dd>
         {/if}
-        <dt>Equipo</dt>
+        <dt>{t('library.equipment')}</dt>
         <dd>{equipment(exercise.equipment)}</dd>
-        <dt>Registro</dt>
+        <dt>{t('exercise.tracking')}</dt>
         <dd>{TYPE_LABELS[exercise.exerciseType] ?? exercise.exerciseType}</dd>
       </dl>
     </section>
 
     {#if history.length}
       <section class="card progress">
-        <h2 class="first">Tu progreso</h2>
-        <p class="muted sub">Peso máximo por sesión ({unit}) · récord {Math.max(...history.map((p) => toDisplay(p.weight, unit)))} {unit}</p>
-        <ProgressChart labels={history.map((p) => p.date.slice(5))} values={history.map((p) => toDisplay(p.weight, unit))} label={`Peso máximo (${unit})`} />
+        <h2 class="first">{t('exercise.progress')}</h2>
+        <p class="muted sub">{t('exercise.progressSub', { unit, record: Math.max(...history.map((p) => toDisplay(p.weight, unit))) })}</p>
+        <ProgressChart labels={history.map((p) => p.date.slice(5))} values={history.map((p) => toDisplay(p.weight, unit))} label={t('exercise.maxWeight', { unit })} />
       </section>
     {/if}
 
     {#if steps.length}
-      <h2>Cómo se hace</h2>
+      <h2>{t('exercise.howTo')}</h2>
       <ol class="steps">
         {#each steps as s, i}
           <li><span class="n">{i + 1}</span><span>{s}</span></li>
@@ -110,17 +111,17 @@
     {/if}
 
     {#if exercise.videoUrl}
-      <p><a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">Ver vídeo</a></p>
+      <p><a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer">{t('exercise.watchVideo')}</a></p>
     {/if}
 
     {#if mine && !exercise.isArchived}
       <div class="actions">
-        <a class="edit" href={`/library/${id}/edit`}><Icon name="edit" size={16} /> Editar</a>
-        <button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> Archivar</button>
+        <a class="edit" href={`/library/${id}/edit`}><Icon name="edit" size={16} /> {t('common.edit')}</a>
+        <button class="danger" disabled={busy} onclick={archive}><Icon name="trash" size={16} /> {t('exercise.archive')}</button>
       </div>
     {/if}
   {:else if !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {/if}
 </main>
 

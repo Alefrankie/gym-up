@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
   import { EQUIPMENT, libraryExerciseListResponseSchema, type LibraryExerciseDto } from '@gym-up/contracts';
@@ -8,31 +9,15 @@
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import ExerciseFilters from '#lib/components/ExerciseFilters.svelte';
+  import { emptyFilter, filterExercises } from '#lib/exercise-filter';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
-
-  // The groups people actually think in; the full taxonomy still applies to each exercise.
-  const FILTER_MUSCLES = [
-    'chest',
-    'upper_back',
-    'lats',
-    'shoulders',
-    'biceps',
-    'triceps',
-    'forearms',
-    'abdominals',
-    'quadriceps',
-    'hamstrings',
-    'glutes',
-    'calves',
-  ];
 
   let items = $state<LibraryExerciseDto[]>([]);
   let loaded = $state(false);
   let error = $state<string | null>(null);
   let stale = $state(false);
-  let q = $state('');
-  let muscleFilter = $state('');
-  let equipmentFilter = $state('');
+  let filter = $state(emptyFilter());
   let mineOnly = $state(false);
 
   // The whole catalog is small (tens of rows), so it is fetched once and filtered on the device: instant and offline.
@@ -45,59 +30,37 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y sin biblioteca guardada todavía.'
+          ? t('library.offlineEmpty')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudo cargar la biblioteca';
+            : t('library.loadError');
     }
     loaded = true;
   });
 
-  const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
   const visible = $derived(
-    items.filter(
-      (e) =>
-        (!q || norm(e.name).includes(norm(q))) &&
-        (!muscleFilter || e.primaryMuscle === muscleFilter || e.secondaryMuscles.includes(muscleFilter)) &&
-        (!equipmentFilter || e.equipment === equipmentFilter) &&
-        (!mineOnly || (e.isCustom && e.ownerId === session.user?.id)),
-    ),
+    filterExercises(items, filter).filter((e) => !mineOnly || (e.isCustom && e.ownerId === session.user?.id)),
   );
 </script>
 
 <main>
-  <p><a class="back" href="/programs"><Icon name="left" size={16} /> Entrenar</a></p>
-  <h1>Biblioteca</h1>
-  {#if stale}<p class="muted">Sin conexión: mostrando la última biblioteca descargada.</p>{/if}
+  <p><a class="back" href="/programs"><Icon name="left" size={16} /> {t('nav.train')}</a></p>
+  <h1>{t('library.title')}</h1>
+  {#if stale}<p class="muted">{t('library.stale')}</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
-  <div class="search">
-    <Icon name="search" size={16} />
-    <input type="search" placeholder="Buscar ejercicio" aria-label="Buscar ejercicio" bind:value={q} />
-  </div>
+  <ExerciseFilters bind:filter />
 
-  <div class="chips" role="group" aria-label="Músculo">
-    <button class="chip" class:on={!muscleFilter} onclick={() => (muscleFilter = '')}>Todos</button>
-    {#each FILTER_MUSCLES as m}
-      <button class="chip" class:on={muscleFilter === m} onclick={() => (muscleFilter = muscleFilter === m ? '' : m)}>
-        <MuscleFigure primary={m} size={14} />{muscleLabel(m)}
-      </button>
-    {/each}
-  </div>
+  <label class="mine"><input type="checkbox" bind:checked={mineOnly} /> {t('library.mineOnly')}</label>
 
-  <div class="row">
-    <Select bind:value={equipmentFilter} label="Equipo" options={[{ value: '', label: 'Todo el equipo' }, ...EQUIPMENT.map((e) => ({ value: e, label: EQUIPMENT_LABELS[e] }))]} />
-    <label class="mine"><input type="checkbox" bind:checked={mineOnly} /> Solo los míos</label>
-  </div>
-
-  <p class="count muted">{visible.length} {visible.length === 1 ? 'ejercicio' : 'ejercicios'}</p>
+  <p class="count muted">{tn('workout.exerciseCount', visible.length)}</p>
 
   {#if !loaded}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if visible.length === 0}
     <section class="card empty">
-      <p>Ningún ejercicio coincide.</p>
-      <a href="/library/new">Crear un ejercicio propio</a>
+      <p>{t('library.noMatch')}</p>
+      <a href="/library/new">{t('library.createOwn')}</a>
     </section>
   {:else}
     <ul class="list">
@@ -106,7 +69,7 @@
           <a href={`/library/${e.id}`}>
             <MuscleFigure primary={e.primaryMuscle} secondary={e.secondaryMuscles} size={22} />
             <span class="grow">
-              <strong>{e.name}{#if e.isCustom} <span class="badge">propio</span>{/if}</strong>
+              <strong>{e.name}{#if e.isCustom} <span class="badge">{t('library.custom')}</span>{/if}</strong>
               <span class="muted">{muscleLabel(e.primaryMuscle)} · {eqLabel(e.equipment)}</span>
             </span>
             <Icon name="right" size={16} />
@@ -117,49 +80,10 @@
   {/if}
 </main>
 
-<a class="fab" href="/library/new" aria-label="Nuevo ejercicio"><Icon name="plus" size={20} /></a>
+<a class="fab" href="/library/new" aria-label={t('library.new')}><Icon name="plus" size={20} /></a>
 <AppNav />
 
 <style>
-  .search {
-    position: relative;
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.6rem;
-    color: var(--faint);
-  }
-  .search :global(svg) {
-    position: absolute;
-    left: 0.75rem;
-    pointer-events: none;
-  }
-  .search input {
-    flex: 1;
-    padding-left: 2.3rem;
-  }
-  .chips {
-    display: flex;
-    gap: 0.4rem;
-    overflow-x: auto;
-    margin: 0 -1rem 0.6rem;
-    padding: 0.1rem 1rem 0.3rem;
-    scrollbar-width: none;
-  }
-  .chips::-webkit-scrollbar {
-    display: none;
-  }
-  .chips .chip {
-    flex: none;
-    min-height: 32px;
-  }
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .row :global(.select) {
-    flex: 1;
-  }
   .mine {
     display: flex;
     align-items: center;

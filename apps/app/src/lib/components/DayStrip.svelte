@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   /** The last `count` days ending on `end` (YYYY-MM-DD), one small cell each, filled when the day is in `days`. */
   let { days, end, count = 30, label }: { days: string[]; end: string; count?: number; label: string } = $props();
 
@@ -15,7 +16,7 @@
   const total = $derived(cells.filter((c) => c.on).length);
 </script>
 
-<div class="strip" role="img" aria-label={`${label}: ${total} de los últimos ${count} días`}>
+<div class="strip" role="img" aria-label={t('supplements.stripLabel', { label, total, count })}>
   {#each cells as c (c.key)}<span class:on={c.on} title={c.key}></span>{/each}
 </div>
 

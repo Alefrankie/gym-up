@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { libraryExerciseDtoSchema, type CreateExerciseRequest } from '@gym-up/contracts';
@@ -26,17 +27,17 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión: conéctate para crear un ejercicio propio.'
+          ? t('exercise.createOffline')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudo crear el ejercicio';
+            : t('exercise.createError');
       busy = false;
     }
   }
 </script>
 
 <main>
-  <p><a class="back" href="/library"><Icon name="left" size={16} /> Biblioteca</a></p>
-  <h1>Nuevo ejercicio</h1>
-  <ExerciseForm {busy} {error} submitLabel="Guardar ejercicio" onsubmit={submit} />
+  <p><a class="back" href="/library"><Icon name="left" size={16} /> {t('library.title')}</a></p>
+  <h1>{t('library.new')}</h1>
+  <ExerciseForm {busy} {error} submitLabel={t('exercise.save')} onsubmit={submit} />
 </main>

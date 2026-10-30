@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn, dateLocale } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
@@ -23,10 +24,10 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y este grupo no está guardado.'
+          ? t('groups.offlineGroup')
           : e instanceof ApiRequestError && e.status === 404
-            ? 'Este grupo no existe o ya no eres miembro.'
-            : 'No se pudo cargar el grupo';
+            ? t('groups.notFound')
+            : t('groups.loadGroupError');
     }
   });
 
@@ -42,37 +43,37 @@
   }
 
   async function leave() {
-    if (!confirm('¿Salir de este grupo?')) return;
+    if (!confirm(t('groups.confirmLeave'))) return;
     busy = true;
     try {
       await api(`/groups/${id}/members/me`, { method: 'DELETE' });
       await invalidateCache(['/groups']);
       await goto('/groups');
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'Necesitas conexión para salir del grupo';
+      error = e instanceof ApiRequestError ? e.message : t('groups.leaveNeedsConnection');
       busy = false;
     }
   }
 
   const fmt = (d: string | null) =>
-    d ? new Date(d + 'T00:00:00Z').toLocaleDateString('es', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : 'sin entrenar aún';
+    d ? new Date(d + 'T00:00:00Z').toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', timeZone: 'UTC' }) : t('groups.noWorkoutYet');
 </script>
 
 <main>
-  <p><a class="back" href="/groups"><Icon name="left" size={18} /> Grupos</a></p>
+  <p><a class="back" href="/groups"><Icon name="left" size={18} /> {t('nav.groups')}</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if !detail && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if detail}
     <h1>{detail.group.name}</h1>
 
     <section class="card hero invite">
-      <span class="muted">Código para invitar</span>
+      <span class="muted">{t('groups.inviteCode')}</span>
       <strong class="code">{detail.group.code}</strong>
-      <button onclick={copy}><Icon name={copied ? 'check' : 'copy'} size={16} /> {copied ? 'Copiado' : 'Copiar código'}</button>
+      <button onclick={copy}><Icon name={copied ? 'check' : 'copy'} size={16} /> {copied ? t('groups.copied') : t('groups.copyCode')}</button>
     </section>
 
-    <h2>Miembros</h2>
+    <h2>{t('groups.membersTitle')}</h2>
     <ul class="list">
       {#each detail.members as m, i (m.id)}
         <li>
@@ -80,8 +81,8 @@
             <span class="rank">{i + 1}</span>
             <Avatar name={m.displayName} size={34} />
             <span class="grow">
-              <strong>{m.displayName}{m.id === session.user?.id ? ' (tú)' : ''}</strong>
-              <span class="muted">{m.totalWorkouts} entrenamientos · último: {fmt(m.lastWorkout)}</span>
+              <strong>{m.displayName}{m.id === session.user?.id ? t('groups.you') : ''}</strong>
+              <span class="muted">{tn('groups.workouts', m.totalWorkouts)} · {t('groups.last', { date: fmt(m.lastWorkout) })}</span>
             </span>
             <span class="streak" class:on={m.currentStreak > 0}>
               <Icon name="flame" size={16} />{m.currentStreak}
@@ -91,7 +92,7 @@
       {/each}
     </ul>
 
-    <button class="danger" disabled={busy} onclick={leave}>Salir del grupo</button>
+    <button class="danger" disabled={busy} onclick={leave}>{t('groups.leave')}</button>
   {/if}
 </main>
 

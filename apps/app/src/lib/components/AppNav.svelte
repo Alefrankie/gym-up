@@ -1,22 +1,23 @@
 <script lang="ts">
+  import { t, type MessageKey } from '#lib/i18n';
   import { page } from '$app/state';
   import Icon, { type IconName } from './Icon.svelte';
 
-  const links: Array<{ href: string; label: string; icon: IconName; match: string[] }> = [
-    { href: '/dashboard', label: 'Inicio', icon: 'home', match: ['/dashboard', '/workout'] },
-    { href: '/programs', label: 'Entrenar', icon: 'dumbbell', match: ['/programs', '/library'] },
-    { href: '/progress', label: 'Progreso', icon: 'chart', match: ['/progress'] },
-    { href: '/groups', label: 'Grupos', icon: 'users', match: ['/groups'] },
-    { href: '/more', label: 'Más', icon: 'more', match: ['/more', '/history', '/photos', '/settings', '/nutrition'] },
+  const links: Array<{ href: string; label: MessageKey; icon: IconName; match: string[] }> = [
+    { href: '/dashboard', label: 'nav.home', icon: 'home', match: ['/dashboard', '/workout'] },
+    { href: '/programs', label: 'nav.train', icon: 'dumbbell', match: ['/programs', '/library'] },
+    { href: '/progress', label: 'nav.progress', icon: 'chart', match: ['/progress'] },
+    { href: '/groups', label: 'nav.groups', icon: 'users', match: ['/groups'] },
+    { href: '/more', label: 'nav.more', icon: 'more', match: ['/more', '/history', '/photos', '/settings', '/nutrition'] },
   ];
 </script>
 
-<nav aria-label="Principal">
+<nav aria-label={t('nav.main')}>
   {#each links as link}
     {@const active = link.match.some((m) => page.url.pathname.startsWith(m))}
     <a href={link.href} class:active aria-current={active ? 'page' : undefined}>
       <span class="ico"><Icon name={link.icon} size={24} /></span>
-      <span class="label">{link.label}</span>
+      <span class="label">{t(link.label)}</span>
     </a>
   {/each}
 </nav>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import { sync } from '#lib/offline/sync.svelte';
   import Icon from '#lib/components/Icon.svelte';
 </script>
@@ -9,12 +10,12 @@
       <span class="msg">
         <Icon name="cloud" size={16} />
         <span>
-          {sync.offline ? 'Sin conexión' : sync.syncing ? 'Sincronizando' : 'Pendiente'}:
-          {sync.pending} {sync.pending === 1 ? 'cambio' : 'cambios'} por enviar
+          {sync.offline ? t('sync.offline') : sync.syncing ? t('sync.syncing') : t('sync.pending')}:
+          {tn('sync.changesToSend', sync.pending)}
         </span>
       </span>
       {#if !sync.syncing}
-        <button type="button" onclick={() => sync.kick(true)}>Reintentar</button>
+        <button type="button" onclick={() => sync.kick(true)}>{t('sync.retry')}</button>
       {/if}
     {/if}
   </div>
@@ -22,11 +23,11 @@
     <div class="banner err" role="alert">
       <span class="msg">
         <Icon name="x" size={16} />
-        <span>No se pudo guardar un cambio ({item.error}).</span>
+        <span>{t('sync.failed', { error: item.error })}</span>
       </span>
       <span class="actions">
-        <button type="button" onclick={() => sync.retry(item.seq)}>Reintentar</button>
-        <button type="button" class="ghost" onclick={() => sync.discard(item.seq)}>Descartar</button>
+        <button type="button" onclick={() => sync.retry(item.seq)}>{t('sync.retry')}</button>
+        <button type="button" class="ghost" onclick={() => sync.discard(item.seq)}>{t('sync.discard')}</button>
       </span>
     </div>
   {/each}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { programDetailDtoSchema, type ProgramDetailDto, type ProgramSummaryDto } from '@gym-up/contracts';
   import { api, ApiRequestError } from '#lib/api/client';
@@ -17,7 +18,15 @@
   let busy = $state(false);
   let error = $state<string | null>(null);
 
-  const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const DAY_NAMES = [
+    'programs.weekday.mon',
+    'programs.weekday.tue',
+    'programs.weekday.wed',
+    'programs.weekday.thu',
+    'programs.weekday.fri',
+    'programs.weekday.sat',
+    'programs.weekday.sun',
+  ] as const;
 
   async function create(event: SubmitEvent) {
     event.preventDefault();
@@ -36,7 +45,7 @@
         const routines = Array.from({ length: days }, (_, i) => ({
           id: crypto.randomUUID(),
           dayNumber: i + 1,
-          name: DAY_NAMES[i]!,
+          name: t(DAY_NAMES[i]!),
           focus: '',
           notes: null,
           exercises: [],
@@ -52,30 +61,30 @@
       await invalidateCache(['/programs', '/workouts/today']);
       await goto(`/programs/${id}`);
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'Necesitas conexión para crear un programa';
+      error = e instanceof ApiRequestError ? e.message : t('programs.createOffline');
       busy = false;
     }
   }
 </script>
 
-<Sheet title="Nuevo programa" {onclose}>
+<Sheet title={t('programs.new')} {onclose}>
   <form onsubmit={create}>
     <label>
-      Nombre
-      <input maxlength="60" placeholder={from === 'empty' ? 'Ej. Torso / pierna' : 'Igual que la plantilla'} bind:value={name} />
+      {t('programs.name')}
+      <input maxlength="60" placeholder={from === 'empty' ? t('programs.namePlaceholder') : t('programs.nameSameAsTemplate')} bind:value={name} />
     </label>
 
     <fieldset>
-      <legend>Empezar desde</legend>
+      <legend>{t('programs.startFrom')}</legend>
       <div class="options">
         <button type="button" class="opt" class:on={from === 'empty'} aria-pressed={from === 'empty'} onclick={() => (from = 'empty')}>
           <span class="blank"><Icon name="plus" size={20} /></span>
-          <span class="grow"><strong>Desde cero</strong><span class="muted">Eliges los días y añades los ejercicios</span></span>
+          <span class="grow"><strong>{t('programs.fromScratch')}</strong><span class="muted">{t('programs.fromScratchHint')}</span></span>
         </button>
-        {#each templates as t (t.id)}
-          <button type="button" class="opt" class:on={from === t.id} aria-pressed={from === t.id} onclick={() => (from = t.id)}>
-            <ProgramThumb muscles={t.muscles} size={44} />
-            <span class="grow"><strong>{t.name}</strong><span class="muted">{t.routineCount} días · {t.exerciseCount ?? 0} ejercicios</span></span>
+        {#each templates as tpl (tpl.id)}
+          <button type="button" class="opt" class:on={from === tpl.id} aria-pressed={from === tpl.id} onclick={() => (from = tpl.id)}>
+            <ProgramThumb muscles={tpl.muscles} size={44} />
+            <span class="grow"><strong>{tpl.name}</strong><span class="muted">{tn('programs.days', tpl.routineCount)} · {tn('programs.exercises', tpl.exerciseCount ?? 0)}</span></span>
           </button>
         {/each}
       </div>
@@ -83,7 +92,7 @@
 
     {#if from === 'empty'}
       <fieldset>
-        <legend>Días de entrenamiento por semana</legend>
+        <legend>{t('programs.daysPerWeek')}</legend>
         <div class="days" role="group">
           {#each [1, 2, 3, 4, 5, 6, 7] as n (n)}
             <button type="button" class:on={days === n} aria-pressed={days === n} onclick={() => (days = n)}>{n}</button>
@@ -93,7 +102,7 @@
     {/if}
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <button class="primary" disabled={busy}>{busy ? 'Creando…' : 'Crear programa'}</button>
+    <button class="primary" disabled={busy}>{busy ? t('programs.creating') : t('programs.create')}</button>
   </form>
 </Sheet>
 

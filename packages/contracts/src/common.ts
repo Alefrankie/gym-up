@@ -7,9 +7,9 @@ export const idSchema = z.string().uuid();
 export const setTypeSchema = z.enum(['normal', 'warmup', 'drop', 'failure']);
 export type SetType = z.infer<typeof setTypeSchema>;
 
-/** Per-set plan of a routine exercise: reps and kind of each set, in order. */
+/** Per-set plan of a routine exercise: reps, kind and (optionally) target weight in kg of each set, in order. */
 export const setPlanSchema = z
-  .array(z.object({ reps: z.number().int().min(1).max(100), type: setTypeSchema.default('normal') }))
+  .array(z.object({ reps: z.number().int().min(1).max(100), type: setTypeSchema.default('normal'), weight: z.number().min(0).max(500).optional() }))
   .min(1)
   .max(20);
 export type SetPlan = z.infer<typeof setPlanSchema>;

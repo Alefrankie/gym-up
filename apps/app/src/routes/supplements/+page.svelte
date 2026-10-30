@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import { onMount } from 'svelte';
   import type { SupplementListResponse } from '@gym-up/contracts';
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
@@ -20,7 +21,7 @@
     try {
       list = (await loadSupplements(today, (r) => (list = r))).data;
     } catch (e) {
-      error = e instanceof NetworkError ? 'Sin conexión y sin suplementos guardados todavía.' : 'No se pudieron cargar tus suplementos';
+      error = e instanceof NetworkError ? t('supplements.offlineEmpty') : t('supplements.loadError');
     }
   }
 
@@ -55,27 +56,27 @@
       await invalidateCache(['/supplements']);
       await load();
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : 'Necesitas conexión para añadir un suplemento';
+      error = e instanceof ApiRequestError ? e.message : t('supplements.addNeedsConnection');
     }
     busy = false;
   }
 
   async function remove(id: string, label: string) {
-    if (!confirm(`¿Quitar "${label}" de tu lista? Su historial se conserva.`)) return;
+    if (!confirm(t('supplements.confirmRemove', { name: label }))) return;
     try {
       await api(`/supplements/${id}`, { method: 'DELETE' });
       await invalidateCache(['/supplements']);
       await load();
     } catch {
-      error = 'Necesitas conexión para quitar un suplemento';
+      error = t('supplements.removeNeedsConnection');
     }
   }
 </script>
 
 <main>
-  <p><a class="back" href="/dashboard"><Icon name="left" size={18} /> Inicio</a></p>
-  <h1>Suplementos</h1>
-  <p class="muted lead">Hoy es {longDate()}. Marca lo que tomaste; las barras son los últimos 30 días.</p>
+  <p><a class="back" href="/dashboard"><Icon name="left" size={18} /> {t('nav.home')}</a></p>
+  <h1>{t('supplements.title')}</h1>
+  <p class="muted lead">{t('supplements.lead', { date: longDate() })}</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if list}
@@ -83,27 +84,27 @@
       {#each list.items as s (s.id)}
         <li>
           <div class="row">
-            <button type="button" class="tick" class:on={s.taken} aria-pressed={s.taken} aria-label={`${s.name}: ${s.taken ? 'tomado hoy' : 'marcar como tomado'}`} onclick={() => toggle(s.id, !s.taken)}>
+            <button type="button" class="tick" class:on={s.taken} aria-pressed={s.taken} aria-label={`${s.name}: ${s.taken ? t('supplements.takenToday') : t('supplements.markTaken')}`} onclick={() => toggle(s.id, !s.taken)}>
               {#if s.taken}<Icon name="check" size={18} />{/if}
             </button>
             <span class="grow">
               <strong>{s.name}</strong>
               <span class="muted">
-                {s.days.filter((d) => d.startsWith(list!.day.slice(0, 7))).length === 1 ? '1 día' : `${s.days.filter((d) => d.startsWith(list!.day.slice(0, 7))).length} días`} este mes{#if s.streak > 1} · <span class="streak">{s.streak} seguidos</span>{/if}
+                {tn('supplements.daysThisMonth', s.days.filter((d) => d.startsWith(list!.day.slice(0, 7))).length)}{#if s.streak > 1} · <span class="streak">{t('supplements.streak', { n: s.streak })}</span>{/if}
               </span>
             </span>
-            <button type="button" class="ghost del" aria-label={`Quitar ${s.name}`} onclick={() => remove(s.id, s.name)}><Icon name="trash" size={18} /></button>
+            <button type="button" class="ghost del" aria-label={t('supplements.removeLabel', { name: s.name })} onclick={() => remove(s.id, s.name)}><Icon name="trash" size={18} /></button>
           </div>
           <DayStrip days={s.days} end={list.day} label={s.name} />
         </li>
       {/each}
     </ul>
 
-    <h2>Calendario</h2>
+    <h2>{t('supplements.calendar')}</h2>
     <SupplementCalendar items={list.items} today={list.day} />
 
     {#if history.length}
-      <h2>Día a día</h2>
+      <h2>{t('supplements.dayByDay')}</h2>
       <ul class="log">
         {#each history as h (h.day)}
           <li>
@@ -117,11 +118,11 @@
     {/if}
 
     <form class="add" onsubmit={add}>
-      <input maxlength="40" placeholder="Añadir (ej. Omega 3, magnesio…)" aria-label="Nuevo suplemento" bind:value={name} />
-      <button type="submit" disabled={busy || !name.trim()}><Icon name="plus" size={18} /> Añadir</button>
+      <input maxlength="40" placeholder={t('supplements.addPlaceholder')} aria-label={t('supplements.newLabel')} bind:value={name} />
+      <button type="submit" disabled={busy || !name.trim()}><Icon name="plus" size={18} /> {t('common.add')}</button>
     </form>
   {:else if !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {/if}
 </main>
 

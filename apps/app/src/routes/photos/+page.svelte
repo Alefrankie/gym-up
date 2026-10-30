@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, dateLocale } from '#lib/i18n';
   import { onDestroy, onMount } from 'svelte';
   import { photoListResponseSchema, type PhotoDto } from '@gym-up/contracts';
   import { ApiRequestError, NetworkError } from '#lib/api/client';
@@ -16,9 +17,9 @@
   let viewing = $state<PhotoDto | null>(null);
 
   function describe(e: unknown, fallback: string): string {
-    if (e instanceof NetworkError) return 'Las fotos necesitan conexión a internet.';
+    if (e instanceof NetworkError) return t('photos.needsConnection');
     if (e instanceof ApiRequestError) {
-      return e.status === 503 ? 'Las fotos todavía no están activadas en el servidor.' : e.message;
+      return e.status === 503 ? t('photos.disabled') : e.message;
     }
     return fallback;
   }
@@ -36,7 +37,7 @@
         }
       }
     } catch (e) {
-      error = describe(e, 'No se pudieron cargar las fotos');
+      error = describe(e, t('photos.loadError'));
     }
   }
 
@@ -59,14 +60,14 @@
       await invalidateCache(['/photos']);
       await load();
     } catch (e) {
-      error = describe(e, 'No se pudo subir la foto');
+      error = describe(e, t('photos.uploadError'));
     } finally {
       busy = false;
     }
   }
 
   async function remove(p: PhotoDto) {
-    if (!confirm('¿Borrar esta foto? No se puede deshacer.')) return;
+    if (!confirm(t('photos.confirmDelete'))) return;
     try {
       await deleteRequest(`/photos/${p.id}`);
       URL.revokeObjectURL(urls[p.id] ?? '');
@@ -75,44 +76,44 @@
       await invalidateCache(['/photos']);
       await load();
     } catch (e) {
-      error = describe(e, 'No se pudo borrar la foto');
+      error = describe(e, t('photos.deleteError'));
     }
   }
 
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 </script>
 
 <main>
-  <p><a class="back" href="/more"><Icon name="left" size={18} /> Más</a></p>
-  <h1>Fotos de progreso</h1>
-  <p class="privacy muted"><Icon name="key" size={16} /> Solo tú las ves. No aparecen en la vista de familia.</p>
+  <p><a class="back" href="/more"><Icon name="left" size={18} /> {t('nav.more')}</a></p>
+  <h1>{t('more.photos')}</h1>
+  <p class="privacy muted"><Icon name="key" size={16} /> {t('photos.privacy')}</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <div class="actions">
     <label class="cta" class:disabled={busy}>
       <Icon name="camera" size={18} />
-      {busy ? 'Subiendo…' : 'Tomar foto'}
+      {busy ? t('photos.uploading') : t('photos.take')}
       <input type="file" accept="image/*" capture="environment" onchange={pick} disabled={busy} hidden />
     </label>
     <label class="cta secondary" class:disabled={busy}>
       <Icon name="plus" size={18} />
-      Elegir de la galería
+      {t('photos.gallery')}
       <input type="file" accept="image/*" onchange={pick} disabled={busy} hidden />
     </label>
   </div>
 
   {#if !photos && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if photos && photos.length === 0}
     <section class="card empty">
       <Icon name="camera" size={20} />
-      <p class="muted">Todavía no hay fotos. Sube la primera para ver tu cambio con el tiempo.</p>
+      <p class="muted">{t('photos.empty')}</p>
     </section>
   {:else if photos}
     <div class="grid">
       {#each photos as p (p.id)}
-        <button type="button" class="thumb" onclick={() => (viewing = p)} aria-label={`Foto del ${fmt(p.photoDate)}`}>
-          {#if urls[p.id]}<img src={urls[p.id]} alt={p.caption ?? 'Foto de progreso'} />{:else}<span class="muted">…</span>{/if}
+        <button type="button" class="thumb" onclick={() => (viewing = p)} aria-label={t('photos.photoOf', { date: fmt(p.photoDate) })}>
+          {#if urls[p.id]}<img src={urls[p.id]} alt={p.caption ?? t('photos.alt')} />{:else}<span class="muted">…</span>{/if}
           <span class="date">{fmt(p.photoDate)}</span>
         </button>
       {/each}
@@ -121,11 +122,11 @@
 
   {#if viewing}
     <div class="overlay" role="dialog" aria-modal="true">
-      {#if urls[viewing.id]}<img src={urls[viewing.id]} alt={viewing.caption ?? 'Foto de progreso'} />{/if}
+      {#if urls[viewing.id]}<img src={urls[viewing.id]} alt={viewing.caption ?? t('photos.alt')} />{/if}
       <p>{fmt(viewing.photoDate)}{viewing.caption ? ` · ${viewing.caption}` : ''}</p>
       <div class="actions">
-        <button type="button" onclick={() => (viewing = null)}><Icon name="x" size={16} /> Cerrar</button>
-        <button type="button" class="danger" onclick={() => viewing && remove(viewing)}><Icon name="trash" size={16} /> Borrar</button>
+        <button type="button" onclick={() => (viewing = null)}><Icon name="x" size={16} /> {t('common.close')}</button>
+        <button type="button" class="danger" onclick={() => viewing && remove(viewing)}><Icon name="trash" size={16} /> {t('photos.delete')}</button>
       </div>
     </div>
   {/if}

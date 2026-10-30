@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
 
   let {
@@ -15,7 +16,7 @@
   {label}
   <span class="field">
     <input type={shown ? 'text' : 'password'} bind:value {autocomplete} {minlength} required />
-    <button type="button" class="eye" aria-pressed={shown} aria-label={shown ? 'Ocultar contraseña' : 'Mostrar contraseña'} onclick={() => (shown = !shown)}>
+    <button type="button" class="eye" aria-pressed={shown} aria-label={shown ? t('auth.hidePassword') : t('auth.showPassword')} onclick={() => (shown = !shown)}>
       <Icon name={shown ? 'eyeOff' : 'eye'} size={22} />
     </button>
   </span>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '#lib/i18n';
   import { onMount } from 'svelte';
   import { programListResponseSchema, type ProgramListResponse, type ProgramSummaryDto } from '@gym-up/contracts';
   import { ApiRequestError, NetworkError } from '#lib/api/client';
@@ -26,21 +27,22 @@
     } catch (e) {
       error =
         e instanceof NetworkError
-          ? 'Sin conexión y sin programas guardados todavía.'
+          ? t('programs.offlineEmpty')
           : e instanceof ApiRequestError
             ? e.message
-            : 'No se pudieron cargar los programas';
+            : t('programs.loadError');
     }
   });
 
-  const goal: Record<string, string> = { hypertrophy: 'Hipertrofia', strength: 'Fuerza', general: 'General' };
-  const level: Record<string, string> = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
+  const goal = (g: string): string => ({ hypertrophy: t('programs.goal.hypertrophy'), strength: t('programs.goal.strength'), general: t('programs.goal.general') })[g] ?? g;
+  const level = (l: string): string =>
+    ({ beginner: t('programs.level.beginner'), intermediate: t('programs.level.intermediate'), advanced: t('programs.level.advanced') })[l] ?? l;
   const meta = (p: ProgramSummaryDto) =>
     [
-      `${p.routineCount} ${p.routineCount === 1 ? 'día' : 'días'}`,
-      p.exerciseCount ? `${p.exerciseCount} ejercicios` : null,
-      p.level && (level[p.level] ?? p.level),
-      p.goal && (goal[p.goal] ?? p.goal),
+      tn('programs.days', p.routineCount),
+      p.exerciseCount ? tn('programs.exercises', p.exerciseCount) : null,
+      p.level && level(p.level),
+      p.goal && goal(p.goal),
     ]
       .filter(Boolean)
       .join(' · ');
@@ -56,27 +58,27 @@
 
 <main>
   <header class="top">
-    <h1>Entrenar</h1>
-    <button type="button" class="icon add" aria-label="Nuevo programa" onclick={() => (creating = true)}><Icon name="plus" size={20} /></button>
+    <h1>{t('nav.train')}</h1>
+    <button type="button" class="icon add" aria-label={t('programs.new')} onclick={() => (creating = true)}><Icon name="plus" size={20} /></button>
   </header>
   <SyncBanner />
-  {#if stale}<p class="muted">Sin conexión: mostrando los últimos programas descargados.</p>{/if}
+  {#if stale}<p class="muted">{t('programs.stale')}</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <label class="search">
     <Icon name="search" size={18} />
-    <input type="search" placeholder="Buscar programas" aria-label="Buscar programas" bind:value={q} />
+    <input type="search" placeholder={t('programs.search')} aria-label={t('programs.search')} bind:value={q} />
   </label>
 
-  <div class="chips" role="group" aria-label="Filtrar">
-    <button type="button" class="chip" class:on={filter === 'all'} aria-pressed={filter === 'all'} onclick={() => (filter = 'all')}>Todos</button>
-    <button type="button" class="chip" class:on={filter === 'mine'} aria-pressed={filter === 'mine'} onclick={() => (filter = 'mine')}>Mis programas</button>
-    <button type="button" class="chip" class:on={filter === 'templates'} aria-pressed={filter === 'templates'} onclick={() => (filter = 'templates')}>Plantillas</button>
-    <a class="chip" href="/library"><Icon name="book" size={14} /> Ejercicios</a>
+  <div class="chips" role="group" aria-label={t('programs.filter')}>
+    <button type="button" class="chip" class:on={filter === 'all'} aria-pressed={filter === 'all'} onclick={() => (filter = 'all')}>{t('programs.filterAll')}</button>
+    <button type="button" class="chip" class:on={filter === 'mine'} aria-pressed={filter === 'mine'} onclick={() => (filter = 'mine')}>{t('programs.mine')}</button>
+    <button type="button" class="chip" class:on={filter === 'templates'} aria-pressed={filter === 'templates'} onclick={() => (filter = 'templates')}>{t('programs.templates')}</button>
+    <a class="chip" href="/library"><Icon name="book" size={14} /> {t('programs.exercisesLink')}</a>
   </div>
 
   {#if !data && !error}
-    <p class="muted loading">Cargando…</p>
+    <p class="muted loading">{t('common.loading')}</p>
   {:else if data}
     {#snippet row(p: ProgramSummaryDto)}
       <li>
@@ -85,7 +87,7 @@
           <span class="grow">
             <strong>{p.name}</strong>
             <span class="muted">{meta(p)}</span>
-            {#if p.id === data?.activeProgramId}<span class="active"><span class="dot"></span>Programa activo</span>{/if}
+            {#if p.id === data?.activeProgramId}<span class="active"><span class="dot"></span>{t('programs.active')}</span>{/if}
           </span>
           <Icon name="right" size={18} />
         </a>
@@ -93,20 +95,20 @@
     {/snippet}
 
     {#if filter !== 'templates'}
-      <h2>Mis programas</h2>
+      <h2>{t('programs.mine')}</h2>
       {#if mine.length}
         <ul class="rows">{#each mine as p (p.id)}{@render row(p)}{/each}</ul>
       {:else if !q}
         <button type="button" class="empty" onclick={() => (creating = true)}>
-          <Icon name="plus" size={18} /> Crea tu primer programa o empieza desde una plantilla
+          <Icon name="plus" size={18} /> {t('programs.emptyMine')}
         </button>
       {:else}
-        <p class="muted">Ningún programa tuyo coincide.</p>
+        <p class="muted">{t('programs.noMatch')}</p>
       {/if}
     {/if}
 
     {#if filter !== 'mine'}
-      <h2>Plantillas</h2>
+      <h2>{t('programs.templates')}</h2>
       <ul class="rows">{#each templates as p (p.id)}{@render row(p)}{/each}</ul>
     {/if}
   {/if}

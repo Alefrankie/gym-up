@@ -3,6 +3,7 @@
   import { muscleLoad } from '#lib/muscle-load';
   import { useWorkoutView } from '#lib/offline/workout-context';
   import { sessionSummary } from '#lib/workout-math';
+  import { t } from '#lib/i18n';
   import ExerciseRow from '#lib/components/ExerciseRow.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import OverflowMenu from '#lib/components/OverflowMenu.svelte';
@@ -16,36 +17,36 @@
   const total = $derived(exercises.reduce((n, e) => n + view.progress(e).total, 0));
 
   async function cancel() {
-    if (!confirm('¿Cancelar este entrenamiento? Se borra todo lo que hayas registrado en él.')) return;
+    if (!confirm(t('workout.cancelConfirm'))) return;
     await view.cancel();
   }
 </script>
 
 <header class="bar">
-  <a class="round" href="/dashboard" aria-label="Volver al inicio"><Icon name="left" size={20} /></a>
+  <a class="round" href="/dashboard" aria-label={t('workout.backHome')}><Icon name="left" size={20} /></a>
   {#if !view.isCompleted}
-    <OverflowMenu items={[{ label: 'Cancelar entrenamiento', icon: 'trash', danger: true, disabled: view.cancelling || view.finishing, onselect: cancel }]} />
+    <OverflowMenu items={[{ label: t('workout.cancel'), icon: 'trash', danger: true, disabled: view.cancelling || view.finishing, onselect: cancel }]} />
   {/if}
 </header>
 
 <section class="head">
   <div class="status">
     {#if view.isCompleted}
-      <span class="done-label"><Icon name="check" size={14} /> Completado</span>
+      <span class="done-label"><Icon name="check" size={14} /> {t('workout.completed')}</span>
     {:else}
-      <span class="live"><span class="dot"></span>En curso</span>
+      <span class="live"><span class="dot"></span>{t('workout.inProgress')}</span>
     {/if}
-    {#if view.elapsed}<span class="time" role="timer" aria-label="Tiempo de entrenamiento"><Icon name="timer" size={14} />{view.elapsed}</span>{/if}
+    {#if view.elapsed}<span class="time" role="timer" aria-label={t('workout.elapsed')}><Icon name="timer" size={14} />{view.elapsed}</span>{/if}
   </div>
-  <h1>{view.snap?.dayName ?? 'Entrenamiento'}</h1>
+  <h1>{view.snap?.dayName ?? t('workout.title')}</h1>
   {#if exercises.length}<p class="meta">{sessionSummary(exercises)}</p>{/if}
-  <div class="progress" aria-label={`${done} de ${total} series hechas`}><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></div>
-  <span class="muted count">{done} de {total} series hechas</span>
+  <div class="progress" aria-label={t('workout.setsDone', { done, total })}><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></div>
+  <span class="muted count">{t('workout.setsDone', { done, total })}</span>
 </section>
 
 <TargetMuscles muscles={muscleLoad(exercises)} />
 
-<h2>Ejercicios</h2>
+<h2>{t('workout.exercises')}</h2>
 <ul class="rows">
   {#each exercises as ex (ex.exerciseId)}
     <li><ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.progress(ex)} sets={view.doneSets(ex)} /></li>
@@ -56,7 +57,7 @@
   <SaveBar dirty={false} saved={false} onsave={() => {}}>
     {#snippet idle()}
       <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => view.finish()}>
-        <Icon name="check" size={18} /> {view.finishing ? 'Terminando…' : 'Terminar entrenamiento'}
+        <Icon name="check" size={18} /> {view.finishing ? t('workout.finishing') : t('workout.finish')}
       </button>
     {/snippet}
   </SaveBar>
