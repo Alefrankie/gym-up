@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import { t, tn } from '#lib/i18n';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
@@ -281,7 +282,7 @@
             <button type="button" class="head-row" onclick={() => (open = e.key)}>
               <span class="tile"><MuscleFigure primary={e.muscleGroup} secondary={e.secondaryMuscles} size={22} /></span>
               <span class="grow">
-                <strong>{e.exerciseName}</strong>
+                <strong>{exerciseName(e.exerciseName)}</strong>
                 <span class="muted">{#if library.find((x) => x.id === e.exerciseId)?.equipment}{equipment(library.find((x) => x.id === e.exerciseId)!.equipment)} ·{' '}{/if}{muscle(e.muscleGroup)} · {tn('routine.sets', e.targetSets)} · {t('routine.reps', { n: e.targetReps })}{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: t('plan.short.warmup'), drop: t('plan.short.drop'), failure: t('plan.short.failure') })[s.type as 'warmup']).join(' ')}{/if}</span>
               </span>
               <Icon name="right" size={18} />
@@ -311,7 +312,7 @@
 {#if openDraft}
   {@const d = openDraft}
   <ExerciseScreen
-    title={d.exerciseName}
+    title={exerciseName(d.exerciseName)}
     exercise={library.find((x) => x.id === d.exerciseId) ?? { id: d.exerciseId, primaryMuscle: d.muscleGroup, secondaryMuscles: d.secondaryMuscles }}
     actions={editable
       ? [
@@ -335,13 +336,13 @@
 {#if picker}
   <ExercisePicker
     exercises={library}
-    title={picker.mode === 'replace' ? t('routine.replace', { name: picker.target.exerciseName }) : t('routine.addExercise')}
+    title={picker.mode === 'replace' ? t('routine.replace', { name: exerciseName(picker.target.exerciseName) }) : t('routine.addExercise')}
     onpick={pick}
     onclose={() => (picker = null)}
   />
 {/if}
 {#if removed}
-  <UndoToast message={t('programs.removed', { name: removed.item.exerciseName })} onundo={undo} ondismiss={() => (removed = null)} />
+  <UndoToast message={t('programs.removed', { name: exerciseName(removed.item.exerciseName) })} onundo={undo} ondismiss={() => (removed = null)} />
 {/if}
 
 <style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import { goto } from '$app/navigation';
   import { t, tn, dateLocale, type MessageKey } from '#lib/i18n';
   import Select from '#lib/components/Select.svelte';
@@ -221,7 +222,7 @@
       {:else}
         <label>
           {t('progress.exercise')}
-          <Select bind:value={exerciseId} options={exercises.map((ex) => ({ value: ex.id, label: ex.name }))} onchange={loadHistory} />
+          <Select bind:value={exerciseId} options={exercises.map((ex) => ({ value: ex.id, label: exerciseName(ex.name) }))} onchange={loadHistory} />
         </label>
         <div class="tabs" role="group" aria-label={t('progress.range')}>
           {#each RANGES as r (r.value)}

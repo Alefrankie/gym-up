@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import FinishSheet from '#lib/components/FinishSheet.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -39,7 +40,7 @@
   <p class="muted">{t('workout.notInWorkout')}</p>
   <p><a class="back" href={`/workout/${id}`}><Icon name="left" size={18} /> {t('workout.backToRoutine')}</a></p>
 {:else}
-  <section class="hero" aria-label={ex.exerciseName}>
+  <section class="hero" aria-label={exerciseName(ex.exerciseName)}>
     <a class="round back-btn" href={`/workout/${id}`} aria-label={t('workout.backToRoutine')}><Icon name="left" size={20} /></a>
     {#if view.elapsed}
       <span class="elapsed" role="timer" aria-label={t('workout.elapsed')}><Icon name="timer" size={14} />{view.elapsed}</span>
@@ -49,7 +50,7 @@
     </div>
     <div class="title">
       <span class="count">{t('workout.exerciseOf', { n: index + 1, total: exercises.length })}</span>
-      <h1>{ex.exerciseName}</h1>
+      <h1>{exerciseName(ex.exerciseName)}</h1>
     </div>
   </section>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import type { RoutineExerciseDto, SetType } from '@gym-up/contracts';
   import { toDisplay } from '#lib/offline/workout-view.svelte';
   import { t, tn } from '#lib/i18n';
@@ -37,7 +38,7 @@
     <MuscleFigure primary={ex.muscleGroup} secondary={ex.secondaryMuscles ?? []} size={46} />
   </span>
   <span class="body">
-    <strong>{ex.exerciseName}</strong>
+    <strong>{exerciseName(ex.exerciseName)}</strong>
     {#if sets?.length && lines}
       <span class="lines">
         {#each sets as s (s.n)}

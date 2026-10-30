@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import { t, tn } from '#lib/i18n';
   import Select from '#lib/components/Select.svelte';
   import { onMount } from 'svelte';
@@ -39,7 +40,7 @@
   });
 
   const visible = $derived(
-    filterExercises(items, filter).filter((e) => !mineOnly || (e.isCustom && e.ownerId === session.user?.id)),
+    filterExercises(items, filter, (e) => exerciseName(e.name)).filter((e) => !mineOnly || (e.isCustom && e.ownerId === session.user?.id)),
   );
 </script>
 
@@ -69,7 +70,7 @@
           <a href={`/library/${e.id}`}>
             <MuscleFigure primary={e.primaryMuscle} secondary={e.secondaryMuscles} size={22} />
             <span class="grow">
-              <strong>{e.name}{#if e.isCustom} <span class="badge">{t('library.custom')}</span>{/if}</strong>
+              <strong>{exerciseName(e.name)}{#if e.isCustom} <span class="badge">{t('library.custom')}</span>{/if}</strong>
               <span class="muted">{muscleLabel(e.primaryMuscle)} · {eqLabel(e.equipment)}</span>
             </span>
             <Icon name="right" size={16} />

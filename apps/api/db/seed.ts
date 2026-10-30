@@ -28,14 +28,14 @@ import {
   type NewRoutineExercise,
 } from './schema';
 
-// 32 system exercises (catalog in db/catalog.ts, ADR-017).
+// System exercises (catalog in db/catalog.ts, ADR-017).
 const EXERCISES: NewExercise[] = EXERCISE_CATALOG.map((e) => ({
   name: e.name,
   muscleGroup: e.primary,
   secondaryMuscles: JSON.stringify(e.secondary),
   equipment: e.equipment,
   exerciseType: e.type,
-  instructions: e.instructions,
+  instructions: e.instructions ?? null,
 }));
 
 const TEMPLATE_BASE = { isTemplate: true, createdAt: 0, updatedAt: 0 } as const;

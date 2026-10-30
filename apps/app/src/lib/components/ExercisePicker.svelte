@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import { t } from '#lib/i18n';
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
@@ -22,7 +23,7 @@
   } = $props();
 
   let filter = $state(emptyFilter());
-  const matches = $derived(filterExercises(exercises, filter).slice(0, 80));
+  const matches = $derived(filterExercises(exercises, filter, (e) => exerciseName(e.name)).slice(0, 80));
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
@@ -39,7 +40,7 @@
         <button class="pick" onclick={() => onpick(ex)}>
           <span class="tile"><MuscleFigure primary={ex.primaryMuscle} secondary={ex.secondaryMuscles} size={22} /></span>
           <span class="grow">
-            <strong>{ex.name}</strong>
+            <strong>{exerciseName(ex.name)}</strong>
             <span class="muted">{muscle(ex.primaryMuscle)} · {equipment(ex.equipment)}</span>
           </span>
         </button>

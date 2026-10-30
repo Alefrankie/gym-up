@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import { t } from '#lib/i18n';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -48,7 +49,7 @@
   <p><a class="back" href="/library"><Icon name="left" size={16} /> {t('library.title')}</a></p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if exercise}
-    <h1>{exercise.name}</h1>
+    <h1>{exerciseName(exercise.name)}</h1>
     {#if exercise.isArchived}<p class="muted">{t('exercise.archived')}</p>{/if}
 
     <ExerciseInfo {exercise} />

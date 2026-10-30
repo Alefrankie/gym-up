@@ -1,14 +1,17 @@
 // Exercise catalog for the system exercises (ADR-017): Hevy muscle taxonomy, equipment, type, Spanish instructions.
+import { EXTRA_EXERCISES } from './catalog-extra';
+
 export interface CatalogExercise {
   name: string;
   primary: string;
   secondary: string[];
   equipment: string;
   type: string;
-  instructions: string;
+  /** Spanish how-to; the imported extra exercises have none yet. */
+  instructions?: string;
 }
 
-export const EXERCISE_CATALOG: CatalogExercise[] = [
+const BASE_CATALOG: CatalogExercise[] = [
   {
     "name": "Bench Press",
     "primary": "chest",
@@ -1078,3 +1081,5 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
     "instructions": "1. Apoya el pecho en el respaldo y agarra las asas.\n2. Tira hacia atrás juntando escápulas.\n3. Estira los brazos despacio."
   }
 ];
+
+export const EXERCISE_CATALOG: CatalogExercise[] = [...BASE_CATALOG, ...EXTRA_EXERCISES];

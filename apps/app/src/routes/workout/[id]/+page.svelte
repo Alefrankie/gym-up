@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exerciseName } from '#lib/exercise-name';
   import FinishSheet from '#lib/components/FinishSheet.svelte';
   import { page } from '$app/state';
   import { muscleLoad } from '#lib/muscle-load';
@@ -46,7 +47,7 @@
   }
 
   async function removeExercise(ex: RoutineExerciseDto) {
-    if (view.progress(ex).done > 0 && !confirm(t('workout.removeDoneConfirm', { name: ex.exerciseName }))) return;
+    if (view.progress(ex).done > 0 && !confirm(t('workout.removeDoneConfirm', { name: exerciseName(ex.exerciseName) }))) return;
     await view.removeExercise(ex.exerciseId);
   }
 
@@ -160,7 +161,7 @@
 {#if picker}
   <ExercisePicker
     exercises={library}
-    title={picker.mode === 'replace' ? t('routine.replace', { name: picker.target.exerciseName }) : t('workout.addExercise')}
+    title={picker.mode === 'replace' ? t('routine.replace', { name: exerciseName(picker.target.exerciseName) }) : t('workout.addExercise')}
     onpick={pick}
     onclose={() => (picker = null)}
   />

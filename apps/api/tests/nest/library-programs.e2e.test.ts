@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
 import * as schema from '@db/schema';
 import { seedReferenceData } from '../../db/seed';
+import { EXERCISE_CATALOG } from '../../db/catalog';
 import type { Db } from '@/lib/db/client';
 import type { PasswordHasher } from '@/lib/contexts/auth/auth.types';
 import { GetNextWorkoutUseCase } from '../../src/lib/contexts/routines/application/get-next-workout.use-case';
@@ -92,7 +93,7 @@ describe('exercise library', () => {
   it('lists the seeded system exercises with the new taxonomy and filters them', async () => {
     const s = await register('lib1@example.com');
     const all = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises', { token: s.token })).json);
-    expect(all.items).toHaveLength(111);
+    expect(all.items).toHaveLength(EXERCISE_CATALOG.length);
     const squat = all.items.find((e) => e.name === 'Squat')!;
     expect(squat).toMatchObject({ primaryMuscle: 'quadriceps', equipment: 'barbell', isCustom: false });
     expect(squat.secondaryMuscles).toEqual(['glutes', 'hamstrings']);
@@ -102,7 +103,8 @@ describe('exercise library', () => {
     // primary or secondary
     expect(glutes.items.map((e) => e.name)).toEqual(expect.arrayContaining(['Hip Thrust', 'Squat']));
     const search = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=curl&equipment=cable', { token: s.token })).json);
-    expect(search.items.map((e) => e.name)).toEqual(['Cable Curl']);
+    expect(search.items.map((e) => e.name)).toContain('Cable Curl');
+    expect(search.items.every((e) => e.equipment === 'cable' && /curl/i.test(e.name))).toBe(true);
     const curls = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=curl', { token: s.token })).json);
     expect(curls.items.map((e) => e.name)).toEqual(expect.arrayContaining(['Hammer Curl', 'Leg Curl', 'Lying Leg Curl', 'Seated Leg Curl', 'Preacher Curl']));
     expect(curls.items.every((e) => /curl/i.test(e.name))).toBe(true);
@@ -112,14 +114,14 @@ describe('exercise library', () => {
     const owner = await register('lib2@example.com');
     const other = await register('lib3@example.com');
     const id = crypto.randomUUID();
-    const first = await http('POST', '/exercises', { token: owner.token, body: { id, ...customBody('Svend Press') } });
+    const first = await http('POST', '/exercises', { token: owner.token, body: { id, ...customBody('Zebra Press') } });
     expect(first.status).toBe(200);
     expect(first.json).toMatchObject({ id, isCustom: true, primaryMuscle: 'chest' });
-    const replay = await http('POST', '/exercises', { token: owner.token, body: { id, ...customBody('Svend Press') } });
+    const replay = await http('POST', '/exercises', { token: owner.token, body: { id, ...customBody('Zebra Press') } });
     expect(replay.status).toBe(200);
     expect(replay.json.id).toBe(id);
 
-    const seenByOther = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=svend', { token: other.token })).json);
+    const seenByOther = libraryExerciseListResponseSchema.parse((await http('GET', '/exercises?q=zebra', { token: other.token })).json);
     expect(seenByOther.items).toHaveLength(1);
 
     expect((await http('PATCH', `/exercises/${id}`, { token: other.token, body: { name: 'Hacked' } })).status).toBe(403);
