@@ -395,3 +395,9 @@ export const feedbackItems = sqliteTable('feedback_items', {
 });
 
 export type FeedbackItem = typeof feedbackItems.$inferSelect;
+
+/** Characters sent to the Coach cloud voice per UTC day (Workers AI free allocation guard). */
+export const coachVoiceUsage = sqliteTable('coach_voice_usage', {
+  day: text('day').primaryKey(),
+  chars: integer('chars').notNull().default(0),
+});

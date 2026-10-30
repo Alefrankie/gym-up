@@ -29,6 +29,24 @@ export interface AudioCache {
   put(key: string, bytes: Uint8Array): Promise<void>;
 }
 
+/**
+ * How many characters may be sent to the provider today (UTC). Workers AI gives 10,000 free neurons a day and
+ * Aura-2 uses about 2.73 neurons per character, so a cap below ~3,600 characters keeps the account from ever being
+ * billed; past it the app uses the phone voice until the next day.
+ */
+export interface VoiceBudget {
+  /** Reserves `chars` for today; false when that would go over the cap (nothing is reserved then). */
+  spend(chars: number): Promise<boolean>;
+}
+
+/** Thrown when today's free budget is used up; the API answers 429 and the app falls back to the phone voice. */
+export class VoiceBudgetExceededError extends Error {
+  constructor() {
+    super('The free daily budget for the Coach cloud voice is used up');
+    this.name = 'VoiceBudgetExceededError';
+  }
+}
+
 /** The Workers AI binding, as far as this adapter needs it. */
 export interface WorkersAiLike {
   run(model: string, input: Record<string, unknown>): Promise<unknown>;
@@ -58,6 +76,7 @@ export class WorkersAiCoachSpeech implements CoachSpeech {
   constructor(
     private readonly ai: WorkersAiLike,
     private readonly cache: AudioCache,
+    private readonly budget?: VoiceBudget,
   ) {}
 
   async speak(r: CoachSpeechRequest): Promise<CoachAudio> {
@@ -66,6 +85,8 @@ export class WorkersAiCoachSpeech implements CoachSpeech {
     if (hit) return { bytes: hit, contentType: CONTENT_TYPE, cached: true };
     const [provider, speaker] = r.voice.split(':') as ['aura', string];
     if (provider !== 'aura') throw new Error(`Unknown voice provider: ${provider}`);
+    // Cached lines are free; only a new line spends today's budget.
+    if (this.budget && !(await this.budget.spend(r.text.length))) throw new VoiceBudgetExceededError();
     const out = await this.ai.run(AURA_MODELS[r.lang], {
       text: r.text,
       speaker: r.lang === 'es' ? speaker : AURA_ENGLISH_SPEAKER,

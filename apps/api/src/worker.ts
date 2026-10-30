@@ -16,6 +16,7 @@ import type { Db } from '@/lib/db/client';
 import { R2PhotoStorage, type R2BucketLike } from '@/lib/contexts/private-photos/infrastructure/r2-photo-storage';
 import { GeminiVisionAdapter } from '@/lib/contexts/nutrition/infrastructure/ai/gemini-vision.adapter';
 import { EdgeAudioCache, R2AudioCache, WorkersAiCoachSpeech, type EdgeCacheLike, type R2Like, type WorkersAiLike } from '@/lib/contexts/coach/coach-speech';
+import { D1VoiceBudget } from '@/lib/contexts/coach/d1-voice-budget';
 import { createApp } from './nest/create-app';
 import type { RateLimiter } from './nest/tokens';
 import { registerArgon2Wasm, SharedInstanceArgon2PasswordHasher } from './worker/shared-argon2-hasher';
@@ -46,9 +47,10 @@ async function boot() {
     ? { allow: async (key) => (await e.LOGIN_LIMITER!.limit({ key })).success }
     : undefined;
 
+  const db = drizzle(e.DB as never, { schema }) as unknown as Db;
   const { express } = await createApp(
     {
-      db: drizzle(e.DB as never, { schema }) as unknown as Db,
+      db,
       hasher: new SharedInstanceArgon2PasswordHasher(),
       rateLimiter,
       photoStorage: e.PHOTOS ? new R2PhotoStorage(e.PHOTOS) : undefined,
@@ -59,6 +61,8 @@ async function boot() {
             e.COACH_AUDIO
               ? new R2AudioCache(e.COACH_AUDIO)
               : new EdgeAudioCache((globalThis as unknown as { caches: { default: EdgeCacheLike } }).caches.default),
+            // Never past Workers AI's free daily allocation: the account must not be billed.
+            new D1VoiceBudget(db),
           )
         : undefined,
     },

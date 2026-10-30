@@ -10,6 +10,7 @@ import * as schema from '@db/schema';
 import type { Db } from '@/lib/db/client';
 import type { PasswordHasher } from '@/lib/contexts/auth/auth.types';
 import { InMemoryAudioCache, WorkersAiCoachSpeech, cacheKey } from '@/lib/contexts/coach/coach-speech';
+import { D1VoiceBudget } from '@/lib/contexts/coach/d1-voice-budget';
 import { createApp } from '../../src/nest/create-app';
 import { sessionResponseSchema } from '@gym-up/contracts';
 
@@ -27,15 +28,24 @@ const cache = new InMemoryAudioCache();
 
 let app: INestApplication;
 let bare: INestApplication;
+let capped: INestApplication;
 let base: string;
 let bareBase: string;
+let cappedBase: string;
+let today = new Date('2026-10-30T12:00:00Z');
 
-async function boot(withVoice: boolean) {
+function freshDb() {
   const sqlite = new Database(':memory:');
   const dir = join(__dirname, '../../db/migrations');
   for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) sqlite.exec(readFileSync(join(dir, file), 'utf8'));
-  const db = drizzle(sqlite, { schema }) as unknown as Db;
-  const { app } = await createApp({ db, hasher: fakeHasher, coachSpeech: withVoice ? new WorkersAiCoachSpeech(ai, cache) : undefined });
+  return drizzle(sqlite, { schema }) as unknown as Db;
+}
+
+async function boot(withVoice: boolean, capChars?: number) {
+  const db = freshDb();
+  const budget = capChars === undefined ? undefined : new D1VoiceBudget(db, capChars, () => today);
+  const speech = withVoice ? new WorkersAiCoachSpeech(ai, capChars === undefined ? cache : new InMemoryAudioCache(), budget) : undefined;
+  const { app } = await createApp({ db, hasher: fakeHasher, coachSpeech: speech });
   await app.listen(0, '127.0.0.1');
   return { app, base: (await app.getUrl()).replace('[::1]', '127.0.0.1') };
 }
@@ -54,11 +64,13 @@ const voiceUrl = (at: string, q: Record<string, string>) => `${at}/coach/voice?$
 beforeAll(async () => {
   ({ app, base } = await boot(true));
   ({ app: bare, base: bareBase } = await boot(false));
+  ({ app: capped, base: cappedBase } = await boot(true, 20));
 });
 
 afterAll(async () => {
   await app.close();
   await bare.close();
+  await capped.close();
 });
 
 describe('GET /coach/voice', () => {
@@ -105,5 +117,18 @@ describe('GET /coach/voice', () => {
     const token = await register(bareBase);
     const r = await fetch(voiceUrl(bareBase, { voice: 'aura:sirio', text: 'Hola' }), { headers: { authorization: `Bearer ${token}` } });
     expect(r.status).toBe(503);
+  });
+
+  it('never goes past the free daily budget: 429 for new lines, cached lines still play, a new day starts over', async () => {
+    const token = await register(cappedBase);
+    const auth = { headers: { authorization: `Bearer ${token}` } };
+    const first = { voice: 'aura:sirio', text: 'Dale que vamos.' }; // 15 characters of a 20-character day
+    expect((await fetch(voiceUrl(cappedBase, first), auth)).status).toBe(200);
+    expect((await fetch(voiceUrl(cappedBase, { voice: 'aura:sirio', text: 'Arriba, coño.' }), auth)).status).toBe(429);
+    const cached = await fetch(voiceUrl(cappedBase, first), auth);
+    expect(cached.status).toBe(200);
+    expect(cached.headers.get('x-coach-voice-cache')).toBe('hit');
+    today = new Date('2026-10-31T00:00:01Z');
+    expect((await fetch(voiceUrl(cappedBase, { voice: 'aura:sirio', text: 'Arriba, coño.' }), auth)).status).toBe(200);
   });
 });

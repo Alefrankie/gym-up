@@ -7,6 +7,26 @@ import { pickMaleVoice } from './male-voice';
 const KEY = 'gymup.coach.voice';
 const VOICE_KEY = 'gymup.coach.voiceId';
 const CLOUD_CACHE = 'coach-voice-v1';
+// Set when the API says today's free cloud-voice budget is used up: new lines wait until the next UTC day.
+const CLOUD_PAUSE_KEY = 'gymup.coach.cloudPausedUntil';
+
+const cloudPaused = () => {
+  try {
+    return Date.now() < Number(localStorage.getItem(CLOUD_PAUSE_KEY) ?? 0);
+  } catch {
+    return false;
+  }
+};
+
+function pauseCloudUntilTomorrow() {
+  const next = new Date();
+  next.setUTCHours(24, 0, 0, 0);
+  try {
+    localStorage.setItem(CLOUD_PAUSE_KEY, String(next.getTime()));
+  } catch {
+    /* private mode: the API keeps saying 429 anyway */
+  }
+}
 
 /**
  * Which voice speaks, chosen in Settings (on this device):
@@ -331,8 +351,13 @@ class CoachVoice {
     }
     let res = await cache?.match(url);
     if (!res) {
+      if (cloudPaused()) throw new Error('la voz de la nube gratis de hoy ya se usó; vuelve mañana');
       const token = tokenStore.get();
       res = await fetch(url, { headers: token ? { authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(8000) });
+      if (res.status === 429) {
+        pauseCloudUntilTomorrow();
+        throw new Error('la voz de la nube gratis de hoy ya se usó; vuelve mañana');
+      }
       if (!res.ok) throw new Error(`la voz de la nube respondió ${res.status}`);
       await cache?.put(url, res.clone()).catch(() => {});
     }

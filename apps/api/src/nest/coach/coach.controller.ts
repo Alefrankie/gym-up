@@ -1,6 +1,6 @@
-import { BadGatewayException, Controller, Get, Inject, Query, Res, ServiceUnavailableException, UseGuards } from '@nestjs/common';
+import { BadGatewayException, Controller, Get, HttpException, HttpStatus, Inject, Query, Res, ServiceUnavailableException, UseGuards } from '@nestjs/common';
 import { coachVoiceQuerySchema, type CoachVoiceQuery } from '@gym-up/contracts';
-import type { CoachSpeech } from '@/lib/contexts/coach/coach-speech';
+import { VoiceBudgetExceededError, type CoachSpeech } from '@/lib/contexts/coach/coach-speech';
 import { AuthGuard } from '../common/auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { COACH_SPEECH } from '../tokens';
@@ -20,6 +20,8 @@ export class CoachController {
   async voice(@Query(new ZodValidationPipe(coachVoiceQuerySchema)) query: CoachVoiceQuery, @Res() res: ResponseLike): Promise<void> {
     if (!this.speech) throw new ServiceUnavailableException('Coach voice is not configured');
     const audio = await this.speech.speak(query).catch((e: unknown) => {
+      // Today's free allocation is used up: the app plays the phone voice until tomorrow.
+      if (e instanceof VoiceBudgetExceededError) throw new HttpException(e.message, HttpStatus.TOO_MANY_REQUESTS);
       console.error('coach voice failed', e);
       throw new BadGatewayException('The Coach voice provider failed');
     });
