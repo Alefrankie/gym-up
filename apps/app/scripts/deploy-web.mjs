@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const appDir = resolve(import.meta.dirname, '..');
@@ -61,4 +61,13 @@ writeFileSync(join(appDir, 'build', 'update.json'), `${JSON.stringify({
   releaseNotes: '',
 }, null, 2)}\n`);
 console.log(`Generated update manifest for ${version} (Android versionCode ${versionCode}).`);
+// transformers.js loads onnxruntime's WASM from jsdelivr at runtime, so Vite's
+// bundled copy is never fetched and exceeds the 25 MiB Workers asset limit.
+const assetsDir = join(appDir, 'build', '_app', 'immutable', 'assets');
+for (const name of readdirSync(assetsDir)) {
+  if (name.startsWith('ort-wasm-') && name.endsWith('.wasm')) {
+    rmSync(join(assetsDir, name));
+    console.log(`Removed unused bundled ${name}.`);
+  }
+}
 run('pnpm', ['exec', 'wrangler', 'deploy']);
