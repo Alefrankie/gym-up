@@ -2,7 +2,7 @@ import { Gzip, Unzip, UnzipInflate, UnzipPassThrough } from 'fflate';
 import voskWorkerUrl from './vosk-benchmark.worker.js?url';
 import voskWasmUrl from '@lichess-org/vosk-browser/dist/vosk.wasm?url';
 
-const MODEL_ZIP_URL = 'https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip';
+const MODEL_ZIP_URL = 'https://huggingface.co/rhasspy/vosk-models/resolve/main/es/vosk-model-small-es-0.42.zip';
 const MODEL_CACHE_DB = 'gymup-voice-benchmark';
 const MODEL_CACHE_VERSION = 1;
 const VOSK_TAR_KEY = 'vosk-small-es-0.42.tar.gz';
