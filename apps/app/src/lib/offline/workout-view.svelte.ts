@@ -350,6 +350,20 @@ export class WorkoutView {
     return s?.endedAt && s.endedAt > s.startedAt ? Math.round((s.endedAt - s.startedAt) / 1000) : null;
   }
 
+  /**
+   * Exercises where this session beat the all-time best known when it started (heavier, or as heavy
+   * with more reps). Null when there is nothing to compare with (e.g. opened from another device).
+   */
+  get records(): number | null {
+    const exs = (this.snap?.exercises ?? []).filter((e) => e.last?.record);
+    if (!exs.length) return null;
+    return exs.filter((e) => {
+      const rec = e.last!.record!;
+      const best = toDisplay(rec.weight, this.unit);
+      return this.doneSets(e).some((s) => s.type !== 'warmup' && (s.weight > best || (s.weight === best && s.reps > rec.reps)));
+    }).length;
+  }
+
   /** Opens a finished workout to fix sets or duration; saving finishes it again. */
   async reopen() {
     const snap = this.snap;

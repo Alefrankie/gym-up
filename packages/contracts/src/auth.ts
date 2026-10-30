@@ -22,6 +22,8 @@ export const userSchema = z.object({
   displayName: z.string(),
   routineType: routineTypeSchema,
   weightUnit: weightUnitSchema,
+  /** For calorie estimates; null until set. */
+  bodyWeightKg: z.number().nullable().optional(),
   createdAt: isoDateSchema,
 });
 export type UserDto = z.infer<typeof userSchema>;
@@ -38,6 +40,7 @@ export const updateProfileRequestSchema = z
   .object({
     displayName: z.string().trim().min(1).max(80).optional(),
     weightUnit: weightUnitSchema.optional(),
+    bodyWeightKg: z.number().min(25).max(300).nullable().optional(),
     routineType: routineTypeSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });

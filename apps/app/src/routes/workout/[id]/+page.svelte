@@ -3,14 +3,15 @@
   import { page } from '$app/state';
   import { muscleLoad } from '#lib/muscle-load';
   import { useWorkoutView } from '#lib/offline/workout-context';
-  import { estimateKcal, sessionSummary } from '#lib/workout-math';
+  import { estimateKcal, formatDuration, restStats, sessionSummary } from '#lib/workout-math';
+  import { nudge } from '#lib/nudge.svelte';
   import SessionStats from '#lib/components/SessionStats.svelte';
   import { libraryExerciseListResponseSchema, type LibraryExerciseDto, type RoutineExerciseDto } from '@gym-up/contracts';
   import { cachedGet } from '#lib/offline/cache';
   import ExercisePicker from '#lib/components/ExercisePicker.svelte';
   import SortableRows from '#lib/components/SortableRows.svelte';
   import { localDay, relativeDay } from '#lib/dates';
-  import { t } from '#lib/i18n';
+  import { dateLocale, t } from '#lib/i18n';
   import ExerciseRow from '#lib/components/ExerciseRow.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import OverflowMenu from '#lib/components/OverflowMenu.svelte';
@@ -49,6 +50,38 @@
     await view.removeExercise(ex.exerciseId);
   }
 
+  // "29 oct 2026, 20:30 – 21:20"
+  const range = $derived.by(() => {
+    const snap = view.snap;
+    if (!snap) return null;
+    const start = new Date(snap.startedAt);
+    const day = start.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+    if (snap.day || !snap.endedAt) return day;
+    const hm = (d: Date) => d.toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
+    return `${day}, ${hm(start)} – ${hm(new Date(snap.endedAt))}`;
+  });
+
+  async function share() {
+    const secs = view.finishedSeconds ?? 0;
+    const text = t('summary.shareText', {
+      name: view.snap?.dayName ?? '',
+      time: formatDuration(secs),
+      volume: Math.round(completedRows.filter((r) => r.type !== 'warmup').reduce((n, r) => n + r.reps * r.weight, 0)).toLocaleString(),
+      unit: view.unit,
+      sets: completedRows.length,
+      kcal: estimateKcal(secs),
+    });
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else {
+        await navigator.clipboard.writeText(text);
+        nudge.show(t('summary.copied'));
+      }
+    } catch {
+      /* closed the share sheet */
+    }
+  }
+
   async function cancel() {
     if (!confirm(t('workout.cancelConfirm'))) return;
     await view.cancel();
@@ -58,12 +91,28 @@
 <header class="bar">
   <a class="round" href="/dashboard" aria-label={t('workout.backHome')}><Icon name="left" size={20} /></a>
   {#if view.isCompleted}
-    <button type="button" class="edit secondary" onclick={() => view.reopen()}><Icon name="edit" size={16} /> {t('workout.edit')}</button>
+    <OverflowMenu items={[{ label: t('workout.edit'), icon: 'edit', onselect: () => view.reopen() }, { label: t('summary.share'), icon: 'copy', onselect: share }]} />
   {:else if !view.snap?.editing}
     <OverflowMenu items={[{ label: t('workout.cancel'), icon: 'trash', danger: true, disabled: view.cancelling || view.finishing, onselect: cancel }]} />
   {/if}
 </header>
 
+{#if view.isCompleted}
+  <section class="hero">
+    <h1>{view.snap?.dayName ?? t('workout.title')}</h1>
+    {#if view.finishedSeconds}<p class="clock">{formatDuration(view.finishedSeconds)}</p>{/if}
+    {#if range}<p class="muted when">{range}</p>{/if}
+  </section>
+  <h2>{t('summary.details')}</h2>
+  <SessionStats
+    sets={completedRows.length}
+    volume={Math.round(completedRows.filter((r) => r.type !== 'warmup').reduce((n, r) => n + r.reps * r.weight, 0))}
+    unit={view.unit}
+    kcal={view.finishedSeconds ? estimateKcal(view.finishedSeconds) : null}
+    records={view.records}
+    rest={restStats(completedRows.map((r) => r.doneAt))}
+  />
+{:else}
 <section class="head">
   <div class="status">
     {#if view.isCompleted}
@@ -80,17 +129,9 @@
   <span class="muted count">{t('workout.setsDone', { done, total })}</span>
 </section>
 
-{#if view.isCompleted}
-  <SessionStats
-    seconds={view.finishedSeconds}
-    sets={completedRows.length}
-    volume={Math.round(completedRows.reduce((n, r) => n + r.reps * r.weight, 0))}
-    unit={view.unit}
-    kcal={view.finishedSeconds ? estimateKcal(view.finishedSeconds) : null}
-  />
-{/if}
 
 <TargetMuscles muscles={muscleLoad(exercises)} />
+{/if}
 
 <div class="head-row">
   <h2>{t('workout.exercises')}</h2>
@@ -99,7 +140,7 @@
   {/if}
 </div>
 <SortableRows
-  items={exercises}
+  items={view.isCompleted ? exercises.filter((e) => view.doneSets(e).length) : exercises}
   key={(ex) => ex.exerciseId}
   disabled={view.isCompleted}
   onreorder={(next) => view.reorder(next)}
@@ -107,11 +148,13 @@
   onreplace={view.isCompleted ? undefined : (ex) => openPicker({ mode: 'replace', target: ex })}
 >
   {#snippet row(ex)}
-    <ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.progress(ex)} sets={view.doneSets(ex)} />
+    <ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.isCompleted ? undefined : view.progress(ex)} sets={view.doneSets(ex)} lines={view.isCompleted} />
   {/snippet}
 </SortableRows>
 {#if !view.isCompleted}
   <p class="muted note">{t('workout.onlyThisSession')}</p>
+{:else}
+  <div class="spacer"></div>
 {/if}
 
 {#if picker}
@@ -123,7 +166,9 @@
   />
 {/if}
 
-{#if !view.isCompleted}
+{#if view.isCompleted}
+  <div class="share-bar"><button type="button" class="primary" onclick={share}><Icon name="copy" size={18} /> {t('summary.share')}</button></div>
+{:else}
   <SaveBar dirty={false} saved={false} onsave={() => {}}>
     {#snippet idle()}
       <button class="primary" disabled={view.finishing || !view.anyCompleted} onclick={() => (finishing = true)}>
@@ -136,14 +181,44 @@
 {#if finishing}<FinishSheet {view} onclose={() => (finishing = false)} />{/if}
 
 <style>
-  .edit {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    min-height: 40px;
-    padding: 0.3rem 0.9rem;
-    border-radius: 999px;
+  .hero {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0.5rem 0 1.25rem;
+  }
+  .hero h1 {
+    font-size: 2.1rem;
+    line-height: 1.1;
+  }
+  .clock {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent-hi);
+    font-variant-numeric: tabular-nums;
+  }
+  .when {
+    margin: 0.2rem 0 0;
     font-size: var(--t-sm);
+  }
+  .spacer {
+    height: 6rem;
+  }
+  .share-bar {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    z-index: 20;
+    max-width: 32rem;
+    margin: 0 auto;
+  }
+  .share-bar .primary {
+    width: 100%;
+    min-height: 56px;
+    border-radius: 999px;
   }
   .bar {
     display: flex;

@@ -15,6 +15,7 @@ export function toUserDto(u: User): UserDto {
     displayName: u.displayName,
     routineType: u.routineType,
     weightUnit: u.weightUnit,
+    bodyWeightKg: u.bodyWeightKg ?? null,
     createdAt: iso(u.createdAt),
   };
 }
@@ -26,6 +27,7 @@ export function profileToUserDto(p: Profile): UserDto {
     displayName: p.displayName,
     routineType: p.routineType,
     weightUnit: p.weightUnit,
+    bodyWeightKg: p.bodyWeightKg ?? null,
     createdAt: iso(p.createdAt),
   };
 }

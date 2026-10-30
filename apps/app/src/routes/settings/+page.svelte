@@ -5,6 +5,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { API_URL } from '#lib/api/config';
   import { session } from '#lib/session';
+  import { toDisplay } from '#lib/offline/workout-view.svelte';
   import AppNav from '#lib/components/AppNav.svelte';
   import SyncBanner from '#lib/components/SyncBanner.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -13,6 +14,8 @@
   let displayName = $state('');
   let weightUnit = $state<'kg' | 'lbs'>('kg');
   let routineType = $state<'hombre' | 'mujer'>('hombre');
+  // Shown in the chosen unit, stored in kg.
+  let bodyWeight = $state<number | null>(null);
   let message = $state<string | null>(null);
   let error = $state<string | null>(null);
   let busy = $state(false);
@@ -23,13 +26,15 @@
     displayName = user.displayName;
     weightUnit = user.weightUnit;
     routineType = user.routineType;
+    bodyWeight = user.bodyWeightKg ? Math.round(toDisplay(user.bodyWeightKg, user.weightUnit)) : null;
   });
 
   async function save(event: SubmitEvent) {
     event.preventDefault();
     message = null;
     error = null;
-    const body: UpdateProfileRequest = { displayName, weightUnit, routineType };
+    const bodyWeightKg = bodyWeight ? Math.round((weightUnit === 'lbs' ? bodyWeight / 2.20462 : bodyWeight) * 10) / 10 : null;
+    const body: UpdateProfileRequest = { displayName, weightUnit, routineType, bodyWeightKg };
     if (!updateProfileRequestSchema.safeParse(body).success) {
       error = t('settings.nameInvalid');
       return;
@@ -65,6 +70,11 @@
       <label>
         {t('settings.weightUnit')}
         <Select bind:value={weightUnit} options={[{ value: 'kg', label: t('settings.kg') }, { value: 'lbs', label: t('settings.lbs') }]} />
+      </label>
+      <label>
+        {t('settings.bodyWeight', { unit: weightUnit })}
+        <input type="number" inputmode="decimal" min="25" max="660" step="0.1" bind:value={bodyWeight} />
+        <span class="muted hint">{t('settings.bodyWeightHint')}</span>
       </label>
       <label>
         {t('settings.routine')}

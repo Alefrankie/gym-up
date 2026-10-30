@@ -69,6 +69,7 @@ export interface UpdateProfileInput {
   displayName?: string;
   routineType?: RoutineType;
   weightUnit?: WeightUnit;
+  bodyWeightKg?: number | null;
 }
 
 export class UpdateProfileUseCase {
@@ -87,7 +88,7 @@ export class UpdateProfileUseCase {
       this.validateWeightUnit(input.weightUnit);
     }
 
-    const patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit'>> = {};
+    const patch: Partial<Pick<Profile, 'displayName' | 'routineType' | 'weightUnit' | 'bodyWeightKg'>> = {};
     if (input.displayName !== undefined) {
       patch.displayName = input.displayName.trim();
     }
@@ -96,6 +97,9 @@ export class UpdateProfileUseCase {
     }
     if (input.weightUnit !== undefined) {
       patch.weightUnit = input.weightUnit;
+    }
+    if (input.bodyWeightKg !== undefined) {
+      patch.bodyWeightKg = input.bodyWeightKg;
     }
 
     return this.profileRepository.update(userId, patch);

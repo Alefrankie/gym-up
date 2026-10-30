@@ -22,7 +22,7 @@
 // =============================================================
 
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, real } from 'drizzle-orm/sqlite-core';
 
 /**
  * User profile. Created on registration (Round 1: in LocalAuthService
@@ -42,6 +42,8 @@ export const profiles = sqliteTable('profiles', {
   weightUnit: text('weight_unit', { enum: ['kg', 'lbs'] })
     .notNull()
     .default('kg'),
+  /** For calorie estimates; null until set in Settings. */
+  bodyWeightKg: real('body_weight_kg'),
   activeProgramId: text('active_program_id'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()

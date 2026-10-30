@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { t, tn } from '#lib/i18n';
   import type { WorkoutView } from '#lib/offline/workout-view.svelte';
-  import { bodyWeightKg, estimateKcal, formatDuration, saveBodyWeightKg } from '#lib/workout-math';
+  import { bodyWeightKg, estimateKcal, formatDuration, restStats, saveBodyWeightKg } from '#lib/workout-math';
   import Icon from './Icon.svelte';
   import SessionStats from './SessionStats.svelte';
   import Sheet from './Sheet.svelte';
@@ -31,7 +31,7 @@
   }
 
   async function save() {
-    saveBodyWeightKg(Number(bodyKg) || 75);
+    void saveBodyWeightKg(Number(bodyKg) || 75);
     // The clock as it is needs no correction; anything else is sent as the real duration.
     const changed = d.clockSeconds == null || Math.abs(seconds - d.clockSeconds) > 60;
     if (await view.finish(changed ? Math.max(60, seconds) : undefined)) onclose();
@@ -62,7 +62,7 @@
     </div>
   </section>
 
-  <SessionStats seconds={seconds} sets={rows.length} volume={volume} unit={view.unit} kcal={kcal} />
+  <SessionStats {seconds} sets={rows.length} {volume} unit={view.unit} {kcal} records={view.records} rest={restStats(rows.map((r) => r.doneAt))} />
   <label class="body muted">
     {t('finish.bodyWeight')}
     <input type="number" inputmode="decimal" min="30" max="250" bind:value={bodyKg} />

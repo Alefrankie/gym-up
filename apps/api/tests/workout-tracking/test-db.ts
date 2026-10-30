@@ -29,6 +29,7 @@ const DDL = `
     display_name TEXT NOT NULL,
     routine_type TEXT NOT NULL,
     weight_unit TEXT NOT NULL DEFAULT 'kg',
+    body_weight_kg REAL,
     active_program_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   );

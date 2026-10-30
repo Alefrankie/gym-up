@@ -14,6 +14,7 @@
     onclick,
     progress,
     sets,
+    lines = false,
   }: {
     ex: RoutineExerciseDto;
     unit: 'kg' | 'lbs';
@@ -24,6 +25,8 @@
     progress?: { done: number; total: number };
     /** Logged sets to list under the name (summary of a workout). */
     sets?: { n: number; reps: number; weight: number; type: SetType }[];
+    /** Sets one per line ("14 × 15 kg") with the exercise volume under them: the finished-workout summary. */
+    lines?: boolean;
   } = $props();
 
   const finished = $derived(!!progress && progress.total > 0 && progress.done >= progress.total);
@@ -35,7 +38,14 @@
   </span>
   <span class="body">
     <strong>{ex.exerciseName}</strong>
-    {#if sets?.length}
+    {#if sets?.length && lines}
+      <span class="lines">
+        {#each sets as s (s.n)}
+          <span class="line">{#if s.type !== 'normal'}<SetTypeBadge type={s.type} n={s.n} />{/if}{s.reps} × {s.weight} {unit}</span>
+        {/each}
+        <span class="vol">{t('summary.exerciseVolume', { v: Math.round(sets.filter((s) => s.type !== 'warmup').reduce((n, s) => n + s.reps * s.weight, 0)).toLocaleString(), unit })}</span>
+      </span>
+    {:else if sets?.length}
       <span class="sets">
         {#each sets as s (s.n)}
           <span class="set"><SetTypeBadge type={s.type} n={s.n} />{s.reps}×{s.weight}</span>
@@ -68,6 +78,23 @@
 {/if}
 
 <style>
+  .lines {
+    display: grid;
+    gap: 0.05rem;
+    margin-top: 0.15rem;
+    color: var(--muted);
+    font-size: var(--t-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .line {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .lines .vol {
+    margin-top: 0.2rem;
+    color: var(--text);
+  }
   .setbars {
     display: inline-flex;
     gap: 2px;

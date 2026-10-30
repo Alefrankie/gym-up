@@ -121,6 +121,7 @@ export class LocalAuthService implements AuthService {
         displayName: profiles.displayName,
         routineType: profiles.routineType,
         weightUnit: profiles.weightUnit,
+        bodyWeightKg: profiles.bodyWeightKg,
         createdAt: profiles.createdAt,
       })
       .from(profiles)
@@ -157,6 +158,7 @@ export class LocalAuthService implements AuthService {
         displayName: user.displayName,
         routineType: user.routineType as 'hombre' | 'mujer',
         weightUnit: user.weightUnit as 'kg' | 'lbs',
+        bodyWeightKg: user.bodyWeightKg,
         createdAt: user.createdAt,
       },
       expiresAt,
@@ -189,6 +191,7 @@ export class LocalAuthService implements AuthService {
         displayName: profiles.displayName,
         routineType: profiles.routineType,
         weightUnit: profiles.weightUnit,
+        bodyWeightKg: profiles.bodyWeightKg,
         createdAt: profiles.createdAt,
       })
       .from(profiles)
@@ -206,6 +209,7 @@ export class LocalAuthService implements AuthService {
       displayName: user.displayName,
       routineType: user.routineType as 'hombre' | 'mujer',
       weightUnit: user.weightUnit as 'kg' | 'lbs',
+      bodyWeightKg: user.bodyWeightKg,
       createdAt: user.createdAt,
     };
   }

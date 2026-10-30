@@ -16,6 +16,7 @@ export interface User {
   displayName: string;
   routineType: 'hombre' | 'mujer';
   weightUnit: 'kg' | 'lbs';
+  bodyWeightKg?: number | null;
   createdAt: Date;
 }
 
