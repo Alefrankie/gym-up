@@ -54,7 +54,7 @@ jobs:
           packages: platform-tools
 
       - name: Install Android SDK and NDK
-        run: sdkmanager "platforms;android-37" "build-tools;35.0.0" "ndk;27.2.12479018"
+        run: sdkmanager --channel=3 "platforms;android-37" "build-tools;37.0.0" "ndk;27.2.12479018"
 
       - name: Set up Rust for Android
         uses: dtolnay/rust-toolchain@stable
