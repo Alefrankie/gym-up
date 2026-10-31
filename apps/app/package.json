@@ -2,7 +2,7 @@
   "name": "@gym-up/app",
   "private": true,
   "type": "module",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "scripts": {
     "dev": "vite dev --host",
     "build": "vite build",
