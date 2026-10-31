@@ -72,11 +72,26 @@ export class WorkoutView {
   }
 
   /** Completed sets of one exercise, in order, for summaries (history, finished workout). */
-  doneSets(ex: RoutineExerciseDto): { n: number; reps: number; weight: number; type: SetType }[] {
-    return this.setNumbers(ex)
+  doneSets(ex: RoutineExerciseDto): { n: number; reps: number; weight: number; type: SetType; record?: boolean }[] {
+    const sets = this.setNumbers(ex)
       .map((n) => ({ n, r: this.row(ex.exerciseId, n) }))
       .filter((x) => x.r?.completed)
-      .map(({ n, r }) => ({ n, reps: r!.reps, weight: r!.weight, type: r!.type ?? 'normal' }));
+      .map(({ n, r }) => ({ n, reps: r!.reps, weight: r!.weight, type: r!.type ?? 'normal' as SetType, record: false }));
+    const best = this.#recordSet(ex, sets);
+    if (best) best.record = true;
+    return sets;
+  }
+
+  /**
+   * The set that beat the all-time best known when the session started (heavier, or as heavy with more reps);
+   * when several did, the best of them. Null with no record to compare with.
+   */
+  #recordSet<S extends { reps: number; weight: number; type: SetType }>(ex: RoutineExerciseDto, sets: S[]): S | null {
+    const rec = ex.last?.record;
+    if (!rec || !this.snap) return null;
+    const bestKg = toDisplay(rec.weight, this.unit);
+    const beats = (s: S) => s.type !== 'warmup' && (s.weight > bestKg || (s.weight === bestKg && s.reps > rec.reps));
+    return sets.filter(beats).reduce<S | null>((top, s) => (!top || s.weight > top.weight || (s.weight === top.weight && s.reps > top.reps) ? s : top), null);
   }
 
   /** The first set not done yet: the one to highlight. */
@@ -464,11 +479,7 @@ export class WorkoutView {
   get records(): number | null {
     const exs = (this.snap?.exercises ?? []).filter((e) => e.last?.record);
     if (!exs.length) return null;
-    return exs.filter((e) => {
-      const rec = e.last!.record!;
-      const best = toDisplay(rec.weight, this.unit);
-      return this.doneSets(e).some((s) => s.type !== 'warmup' && (s.weight > best || (s.weight === best && s.reps > rec.reps)));
-    }).length;
+    return exs.filter((e) => this.doneSets(e).some((s) => s.record)).length;
   }
 
   /** Opens a finished workout to fix sets or duration; saving finishes it again. */
