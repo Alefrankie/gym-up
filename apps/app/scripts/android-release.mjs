@@ -10,7 +10,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -31,14 +31,14 @@ const env = {
   PATH: `${join(homedir(), '.cargo', 'bin')}${isWin ? ';' : ':'}${process.env.PATH}`,
 };
 
-function run(command, args, { cwd = appDir, capture = false } = {}) {
+function run(command, args, { cwd = appDir, capture = false, encoding = 'utf8' } = {}) {
   const safeArgs = args.map((arg, index) => args[index - 1] === '-storepass' || args[index - 1] === '-keypass' ? '[redacted]' : arg);
   console.log(`\n> ${command} ${safeArgs.join(' ')}`);
   return spawnSync(command, args, {
     cwd,
     env,
     shell: isWin,
-    encoding: 'utf8',
+    encoding,
     stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
   });
 }
@@ -130,7 +130,8 @@ if (gradle.status !== 0) process.exit(gradle.status ?? 1);
 if (!existsSync(apk)) throw new Error(`Expected release APK was not produced: ${apk}`);
 
 const buildTools = join(sdk, 'build-tools');
-const apksignerDir = existsSync(buildTools) ? readdirSync(buildTools).sort().at(-1) : undefined;
+const apksignerDir = process.env.ANDROID_BUILD_TOOLS_VERSION
+  ?? (existsSync(buildTools) ? readdirSync(buildTools).sort().at(-1) : undefined);
 const apksigner = apksignerDir ? join(buildTools, apksignerDir, isWin ? 'apksigner.bat' : 'apksigner') : '';
 if (!apksigner || !existsSync(apksigner)) throw new Error(`Android apksigner was not found under ${buildTools}.`);
 const aapt = apksignerDir ? join(buildTools, apksignerDir, isWin ? 'aapt.exe' : 'aapt') : '';
@@ -155,10 +156,24 @@ if (badging.status !== 0 || !packageLine.startsWith(expectedPackage)) {
 console.log(`Verified release package metadata: ${packageLine}`);
 const verification = run(apksigner, ['verify', '--verbose', '--print-certs', apk], { cwd: androidDir, capture: true });
 const verificationOutput = `${verification.stdout ?? ''}${verification.stderr ?? ''}`;
-process.stdout.write(verificationOutput);
-if (verification.status !== 0 || !/(?:Signer #1 certificate DN:|V2 Signer: certificate DN:).*CN=GymUp/i.test(verificationOutput)) {
+const signerDn = verificationOutput.match(/^(?:Signer #1 certificate DN:|V2 Signer: certificate DN:)\s*(.+)$/im)?.[1];
+const signerDigest = verificationOutput.match(/^(?:Signer #1 certificate SHA-256 digest:|V2 Signer: certificate SHA-256 digest:)\s*([a-f\d:]+)$/im)?.[1];
+const signingPropertiesText = readFileSync(signingProps, 'utf8');
+const storePassword = signingPropertiesText.match(/^storePassword=(.*)$/m)?.[1];
+const keyAlias = signingPropertiesText.match(/^keyAlias=(.*)$/m)?.[1];
+if (!storePassword || !keyAlias) throw new Error('Android signing properties are incomplete.');
+const trustedCertificate = run('keytool', [
+  '-exportcert', '-keystore', keystore, '-storepass', storePassword, '-alias', keyAlias,
+], { cwd: androidDir, capture: true, encoding: null });
+const trustedDigest = trustedCertificate.stdout && createHash('sha256').update(trustedCertificate.stdout).digest('hex');
+const normalizedSignerDigest = signerDigest?.replaceAll(':', '').toLowerCase();
+const normalizedTrustedDigest = trustedDigest?.toLowerCase();
+const exactGymUpDn = signerDn?.replace(/\s+/g, '').toLowerCase() === 'cn=gymup,o=gymup,c=pt';
+if (verification.status !== 0 || trustedCertificate.status !== 0 || !exactGymUpDn
+    || !normalizedSignerDigest || normalizedSignerDigest !== normalizedTrustedDigest) {
   throw new Error('APK signature verification failed or the release certificate is not Gym Up.');
 }
+console.log('Verified APK signature against the configured Gym Up release key.');
 
 const bytes = statSync(apk).size;
 if (bytes > 25 * 1024 * 1024) throw new Error('The signed APK exceeds Cloudflare Workers static asset limit (25 MiB).');

@@ -6,12 +6,16 @@ import { join, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const isWin = process.platform === 'win32';
+const childEnv = { ...process.env };
+delete childEnv.CLOUDFLARE_API_TOKEN;
+delete childEnv.CLOUDFLARE_ACCOUNT_ID;
+delete childEnv.GH_TOKEN;
 const tauriConfigPath = join(root, 'apps', 'app', 'src-tauri', 'tauri.conf.json');
 const packageFiles = ['package.json', 'apps/app/package.json', 'apps/api/package.json'].map((file) => join(root, file));
 
-function run(command, args, { cwd = root, capture = false } = {}) {
+function run(command, args, { cwd = root, capture = false, env = childEnv } = {}) {
   console.log(`\n> ${command} ${args.join(' ')}`);
-  const result = spawnSync(command, args, { cwd, shell: isWin && command === 'pnpm', encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' });
+  const result = spawnSync(command, args, { cwd, env, shell: isWin && command === 'pnpm', encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' });
   if (result.status !== 0) process.exit(result.status ?? 1);
   return (result.stdout ?? '').trim();
 }
@@ -56,11 +60,21 @@ for (const file of packageFiles) {
   writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
 }
 
-run('pnpm', ['--filter', '@gym-up/api', 'run', 'deploy']);
+run('pnpm', ['--filter', '@gym-up/api', 'run', 'build:worker']);
+const cloudflareEnv = { ...childEnv };
+if (process.env.CLOUDFLARE_API_TOKEN) cloudflareEnv.CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+if (process.env.CLOUDFLARE_ACCOUNT_ID) cloudflareEnv.CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'deploy'], {
+  env: cloudflareEnv,
+});
 run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web']);
 
 run('git', ['add', tauriConfigPath, ...packageFiles]);
 run('git', ['commit', '-m', `chore(release): v${next}`]);
 run('git', ['tag', '-a', `v${next}`, '-m', `v${next}`]);
-run('git', ['push', '--follow-tags', 'origin', 'HEAD:main']);
+const gitPushEnv = { ...childEnv };
+if (process.env.GH_TOKEN) gitPushEnv.GH_TOKEN = process.env.GH_TOKEN;
+run('git', ['push', '--follow-tags', 'origin', 'HEAD:main'], {
+  env: gitPushEnv,
+});
 console.log(`\nReleased v${next}.`);

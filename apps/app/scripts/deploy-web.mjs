@@ -9,10 +9,13 @@ const tauriConfig = join(appDir, 'src-tauri', 'tauri.conf.json');
 const androidProperties = join(appDir, 'src-tauri', 'gen', 'android', 'app', 'tauri.properties');
 const downloadDir = join(appDir, 'build', 'downloads');
 const deployEnv = { ...process.env };
+delete deployEnv.CLOUDFLARE_API_TOKEN;
+delete deployEnv.CLOUDFLARE_ACCOUNT_ID;
+delete deployEnv.GH_TOKEN;
 
-function run(command, args) {
+function run(command, args, { env = deployEnv } = {}) {
   console.log(`\n> ${command} ${args.join(' ')}`);
-  const result = spawnSync(command, args, { cwd: appDir, env: deployEnv, shell: process.platform === 'win32', stdio: 'inherit' });
+  const result = spawnSync(command, args, { cwd: appDir, env, shell: process.platform === 'win32', stdio: 'inherit' });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
@@ -73,4 +76,7 @@ for (const name of readdirSync(assetsDir)) {
     console.log(`Removed unused bundled ${name}.`);
   }
 }
-run('pnpm', ['exec', 'wrangler', 'deploy']);
+const cloudflareEnv = { ...deployEnv };
+if (process.env.CLOUDFLARE_API_TOKEN) cloudflareEnv.CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+if (process.env.CLOUDFLARE_ACCOUNT_ID) cloudflareEnv.CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+run('pnpm', ['exec', 'wrangler', 'deploy'], { env: cloudflareEnv });
