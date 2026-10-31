@@ -27,7 +27,7 @@ export const ProfileRules = {
 const VALID_ROUTINE_TYPES = ['hombre', 'mujer'] as const;
 const VALID_WEIGHT_UNITS = ['kg', 'lbs'] as const;
 
-const VALID_COACH_TONES = ['flower', 'normal', 'hard', 'gymrat'] as const;
+const VALID_COACH_TONES = ['flower', 'normal', 'gymrat'] as const;
 const VALID_ADDRESS_FORMS = ['m', 'f'] as const;
 
 type RoutineType = (typeof VALID_ROUTINE_TYPES)[number];

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { CoachTone } from '@gym-up/contracts';
+import { coachToneSchema, type CoachTone } from '@gym-up/contracts';
 import { COACH_EVENTS, LINES, type CoachLocale, type Line } from './lines';
 import { lineText, lineVars, lookupChain, pickLine, render, timeOfDay } from './pick';
 import { pickMaleVoice } from './male-voice';
 
-const TONES: CoachTone[] = ['flower', 'normal', 'hard', 'gymrat'];
+const TONES: CoachTone[] = ['flower', 'normal', 'gymrat'];
 const all = (): { tone: CoachTone; locale: CoachLocale; text: string }[] =>
   TONES.flatMap((tone) =>
     (Object.entries(LINES[tone]) as [CoachLocale, Record<string, Line[]>][]).flatMap(([locale, events]) =>
@@ -13,6 +13,13 @@ const all = (): { tone: CoachTone; locale: CoachLocale; text: string }[] =>
   );
 const words = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').split(/[^\p{L}]+/u).filter(Boolean);
 const noon = new Date(2026, 9, 30, 13, 0);
+
+describe('coach tones', () => {
+  it('are only normal, flower and gymrat (the hard tone is gone)', () => {
+    expect([...coachToneSchema.options].sort()).toEqual(['flower', 'gymrat', 'normal']);
+    expect(Object.keys(LINES).sort()).toEqual(['flower', 'gymrat', 'normal']);
+  });
+});
 
 describe('coach catalog', () => {
   it('has at least 25 Spanish lines per tone and event, 40 for gymrat', () => {
@@ -184,7 +191,7 @@ describe('pickLine', () => {
   it('does not repeat the last ten lines of the event', () => {
     const recent: string[] = [];
     for (let i = 0; i < 60; i++) {
-      const line = pickLine('restLong', { ...base, tone: 'hard', recent: recent.slice(0, 10) })!;
+      const line = pickLine('restLong', { ...base, tone: 'flower', recent: recent.slice(0, 10) })!;
       expect(recent.slice(0, 10)).not.toContain(line.template);
       recent.unshift(line.template);
     }

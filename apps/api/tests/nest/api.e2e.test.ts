@@ -161,11 +161,11 @@ describe('settings (PATCH /auth/me)', () => {
     const s = await register('settings3@example.com');
     const before = await http('GET', '/auth/me', { token: s.token });
     expect(before.json).toMatchObject({ coachTone: 'normal', addressForm: 'm', addressFormChosen: false });
-    const r = await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'hard', addressForm: 'f' } });
+    const r = await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'flower', addressForm: 'f' } });
     expect(r.status).toBe(200);
-    expect(userSchema.parse(r.json)).toMatchObject({ coachTone: 'hard', addressForm: 'f', addressFormChosen: true });
+    expect(userSchema.parse(r.json)).toMatchObject({ coachTone: 'flower', addressForm: 'f', addressFormChosen: true });
     const me = await http('GET', '/auth/me', { token: s.token });
-    expect(me.json).toMatchObject({ coachTone: 'hard', addressForm: 'f', addressFormChosen: true });
+    expect(me.json).toMatchObject({ coachTone: 'flower', addressForm: 'f', addressFormChosen: true });
     expect((await http('PATCH', '/auth/me', { token: s.token, body: { coachTone: 'savage' } })).status).toBe(400);
     expect((await http('PATCH', '/auth/me', { token: s.token, body: { addressForm: 'x' } })).status).toBe(400);
     // "Sin género" is gone: only as a man or as a woman.

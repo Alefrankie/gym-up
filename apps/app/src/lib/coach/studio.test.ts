@@ -14,7 +14,7 @@ describe('studio lines', () => {
   it('records a line once per address form only when the form changes the words', () => {
     const gendered = lines.filter((l) => l.text.startsWith('Vas a terminar el entreno'));
     expect(gendered.map((l) => l.form).sort()).toEqual(['f', 'm']);
-    expect(lines.find((l) => l.text === 'Hoy no se negocia. Se entrena.')?.form).toBeNull();
+    expect(lines.find((l) => l.text === 'Suda ahora, presume después.')?.form).toBeNull();
   });
 
   it('never lists the same line twice', () => {

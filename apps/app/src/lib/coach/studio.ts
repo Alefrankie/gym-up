@@ -15,7 +15,7 @@ export interface StudioLine {
 /** Voice slot of the studio recordings (room for a second voice later without clashing ids). */
 export const STUDIO_SLOT = 'main';
 
-const TONES: CoachTone[] = ['gymrat', 'flower', 'normal', 'hard'];
+const TONES: CoachTone[] = ['gymrat', 'flower', 'normal'];
 const FORMS: AddressForm[] = ['m', 'f'];
 const GENDER = /\{[^{}|]*\|[^{}|]*\}/;
 

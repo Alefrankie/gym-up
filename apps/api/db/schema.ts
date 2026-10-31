@@ -45,7 +45,7 @@ export const profiles = sqliteTable('profiles', {
   /** For calorie estimates; null until set in Settings. */
   bodyWeightKg: real('body_weight_kg'),
   /** Coach personality for motivational lines and voice. */
-  coachTone: text('coach_tone', { enum: ['flower', 'normal', 'hard', 'gymrat'] })
+  coachTone: text('coach_tone', { enum: ['flower', 'normal', 'gymrat'] })
     .notNull()
     .default('normal'),
   /** How the coach addresses the user in Spanish (grammatical gender). */

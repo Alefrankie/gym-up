@@ -185,7 +185,7 @@
         {t('coach.tone')}
         <Select
           bind:value={coachTone}
-          options={(['flower', 'normal', 'hard', 'gymrat'] as const).map((v) => ({ value: v, label: t(`coach.tone.${v}`) }))}
+          options={(['flower', 'normal', 'gymrat'] as const).map((v) => ({ value: v, label: t(`coach.tone.${v}`) }))}
           onchange={(v) => saveCoach({ coachTone: v })}
         />
         {#if coachTone === 'gymrat'}<span class="muted hint">{t('coach.gymratHint')}</span>{/if}

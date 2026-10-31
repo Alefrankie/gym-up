@@ -21,7 +21,7 @@ export const routineTypeSchema = z.enum(['hombre', 'mujer']);
 export type RoutineType = z.infer<typeof routineTypeSchema>;
 
 /** Coach personality. `gymrat` is opt-in and Spanish only. */
-export const coachToneSchema = z.enum(['flower', 'normal', 'hard', 'gymrat']);
+export const coachToneSchema = z.enum(['flower', 'normal', 'gymrat']);
 export type CoachTone = z.infer<typeof coachToneSchema>;
 
 /** How the coach addresses the user in Spanish (grammatical gender): as a man or as a woman. */

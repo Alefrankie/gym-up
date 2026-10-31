@@ -236,7 +236,7 @@
 
   const day = (ms: number) => new Date(ms).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
 
-  const toneOptions = (['all', 'gymrat', 'flower', 'normal', 'hard'] as const).map((v) => ({ value: v, label: t(`studio.tone.${v}`) }));
+  const toneOptions = (['all', 'gymrat', 'flower', 'normal'] as const).map((v) => ({ value: v, label: t(`studio.tone.${v}`) }));
   const eventOptions = [{ value: 'all' as const, label: t('studio.tone.all') }, ...COACH_EVENTS.map((e) => ({ value: e, label: t(`studio.event.${e}` as MessageKey) }))];
   const statusOptions = (['all', 'none', 'withTakes', 'active', 'noActive', 'notMine'] as const).map((v) => ({ value: v, label: t(`studio.status.${v}`) }));
 </script>

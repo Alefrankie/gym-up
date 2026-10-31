@@ -20,7 +20,7 @@ export type CoachVoiceQuery = z.infer<typeof coachVoiceQuerySchema>;
 export const coachRecordingIdSchema = z.string().regex(/^[0-9a-f]{32}$/);
 
 export const coachRecordingMetaSchema = z.object({
-  tone: z.enum(['flower', 'normal', 'hard', 'gymrat']),
+  tone: z.enum(['flower', 'normal', 'gymrat']),
   locale: z.enum(['es', 'en']),
   event: z.string().min(1).max(40),
   /** The address form this rendering is for, or null when the line reads the same for everyone. */
