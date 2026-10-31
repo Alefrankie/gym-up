@@ -29,7 +29,7 @@ Pushing to `main` starts the GitHub Actions release pipeline. It chooses a versi
 Before the first pipeline run, add these GitHub Actions repository secrets:
 
 - `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for both Worker deployments.
-- `GYM_UP_ANDROID_KEYSTORE_BASE64`, `GYM_UP_ANDROID_STORE_PASSWORD`, and `GYM_UP_ANDROID_KEY_PASSWORD` for the same signing key used by existing installs. Do not generate a replacement key; Android will reject updates signed with a different key.
+- `GYM_UP_ANDROID_KEYSTORE_BASE64`, `GYM_UP_ANDROID_STORE_PASSWORD`, and `GYM_UP_ANDROID_KEY_PASSWORD` for the same signing key used by existing installs. The release build expects the `gym-up-release` alias and a certificate with `CN=GymUp`. Do not generate a replacement key; Android will reject updates signed with a different key.
 
 The web deployment publishes `/update.json` with the APK version code, download URL, and SHA-256 checksum. Installed Android release builds check that file when they open and in Settings. If its version code is newer, the app offers the download and Android asks the user to approve installation.
 
