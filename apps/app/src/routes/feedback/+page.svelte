@@ -5,6 +5,7 @@
   import { t } from '#lib/i18n';
   import { createFeedbackRequestSchema, feedbackListSchema, feedbackItemSchema, type FeedbackItemDto } from '@gym-up/contracts';
   import AppNav from '#lib/components/AppNav.svelte';
+  import SortableRows from '#lib/components/SortableRows.svelte';
 
   let items = $state<FeedbackItemDto[]>([]);
   let title = $state('');
@@ -54,6 +55,15 @@
     } catch { error = t('feedback.deleteError'); }
   }
 
+  type View = 'pending' | 'resolved' | 'all';
+  let view = $state<View>('pending');
+  let categoryFilter = $state<'all' | 'idea' | 'bug' | 'other'>('all');
+  const inView = (item: FeedbackItemDto) =>
+    (view === 'all' || (view === 'resolved') === (item.status === 'resolved')) &&
+    (categoryFilter === 'all' || item.category === categoryFilter);
+  const shown = $derived(items.filter(inView));
+  const count = (v: View) => items.filter((i) => v === 'all' || (v === 'resolved') === (i.status === 'resolved')).length;
+
   const statuses = ['open', 'planned', 'in_progress', 'resolved'] as const;
 </script>
 
@@ -76,20 +86,30 @@
   </section>
 
   <section class="board" aria-label={t('feedback.title')}>
+    <div class="filters" role="group" aria-label={t('feedback.filters')}>
+      {#each ['pending', 'resolved', 'all'] as const as v (v)}
+        <button type="button" class="chip" class:on={view === v} aria-pressed={view === v} onclick={() => (view = v)}>{t(`feedback.view.${v}`)} <span class="n">{count(v)}</span></button>
+      {/each}
+      <select class="cat" bind:value={categoryFilter} aria-label={t('feedback.category')}>
+        <option value="all">{t('feedback.allCategories')}</option><option value="idea">{t('feedback.idea')}</option><option value="bug">{t('feedback.bug')}</option><option value="other">{t('feedback.other')}</option>
+      </select>
+    </div>
+    {#if items.some((i) => i.canDelete)}<p class="muted hint">{t('feedback.swipeHint')}</p>{/if}
     {#if loading}<p class="muted">{t('feedback.loading')}</p>
-    {:else if items.length === 0}<p class="muted empty">{t('feedback.empty')}</p>
+    {:else if shown.length === 0}<p class="muted empty">{items.length ? t('feedback.emptyFilter') : t('feedback.empty')}</p>
     {:else}
-      {#each items as item (item.id)}
+      <SortableRows items={shown} key={(i) => i.id} reorderable={false} onreorder={() => {}} onremove={remove} canRemove={(i) => i.canDelete}>
+        {#snippet row(item)}
         <article class="card item" class:resolved={item.status === 'resolved'}>
           <div class="top"><span class="tag">{t(`feedback.${item.category}` as Parameters<typeof t>[0])}</span><span class="status" class:done={item.status === 'resolved'}>{t(`feedback.status.${item.status}` as Parameters<typeof t>[0])}</span></div>
           <h2>{item.title}</h2>
           {#if item.description}<p class="description">{item.description}</p>{/if}
           <div class="foot"><span class="muted">{t('feedback.author', { name: item.authorName })}</span>
-            {#if canManage}<label class="status-control"><span>{t('feedback.ownStatus')}</span><select value={item.status} onchange={(e) => setStatus(item, e.currentTarget.value as FeedbackItemDto['status'])}>{#each statuses as status}<option value={status}>{t(`feedback.status.${status}` as Parameters<typeof t>[0])}</option>{/each}</select></label>{/if}
-            {#if item.canDelete}<button type="button" class="delete" onclick={() => remove(item)}>{t('feedback.delete')}</button>{/if}
+            {#if canManage}<label class="status-control"><select aria-label={t('feedback.ownStatus')} value={item.status} onchange={(e) => setStatus(item, e.currentTarget.value as FeedbackItemDto['status'])}>{#each statuses as status}<option value={status}>{t(`feedback.status.${status}` as Parameters<typeof t>[0])}</option>{/each}</select></label>{/if}
           </div>
         </article>
-      {/each}
+        {/snippet}
+      </SortableRows>
     {/if}
   </section>
 </main>
@@ -110,7 +130,10 @@
   .status.done { color: var(--accent-hi); }
   .resolved { opacity: .8; }
   .foot { border-top: 1px solid var(--line); padding-top: .65rem; font-size: var(--t-sm); }
-  .delete { min-height: 40px; padding: .25rem .6rem; background: none; border: 1px solid var(--line-strong); border-radius: 99px; color: var(--danger); font-size: var(--t-xs); }
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+  .filters .n { opacity: .7; margin-left: .2rem; }
+  .cat { min-height: 40px; margin-left: auto; }
+  .hint { margin: 0; font-size: var(--t-xs); }
   .status-control { display: flex; align-items: center; gap: .4rem; font-size: var(--t-xs); }
   .status-control select { min-height: 40px; padding: .25rem .5rem; }
   .empty { text-align: center; padding: 1.5rem 1rem; }

@@ -12,6 +12,8 @@
     onreorder,
     onremove,
     onreplace,
+    canRemove,
+    reorderable = true,
     disabled = false,
   }: {
     items: T[];
@@ -22,6 +24,10 @@
     onremove?: (item: T) => void;
     /** Swipe left. */
     onreplace?: (item: T) => void;
+    /** Rows that may be swiped away; all of them when omitted. */
+    canRemove?: (item: T) => boolean;
+    /** False for lists that only swipe (no hold-and-drag to reorder). */
+    reorderable?: boolean;
     disabled?: boolean;
   } = $props();
 
@@ -70,7 +76,7 @@
     const k = key(item);
     g = { key: k, x0: e.clientX, y0: e.clientY, mode: 'wait', grab: 0 };
     const startY = e.clientY;
-    g.timer = setTimeout(() => startDrag(k, startY), HOLD_MS);
+    if (reorderable) g.timer = setTimeout(() => startDrag(k, startY), HOLD_MS);
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
@@ -96,7 +102,9 @@
     const dy = e.clientY - g.y0;
     if (g.mode === 'wait' && Math.hypot(dx, dy) > SLOP) {
       clearTimeout(g.timer);
-      if (Math.abs(dx) > Math.abs(dy) * 1.2 && ((dx > 0 && onremove) || (dx < 0 && onreplace))) {
+      const item = find(g.key);
+      const removable = !!onremove && (!canRemove || (item !== undefined && canRemove(item)));
+      if (Math.abs(dx) > Math.abs(dy) * 1.2 && ((dx > 0 && removable) || (dx < 0 && onreplace))) {
         g.mode = 'swipe';
         swipeKey = g.key;
       } else {
