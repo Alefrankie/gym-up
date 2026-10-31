@@ -16,7 +16,7 @@ import { WORKOUT_LINES, type WorkoutEvent } from './lines-workout';
  * blacklist). No emojis or long dashes either: the lines are read aloud.
  */
 /** In the app and on lowering the weight; the workout reactions live in `lines-workout.ts`. */
-export type AppEvent = 'home' | 'weightDrop' | 'restLong';
+export type AppEvent = 'home' | 'weightDrop' | 'restLong' | 'leftApp';
 export type CoachEvent = AppEvent | WorkoutEvent;
 export const COACH_EVENTS: readonly CoachEvent[] = ['home', 'weightDrop', 'restLong', 'setDone', 'setDrop', 'progressUp', 'pr', 'restHalf', 'restEnd', 'finish'];
 
@@ -97,6 +97,18 @@ const APP_LINES: Catalog<AppEvent> = {
         'Sonríe, que con {weight} también se brilla.',
         'Hoy toca suavecito. Tu cuerpo y yo te aplaudimos.',
       ],
+      leftApp: [
+        'Mi amor, no te vayas todavía. Tu entreno sigue aquí, y yo te acompaño.',
+        'Corazón, vuelve cuando quieras. Esa rutina te espera con cariño.',
+        'Mi vida, no dejemos el entreno a medias. Te espero aquí.',
+        'Un momentito fuera está bien, mi amor. Ahora vuelve a tus pesitas.',
+        'Te guardo el sitio, cielo. Cuando quieras, volvemos y terminamos juntitos.',
+        'Las pesas te extrañan, mi vida. Yo también.',
+        'No te vayas lejos, corazón. Una serie más y lo celebramos.',
+        'Mi amor, si necesitabas una pausa, está bien. Cuando puedas, retomamos.',
+        'Aquí te espero con todo el cariño. Vamos a terminar ese entreno.',
+        'Vuelve, mi cielo. Tu yo del futuro te lo va a agradecer.',
+      ],
       restLong: [
         'Mi amor, el descanso ya terminó. Cuando quieras, seguimos.',
         'Ya descansaste bonito. ¿Volvemos con cariño?',
@@ -159,6 +171,18 @@ const APP_LINES: Catalog<AppEvent> = {
         'One small step back to jump forward, my love.',
         'Do not judge yourself, darling. Today counts too.',
         '{exercise} with less weight and lots of love. I love it.',
+      ],
+      leftApp: [
+        'Sweetheart, do not go just yet. Your workout is still here, and I am with you.',
+        'Come back whenever you are ready, love. Your routine is waiting kindly.',
+        'Let us not leave the workout halfway, darling. I will be right here.',
+        'A little break is fine, my love. Now come back to your weights.',
+        'You slipped away, sweetheart. Come back and we will finish together.',
+        'The weights miss you, darling. So do I.',
+        'Do not go far, love. One more set and we can celebrate.',
+        'Rest is fine, my love. Leaving the whole workout is another thing. Come back.',
+        'I am waiting here with all my love. Let us finish your workout.',
+        'Come back, sweetheart. Future you will be grateful.',
       ],
       restLong: [
         'My love, your rest is over. Whenever you are ready, we continue.',
@@ -256,6 +280,18 @@ const APP_LINES: Catalog<AppEvent> = {
         'Hoy {weight}. El historial toma nota, pero no juzga. Mucho.',
         'Bajar peso a veces es de listos. Hoy te doy el beneficio de la duda.',
       ],
+      leftApp: [
+        'Ey, ¿te vas ya? La rutina sigue aquí, y las pesas no se levantan solas.',
+        'Tu móvil te ha secuestrado. Rescata ese entreno y vuelve.',
+        '¿Abandonando a mitad? Venga, que aún te quedan series.',
+        'La pausa fuera ya está bien. Vuelve antes de que te cobre el banco.',
+        'No te escapes ahora, que el sofá puede esperar.',
+        'La rutina no se va a terminar por telepatía. Vuelve.',
+        'Te fuiste y las mancuernas ya están preguntando por ti.',
+        '¿Otra vez mirando el móvil? Dale, regresa al entreno.',
+        'No me dejes aquí hablando solo. Una serie más y seguimos.',
+        'Vuelve a la rutina. Ya tendrás tiempo para el scroll después.',
+      ],
       restLong: [
         'El descanso se acabó. Las pesas no se levantan solas, ya lo hablamos.',
         '¿Sigues ahí? La siguiente serie pregunta por ti.',
@@ -345,6 +381,18 @@ const APP_LINES: Catalog<AppEvent> = {
         'Your PR covered its eyes so it wouldn’t see that.',
         'This stays between you and me. And the history log.',
         '{exercise} in energy-saving mode. Noted.',
+      ],
+      leftApp: [
+        'Leaving already? Your routine is still here, and weights do not lift themselves.',
+        'Your phone kidnapped you. Rescue that workout and come back.',
+        'Walking out halfway? Come on, you still have sets to do.',
+        'That break is long enough. Come back before I charge rent.',
+        'Do not sneak off now. The couch can wait.',
+        'Your routine will not finish itself by telepathy. Come back.',
+        'You left and the dumbbells are already asking for you.',
+        'Checking your phone again? Come on, get back to your workout.',
+        'Do not leave me talking to myself. One more set, then we continue.',
+        'Back to your routine. You can scroll later.',
       ],
       restLong: [
         'Rest is over. The weights won’t lift themselves, we talked about this.',
@@ -456,6 +504,18 @@ const APP_LINES: Catalog<AppEvent> = {
         '¿{weight}? ¿Eso es en serio? ¡Vergación, qué vergüenza!',
         'Con {weight} no se hacen campeones. Se hacen excusas.',
         '{exercise} pidiendo peso y tú quitándole. ¡Qué ladilla, marico!',
+      ],
+      leftApp: [
+        '¿Te me vas, marico? Esa rutina no se va a levantar sola, ¡regresa!',
+        '¡Coño, vuelve al entreno! El teléfono no te va a sacar músculo.',
+        '¿Abandonando la vaina a mitad? Dale, que faltan series.',
+        'Suelta ese teléfono, marico, y vuelve a darle a los hierros.',
+        '¡No te me escapes ahora! El sofá puede esperar.',
+        'Te fuiste y las pesas están preguntando qué pasó, marico.',
+        '¿Otra vez scrolleando? ¡Dale, regresa a esa rutina!',
+        'No me dejes hablando solo, vale. ¡Una serie más!',
+        'Vuelve al gimnasio, marico. Las excusas no hacen crecer nada.',
+        '¡Regresa a esa vaina! Después ves el teléfono todo lo que quieras.',
       ],
       restLong: [
         '¡Épale! ¿Te vas a quedar a vivir en ese banco, {marico|marica}?',

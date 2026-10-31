@@ -6,6 +6,8 @@
   import { WorkoutView } from '#lib/offline/workout-view.svelte';
   import { provideWorkoutView } from '#lib/offline/workout-context';
   import { t } from '#lib/i18n';
+  import { coachLine } from '#lib/coach/coach.svelte';
+  import { coachVoice } from '#lib/coach/voice.svelte';
   import Icon from './Icon.svelte';
   import SyncBanner from './SyncBanner.svelte';
   import WorkoutVoiceAssistant from './WorkoutVoiceAssistant.svelte';
@@ -22,6 +24,33 @@
       // The server answered the start command with another workout of the day: keep the same screen, new id.
       void goto(page.url.pathname.replace(id, newId), { replaceState: true });
     });
+
+    let scheduled = false;
+    let away = false;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        away = true;
+        // The rest timer already owns Android's one scheduled voice alarm.
+        if (!coachVoice.enabled || !coachVoice.inApp || restTimer.seconds > 0 || !view.snap || view.isCompleted) return;
+        const line = coachLine('leftApp');
+        if (line) void coachVoice.scheduleAt(line.text, line.locale, Date.now() + 2500).then((ok) => {
+          if (ok && away) scheduled = true;
+          else if (ok) void coachVoice.cancelScheduled();
+        });
+        return;
+      }
+
+      away = false;
+      if (scheduled) {
+        scheduled = false;
+        void coachVoice.cancelScheduled();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (scheduled) void coachVoice.cancelScheduled();
+    };
   });
   onDestroy(() => view.destroy());
 </script>
