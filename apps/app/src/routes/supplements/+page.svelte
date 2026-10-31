@@ -7,6 +7,7 @@
   import { session } from '#lib/session';
   import { longDate, relativeDay } from '#lib/dates';
   import { loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
+  import { cancelCreatineReminder, scheduleCreatineReminder } from '#lib/notify';
   import DayStrip from '#lib/components/DayStrip.svelte';
   import SupplementCalendar from '#lib/components/SupplementCalendar.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -16,18 +17,54 @@
   let name = $state('');
   let error = $state<string | null>(null);
   let busy = $state(false);
+  let creatineReminderEnabled = $state(false);
+  const CREATINE_REMINDER_KEY = 'gym-up:creatine-reminder';
+
+  const creatine = (response: SupplementListResponse | null) =>
+    response?.items.find((item) => /creatina|creatine/i.test(item.name)) ?? null;
+
+  async function refreshCreatineReminder(response: SupplementListResponse | null) {
+    if (localStorage.getItem(CREATINE_REMINDER_KEY) !== 'on') return;
+    if (response && !creatine(response)) {
+      localStorage.removeItem(CREATINE_REMINDER_KEY);
+      creatineReminderEnabled = false;
+      await cancelCreatineReminder();
+      return;
+    }
+    if (!response) return;
+    creatineReminderEnabled = true;
+    await scheduleCreatineReminder(creatine(response)!.days.includes(response.day));
+  }
 
   async function load() {
     try {
-      list = (await loadSupplements(today, (r) => (list = r))).data;
+      list = (await loadSupplements(today, (r) => {
+        list = r;
+        void refreshCreatineReminder(r);
+      })).data;
+      await refreshCreatineReminder(list);
     } catch (e) {
       error = e instanceof NetworkError ? t('supplements.offlineEmpty') : t('supplements.loadError');
     }
   }
 
   onMount(async () => {
+    creatineReminderEnabled = localStorage.getItem(CREATINE_REMINDER_KEY) === 'on';
     if (await session.require()) await load();
   });
+
+  async function toggleCreatineReminder() {
+    if (creatineReminderEnabled) {
+      localStorage.removeItem(CREATINE_REMINDER_KEY);
+      creatineReminderEnabled = false;
+      await cancelCreatineReminder();
+      return;
+    }
+    const item = creatine(list);
+    if (!item || !(await scheduleCreatineReminder(item.days.includes(list!.day)))) return;
+    localStorage.setItem(CREATINE_REMINDER_KEY, 'on');
+    creatineReminderEnabled = true;
+  }
 
   /** Day by day, newest first: what was taken. Only days with something taken are listed. */
   const history = $derived.by(() => {
@@ -43,6 +80,9 @@
     const next = withMark($state.snapshot(list), id, taken, day);
     list = next;
     void persistMark(next, id, taken, day);
+    if (day === today && creatine(next)?.id === id && creatineReminderEnabled) {
+      void scheduleCreatineReminder(taken);
+    }
   }
 
   /** A day picked on the calendar, to fill in what was taken on days already gone. */
@@ -70,6 +110,7 @@
       await api(`/supplements/${id}`, { method: 'DELETE' });
       await invalidateCache(['/supplements']);
       await load();
+      if (!creatine(list) && creatineReminderEnabled) await toggleCreatineReminder();
     } catch {
       error = t('supplements.removeNeedsConnection');
     }
@@ -80,6 +121,11 @@
   <p><a class="back" href="/dashboard"><Icon name="left" size={18} /> {t('nav.home')}</a></p>
   <h1>{t('supplements.title')}</h1>
   <p class="muted lead">{t('supplements.lead', { date: longDate() })}</p>
+  {#if creatine(list)}
+    <button type="button" class="reminder" aria-pressed={creatineReminderEnabled} onclick={toggleCreatineReminder}>
+      {creatineReminderEnabled ? t('supplements.reminderOn') : t('supplements.reminderOff')}
+    </button>
+  {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if list}
@@ -146,6 +192,10 @@
 <style>
   .lead {
     margin-top: -0.5rem;
+    font-size: var(--t-sm);
+  }
+  .reminder {
+    margin: 0.25rem 0 0.75rem;
     font-size: var(--t-sm);
   }
   .items {
