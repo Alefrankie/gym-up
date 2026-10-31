@@ -67,7 +67,7 @@ if (process.env.CLOUDFLARE_ACCOUNT_ID) cloudflareEnv.CLOUDFLARE_ACCOUNT_ID = pro
 run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'deploy'], {
   env: cloudflareEnv,
 });
-run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web']);
+run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web'], { env: cloudflareEnv });
 
 run('git', ['add', tauriConfigPath, ...packageFiles]);
 run('git', ['commit', '-m', `chore(release): v${next}`]);
