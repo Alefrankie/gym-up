@@ -13,3 +13,4 @@ export * from './feedback';
 export * from './exercise-names';
 export * from './coach';
 export * from './studio';
+export * from './coach-content';

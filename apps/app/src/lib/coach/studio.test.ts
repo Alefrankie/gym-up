@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { chooseSource, recordingId, studioLines } from './studio';
+import { chooseSource, recordingId, studioLines, studioRows } from './studio';
+import { toExtras } from './catalog.svelte';
+import { pickLine, setCatalogExtras } from './pick';
 
 describe('studio lines', () => {
   const lines = studioLines();
@@ -40,5 +42,44 @@ describe('chooseSource', () => {
     expect(chooseSource({ recorded: false, cloudChosen: true, cloudAvailable: true })).toBe('cloud');
     expect(chooseSource({ recorded: false, cloudChosen: true, cloudAvailable: false })).toBe('phone');
     expect(chooseSource({ recorded: false, cloudChosen: false, cloudAvailable: true })).toBe('phone');
+  });
+});
+
+describe('studioRows', () => {
+  const builtIn = [{ id: 'a'.repeat(32), tone: 'gymrat' as const, locale: 'es' as const, event: 'restEnd' as const, form: null, text: '¡A la barra!' }];
+  const custom = [
+    { lineId: 'b'.repeat(32), groupId: 'g1', form: 'm' as const, tone: 'flower' as const, locale: 'es' as const, event: 'home' as const, text: 'Hola, guapo', status: 'pending' as const, authorId: 'u2', authorName: 'Ana', createdAt: 1, updatedAt: 1 },
+  ];
+
+  it('shows the edited text of a built-in line under the same id, and lists added lines after', () => {
+    const rows = studioRows(builtIn, custom, [{ lineId: 'a'.repeat(32), originalText: '¡A la barra!', text: '¡A la barra, ya!', updatedAt: 1, updatedByName: 'Ale' }]);
+    expect(rows[0]).toMatchObject({ id: 'a'.repeat(32), text: '¡A la barra, ya!', originalText: '¡A la barra!', edited: true, custom: null });
+    expect(rows[1]).toMatchObject({ id: 'b'.repeat(32), text: 'Hola, guapo', form: 'm', custom: { groupId: 'g1', status: 'pending', authorName: 'Ana' } });
+  });
+});
+
+describe('studio additions in the app', () => {
+  it('lets the Coach pick added lines (with their gender words) and say edited texts', () => {
+    const extras = toExtras({
+      custom: [
+        { lineId: 'c'.repeat(32), groupId: 'g', form: 'm', tone: 'normal', locale: 'es', event: 'finish', text: 'Listo, campeón.' },
+        { lineId: 'd'.repeat(32), groupId: 'g', form: 'f', tone: 'normal', locale: 'es', event: 'finish', text: 'Lista, campeona.' },
+      ],
+      overrides: [{ lineId: 'e'.repeat(32), originalText: 'Suda ahora, presume después.', text: 'Suda hoy, presume mañana.' }],
+    });
+    expect(extras.lines).toEqual([{ tone: 'normal', locale: 'es', event: 'finish', template: '{Listo, campeón.|Lista, campeona.}' }]);
+    setCatalogExtras(extras);
+    try {
+      const said = new Set<string>();
+      for (let i = 0; i < 400; i++) said.add(pickLine('finish', { tone: 'normal', addressForm: 'f', locale: 'es', random: () => i / 400 })!.text);
+      expect(said.has('Lista, campeona.')).toBe(true);
+      expect(said.has('Listo, campeón.')).toBe(false);
+      const home = new Set<string>();
+      for (let i = 0; i < 400; i++) home.add(pickLine('home', { tone: 'normal', addressForm: 'm', locale: 'es', now: new Date(2026, 9, 31, 13), random: () => i / 400 })!.text);
+      expect(home.has('Suda hoy, presume mañana.')).toBe(true);
+      expect(home.has('Suda ahora, presume después.')).toBe(false);
+    } finally {
+      setCatalogExtras({ lines: [], overrides: new Map() });
+    }
   });
 });

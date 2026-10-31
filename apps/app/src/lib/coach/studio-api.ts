@@ -1,11 +1,15 @@
 import {
   studioAccessSchema,
   studioCommentSchema,
+  studioHistorySchema,
   studioMemberListSchema,
   studioOverviewSchema,
   studioUserListSchema,
   type StudioAccess,
   type StudioCommentDto,
+  type StudioCustomLineRequest,
+  type StudioHistoryEntryDto,
+  type StudioLineTextRequest,
   type StudioMemberDto,
   type StudioOverview,
   type StudioTakeDto,
@@ -14,7 +18,7 @@ import {
 import { api } from '#lib/api/client';
 import { API_URL } from '#lib/api/config';
 import { tokenStore } from '#lib/api/token';
-import { recordingId, STUDIO_SLOT, type StudioLine } from './studio';
+import type { StudioLine } from './studio';
 
 const auth = (): Record<string, string> => {
   const token = tokenStore.get();
@@ -46,9 +50,8 @@ export const studioApi = {
   grant: (userId: string) => api(`/studio/members/${encodeURIComponent(userId)}`, { method: 'PUT' }),
   revoke: (userId: string) => api(`/studio/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
 
-  /** Records (or redoes) my take of a line. */
-  async saveTake(line: StudioLine, take: Blob): Promise<void> {
-    const lineId = await recordingId(line.text, STUDIO_SLOT);
+  /** Records (or redoes) my take of a line (`line.text` is its current text). */
+  async saveTake(lineId: string, line: StudioLine, take: Blob): Promise<void> {
     const query = new URLSearchParams({ tone: line.tone, locale: line.locale, event: line.event, text: line.text, ...(line.form ? { form: line.form } : {}) });
     await raw(`/studio/lines/${lineId}/take?${query}`, { method: 'PUT', headers: { 'content-type': take.type || 'audio/webm' }, body: take });
   },
@@ -77,4 +80,12 @@ export const studioApi = {
   comment: (lineId: string, text: string): Promise<StudioCommentDto> =>
     api(`/studio/lines/${lineId}/comments`, { method: 'POST', body: { text }, schema: studioCommentSchema }),
   deleteComment: (id: string) => api(`/studio/comments/${id}`, { method: 'DELETE' }),
+
+  addLine: (body: StudioCustomLineRequest) => api('/studio/custom-lines', { method: 'POST', body }),
+  approveLine: (groupId: string) => api(`/studio/custom-lines/${groupId}/approve`, { method: 'PUT' }),
+  deleteLine: (groupId: string) => api(`/studio/custom-lines/${groupId}`, { method: 'DELETE' }),
+  editText: (lineId: string, body: StudioLineTextRequest) => api(`/studio/lines/${lineId}/text`, { method: 'PUT', body }),
+  revertText: (lineId: string) => api(`/studio/lines/${lineId}/text`, { method: 'DELETE' }),
+  history: async (lineId: string): Promise<StudioHistoryEntryDto[]> => (await api(`/studio/lines/${lineId}/history`, { schema: studioHistorySchema })).items,
+  confirmTake: (takeId: string) => api(`/studio/takes/${takeId}/confirm`, { method: 'POST' }),
 };

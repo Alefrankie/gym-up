@@ -2,7 +2,6 @@ import { coachRecordingListSchema, type CoachRecordingDto, type CoachTone } from
 import { API_URL } from '#lib/api/config';
 import { tokenStore } from '#lib/api/token';
 import { cachedGet } from '#lib/offline/cache';
-import { recordingId, STUDIO_SLOT } from './studio';
 
 const AUDIO_CACHE = 'coach-recordings-v1';
 
@@ -19,11 +18,14 @@ const auth = (): Record<string, string> => {
 class CoachRecordings {
   items = $state<CoachRecordingDto[]>([]);
   #byId = new Map<string, CoachRecordingDto>();
+  // By the words they say: a line edited in the studio keeps its id but plays the take of its new text.
+  #byText = new Map<string, CoachRecordingDto>();
   #loading: Promise<void> | undefined;
 
   #set(items: CoachRecordingDto[]) {
     this.items = items;
     this.#byId = new Map(items.map((i) => [i.id, i]));
+    this.#byText = new Map(items.map((i) => [i.text.trim(), i]));
   }
 
   /** Loads the list once per app start (a saved copy first, so it also works offline). */
@@ -41,8 +43,7 @@ class CoachRecordings {
   /** The recording of these exact words, if there is one. */
   async find(text: string): Promise<CoachRecordingDto | undefined> {
     await this.load();
-    if (!this.#byId.size) return undefined;
-    return this.#byId.get(await recordingId(text, STUDIO_SLOT));
+    return this.#byText.get(text.trim());
   }
 
   byId(id: string): CoachRecordingDto | undefined {

@@ -1,6 +1,16 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import type { CoachTone, StudioCommentDto, StudioMemberDto, StudioTakeDto, StudioUserDto } from '@gym-up/contracts';
+  import {
+    coachTextProblems,
+    type CoachTone,
+    type StudioCommentDto,
+    type StudioCustomLineDto,
+    type StudioHistoryEntryDto,
+    type StudioMemberDto,
+    type StudioOverrideDto,
+    type StudioTakeDto,
+    type StudioUserDto,
+  } from '@gym-up/contracts';
   import AppNav from '#lib/components/AppNav.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import Select from '#lib/components/Select.svelte';
@@ -8,20 +18,42 @@
   import { dateLocale, t, type MessageKey } from '#lib/i18n';
   import { COACH_EVENTS, type CoachEvent } from '#lib/coach/lines';
   import { coachVoice } from '#lib/coach/voice.svelte';
-  import { recordingId, studioLines, STUDIO_SLOT, type StudioLine } from '#lib/coach/studio';
+  import { recordingId, studioLines, studioRows, STUDIO_SLOT, type StudioLine, type StudioRow } from '#lib/coach/studio';
   import { studioApi } from '#lib/coach/studio-api';
 
   // Longest take; a line is a few seconds.
   const MAX_TAKE_MS = 15_000;
   const PAGE = 40;
 
-  type Row = StudioLine & { id: string };
+  type Row = StudioRow;
+  type Lang = 'es' | 'en';
+  const LANG_KEY = 'gymup.studio.lang';
+  const readLang = (): Lang => {
+    try {
+      return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'es';
+    } catch {
+      return 'es';
+    }
+  };
   type Status = 'all' | 'none' | 'withTakes' | 'active' | 'noActive' | 'notMine';
 
   let allowed = $state<boolean | null>(null);
   let admin = $state(false);
   let me = $state('');
-  let rows = $state<Row[]>([]);
+  let builtIn = $state<(StudioLine & { id: string })[]>([]);
+  let custom = $state<StudioCustomLineDto[]>([]);
+  let overrides = $state<StudioOverrideDto[]>([]);
+  const rows = $derived(studioRows(builtIn, custom, overrides));
+  // Spanish and English are separate workspaces (progress and filters count one language at a time).
+  let lang = $state<Lang>(readLang());
+  let gender = $state<'all' | 'm' | 'f' | 'same'>('all');
+  let person = $state<string>('all');
+  let editing = $state<string | null>(null);
+  let editDraft = $state('');
+  let histories = $state<Record<string, StudioHistoryEntryDto[]>>({});
+  let addOpen = $state(false);
+  let newLine = $state<{ tone: CoachTone; event: CoachEvent; textM: string; textF: string }>({ tone: 'gymrat', event: 'home', textM: '', textF: '' });
+  let addMessage = $state<string | null>(null);
   let takes = $state<StudioTakeDto[]>([]);
   let comments = $state<StudioCommentDto[]>([]);
   let tone = $state<CoachTone | 'all'>('gymrat');
@@ -59,9 +91,19 @@
     return m;
   });
   const lineTakes = (id: string) => takesByLine.get(id) ?? [];
-  const total = $derived(rows.length);
-  const withActive = $derived(rows.filter((r) => lineTakes(r.id).some((tk) => tk.active)).length);
-  const withTakes = $derived(rows.filter((r) => lineTakes(r.id).length > 0).length);
+  const isStale = (tk: StudioTakeDto, row: Row) => tk.text.trim() !== row.text.trim();
+  const langRows = $derived(rows.filter((r) => r.locale === lang));
+  const total = $derived(langRows.length);
+  const withActive = $derived(langRows.filter((r) => lineTakes(r.id).some((tk) => tk.active && !isStale(tk, r))).length);
+  const withTakes = $derived(langRows.filter((r) => lineTakes(r.id).length > 0).length);
+  // Everyone who has a take, for the person filter.
+  const people = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const tk of takes) m.set(tk.authorId, tk.authorName);
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  });
+  const personName = $derived(people.find(([id]) => id === person)?.[1] ?? '');
+  const personDone = $derived(person === 'all' ? 0 : langRows.filter((r) => lineTakes(r.id).some((tk) => tk.authorId === person)).length);
   const perPerson = $derived.by(() => {
     const m = new Map<string, number>();
     for (const tk of takes) m.set(tk.authorName, (m.get(tk.authorName) ?? 0) + 1);
@@ -69,16 +111,21 @@
   });
   const filtered = $derived.by(() => {
     const q = query.trim().toLowerCase();
-    return rows.filter((r) => {
+    return langRows.filter((r) => {
       const ts = lineTakes(r.id);
+      const active = ts.some((tk) => tk.active && !isStale(tk, r));
       const ok =
         status === 'all' ||
         (status === 'none' && !ts.length) ||
         (status === 'withTakes' && ts.length > 0) ||
-        (status === 'active' && ts.some((tk) => tk.active)) ||
-        (status === 'noActive' && !ts.some((tk) => tk.active)) ||
+        (status === 'active' && active) ||
+        (status === 'noActive' && !active) ||
         (status === 'notMine' && !ts.some((tk) => tk.authorId === me));
-      return ok && (tone === 'all' || r.tone === tone) && (event === 'all' || r.event === event) && (!q || r.text.toLowerCase().includes(q));
+      const genderOk = gender === 'all' || (gender === 'same' ? r.form === null : r.form === gender);
+      const personOk = person === 'all' || ts.some((tk) => tk.authorId === person);
+      return (
+        ok && genderOk && personOk && (tone === 'all' || r.tone === tone) && (event === 'all' || r.event === event) && (!q || r.text.toLowerCase().includes(q))
+      );
     });
   });
 
@@ -86,6 +133,8 @@
     const o = await studioApi.overview();
     takes = o.takes;
     comments = o.comments;
+    custom = o.custom;
+    overrides = o.overrides;
     me = o.me.userId;
     admin = o.me.admin;
   }
@@ -98,7 +147,7 @@
       admin = a.admin;
       if (!a.allowed) return;
       const lines = studioLines();
-      rows = await Promise.all(lines.map(async (l) => ({ ...l, id: await recordingId(l.text, STUDIO_SLOT) })));
+      builtIn = await Promise.all(lines.map(async (l) => ({ ...l, id: await recordingId(l.text, STUDIO_SLOT) })));
       await refresh();
       if (admin) members = await studioApi.members();
     } catch (e) {
@@ -213,7 +262,7 @@
   const save = (row: Row) =>
     act(`save:${row.id}`, async () => {
       if (!take || take.id !== row.id) return;
-      await studioApi.saveTake(row, take.blob);
+      await studioApi.saveTake(row.id, row, take.blob);
       URL.revokeObjectURL(take.url);
       take = null;
       open = { ...open, [row.id]: true };
@@ -234,11 +283,85 @@
     });
   const removeComment = (c: StudioCommentDto) => act(`delc:${c.id}`, () => studioApi.deleteComment(c.id));
 
+  function setLang(next: Lang) {
+    lang = next;
+    shown = PAGE;
+    try {
+      localStorage.setItem(LANG_KEY, next);
+    } catch {
+      /* private mode: back to Spanish next time */
+    }
+  }
+
+  // ---- lines: add, edit, history (admin edits; members add, the admin approves) ----
+  const problemText = (text: string, tone: CoachTone) => {
+    const p = coachTextProblems(text, tone);
+    if (!p.length) return null;
+    const words = p.filter((x) => 'word' in x).map((x) => (x as { word: string }).word);
+    return t('studio.lineRules', { details: words.length ? words.join(', ') : p.map((x) => x.kind).join(', ') });
+  };
+
+  const addLine = () =>
+    act('add', async () => {
+      addMessage = null;
+      const textM = newLine.textM.trim();
+      const textF = newLine.textF.trim();
+      const problem = problemText(textM, newLine.tone) ?? (textF ? problemText(textF, newLine.tone) : null);
+      if (problem) throw new Error(problem);
+      if (newLine.tone === 'gymrat' && lang !== 'es') throw new Error(t('studio.gymratSpanish'));
+      await studioApi.addLine({ tone: newLine.tone, locale: lang, event: newLine.event, textM, textF: textF || null });
+      newLine = { ...newLine, textM: '', textF: '' };
+      addMessage = admin ? t('studio.lineAdded') : t('studio.lineProposed');
+    });
+
+  function startEdit(row: Row) {
+    editing = row.id;
+    editDraft = row.text;
+  }
+
+  const saveEdit = (row: Row) =>
+    act(`edit:${row.id}`, async () => {
+      const problem = problemText(editDraft, row.tone);
+      if (problem) throw new Error(problem);
+      await studioApi.editText(row.id, row.custom ? { text: editDraft } : { text: editDraft, originalText: row.originalText, tone: row.tone, locale: row.locale, event: row.event, form: row.form });
+      editing = null;
+      histories = { ...histories, [row.id]: await studioApi.history(row.id) };
+    });
+
+  const revertText = (row: Row) =>
+    act(`revert:${row.id}`, async () => {
+      await studioApi.revertText(row.id);
+      histories = { ...histories, [row.id]: await studioApi.history(row.id) };
+    });
+
+  const toggleHistory = (row: Row) =>
+    act(
+      `hist:${row.id}`,
+      async () => {
+        if (histories[row.id]) {
+          const { [row.id]: _gone, ...rest } = histories;
+          histories = rest;
+        } else histories = { ...histories, [row.id]: await studioApi.history(row.id) };
+      },
+      false,
+    );
+
+  const approveLine = (row: Row) => row.custom && act(`approve:${row.id}`, () => studioApi.approveLine(row.custom!.groupId));
+  const deleteLine = (row: Row) => {
+    if (!row.custom || !confirm(t('studio.deleteLineConfirm'))) return;
+    void act(`delline:${row.id}`, () => studioApi.deleteLine(row.custom!.groupId));
+  };
+  const confirmTake = (tk: StudioTakeDto) => act(`confirm:${tk.id}`, () => studioApi.confirmTake(tk.id));
+
   const day = (ms: number) => new Date(ms).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
 
   const toneOptions = (['all', 'gymrat', 'flower', 'normal'] as const).map((v) => ({ value: v, label: t(`studio.tone.${v}`) }));
   const eventOptions = [{ value: 'all' as const, label: t('studio.tone.all') }, ...COACH_EVENTS.map((e) => ({ value: e, label: t(`studio.event.${e}` as MessageKey) }))];
   const statusOptions = (['all', 'none', 'withTakes', 'active', 'noActive', 'notMine'] as const).map((v) => ({ value: v, label: t(`studio.status.${v}`) }));
+  const genderOptions = (['all', 'm', 'f', 'same'] as const).map((v) => ({ value: v, label: t(`studio.gender.${v}`) }));
+  const personOptions = $derived([{ value: 'all', label: t('studio.person.all') }, ...people.map(([id, name]) => ({ value: id, label: name }))]);
+  const newToneOptions = (['gymrat', 'flower', 'normal'] as const).map((v) => ({ value: v, label: t(`studio.tone.${v}`) }));
+  const newEventOptions = COACH_EVENTS.map((e) => ({ value: e, label: t(`studio.event.${e}` as MessageKey) }));
 </script>
 
 <main>
@@ -249,10 +372,19 @@
   {:else if allowed}
     <p class="muted lead">{t('studio.lead')}</p>
 
+    <div class="lang" role="radiogroup" aria-label={t('studio.language')}>
+      {#each [['es', t('language.es')], ['en', t('language.en')]] as [value, text] (value)}
+        <button type="button" role="radio" aria-checked={lang === value} class:on={lang === value} onclick={() => setLang(value as Lang)}>{text}</button>
+      {/each}
+    </div>
+
     <section class="card progress-card">
       <strong>{t('studio.progressActive', { done: withActive, total })}</strong>
       <progress max={total || 1} value={withActive}></progress>
-      <span class="muted small">{t('studio.progressTakes', { n: withTakes, takes: takes.length })}</span>
+      <span class="muted small">{t('studio.progressTakes', { n: withTakes, takes: takes.filter((tk) => tk.locale === lang).length })}</span>
+      {#if person !== 'all'}
+        <span class="person-progress">{t('studio.personProgress', { name: personName, done: personDone, total, language: lang === 'es' ? t('language.es') : t('language.en') })}</span>
+      {/if}
       {#if perPerson.length}
         <ul class="people">
           {#each perPerson as [name, n] (name)}<li><span>{name}</span><strong>{n}</strong></li>{/each}
@@ -306,10 +438,29 @@
       {/if}
     </section>
 
+    <section class="card">
+      <button type="button" class="ghost tips-toggle" aria-expanded={addOpen} onclick={() => (addOpen = !addOpen)}>
+        <Icon name="plus" size={16} /> {t('studio.addLine')} <Icon name={addOpen ? 'up' : 'down'} size={16} />
+      </button>
+      {#if addOpen}
+        <form class="add-line" onsubmit={(e) => { e.preventDefault(); void addLine(); }}>
+          <p class="muted small">{admin ? t('studio.addLineHintAdmin') : t('studio.addLineHint')} {lang === 'es' ? t('language.es') : t('language.en')}.</p>
+          <Select bind:value={newLine.tone} options={newToneOptions} />
+          <Select bind:value={newLine.event} options={newEventOptions} />
+          <label>{t('studio.textM')}<input maxlength="200" bind:value={newLine.textM} required /></label>
+          <label>{t('studio.textF')}<input maxlength="200" bind:value={newLine.textF} placeholder={t('studio.textFHint')} /></label>
+          {#if addMessage}<p class="ok" role="status">{addMessage}</p>{/if}
+          <button type="submit" class="primary" disabled={busy !== null || !newLine.textM.trim()}>{t('studio.addLineSave')}</button>
+        </form>
+      {/if}
+    </section>
+
     <section class="filters">
       <Select bind:value={tone} options={toneOptions} onchange={() => (shown = PAGE)} />
       <Select bind:value={event} options={eventOptions} onchange={() => (shown = PAGE)} />
       <Select bind:value={status} options={statusOptions} onchange={() => (shown = PAGE)} />
+      <Select bind:value={gender} options={genderOptions} onchange={() => (shown = PAGE)} />
+      <Select bind:value={person} options={personOptions} onchange={() => (shown = PAGE)} />
       <input type="search" placeholder={t('studio.search')} bind:value={query} oninput={() => (shown = PAGE)} />
     </section>
 
@@ -320,11 +471,27 @@
       {#each filtered.slice(0, shown) as row (row.id)}
         {@const ts = lineTakes(row.id)}
         {@const cs = commentsByLine.get(row.id) ?? []}
-        {@const active = ts.find((tk) => tk.active)}
+        {@const active = ts.find((tk) => tk.active && !isStale(tk, row))}
         {@const mineSaved = ts.find((tk) => tk.authorId === me)}
         {@const mine = take?.id === row.id ? take : null}
         <li class="line" class:has-active={!!active}>
-          <p class="text">{row.text}</p>
+          {#if editing === row.id}
+            <form class="edit" onsubmit={(e) => { e.preventDefault(); void saveEdit(row); }}>
+              <textarea rows="2" maxlength="200" bind:value={editDraft}></textarea>
+              <div class="actions">
+                <button type="submit" class="primary" disabled={busy !== null || !editDraft.trim()}>{t('studio.save')}</button>
+                <button type="button" class="ghost" onclick={() => (editing = null)}>{t('studio.cancel')}</button>
+              </div>
+            </form>
+          {:else}
+            <p class="text">{row.text}</p>
+          {/if}
+          {#if row.edited}<p class="muted small">{t('studio.originalWas', { text: row.originalText })}</p>{/if}
+          <p class="badges">
+            {#if row.edited}<span class="badge soft">{t('studio.edited')}</span>{/if}
+            {#if row.custom}<span class="badge soft">{t('studio.addedBy', { name: row.custom.authorName })}</span>{/if}
+            {#if row.custom?.status === 'pending'}<span class="badge warn">{t('studio.pending')}</span>{/if}
+          </p>
           <p class="meta">
             <span aria-hidden="true">{active ? '✅' : ts.length ? '🎙️' : '⏺'}</span>
             {t(`studio.tone.${row.tone}`)} · {t(`studio.event.${row.event}` as MessageKey)}{row.form ? ` · ${t(`studio.form.${row.form}`)}` : ''}{row.locale === 'en' ? ' · EN' : ''}
@@ -344,6 +511,19 @@
                 {busy === `save:${row.id}` ? t('studio.saving') : t('studio.save')}
               </button>
             {/if}
+            {#if admin && editing !== row.id}
+              <button type="button" class="ghost" disabled={busy !== null} onclick={() => startEdit(row)}>{t('studio.editText')}</button>
+            {/if}
+            {#if admin && (row.edited || row.custom)}
+              <button type="button" class="ghost" disabled={busy !== null} onclick={() => revertText(row)}>{t('studio.revert')}</button>
+            {/if}
+            {#if admin && row.custom?.status === 'pending'}
+              <button type="button" class="primary" disabled={busy !== null} onclick={() => approveLine(row)}>{t('studio.approve')}</button>
+            {/if}
+            {#if row.custom && (admin || (row.custom.authorId === me && row.custom.status === 'pending'))}
+              <button type="button" class="danger" disabled={busy !== null} onclick={() => deleteLine(row)}>{t('studio.deleteLine')}</button>
+            {/if}
+            <button type="button" class="ghost" disabled={busy !== null} onclick={() => toggleHistory(row)}>{t('studio.history')}</button>
             {#if ts.length || cs.length}
               <button type="button" class="ghost" aria-expanded={!!open[row.id]} onclick={() => (open = { ...open, [row.id]: !open[row.id] })}>
                 {t('studio.showTakes', { takes: ts.length, comments: cs.length })} <Icon name={open[row.id] ? 'up' : 'down'} size={14} />
@@ -351,16 +531,33 @@
             {/if}
           </div>
 
-          {#if open[row.id]}
+          {#if histories[row.id]}
+            <ul class="history">
+              {#each histories[row.id] as h (h.id)}
+                <li>
+                  <span class="muted small">{day(h.createdAt)} · {h.authorName} · {t(`studio.historyKind.${h.kind}`)}</span>
+                  {#if h.previousText}<del>{h.previousText}</del>{/if}
+                  {#if h.newText}<span>{h.newText}</span>{/if}
+                </li>
+              {:else}
+                <li class="muted small">{t('studio.historyEmpty')}</li>
+              {/each}
+            </ul>
+          {/if}
+          {#if open[row.id] || person !== 'all'}
             <ul class="takes">
               {#each ts as tk (tk.id)}
-                <li class="take" class:active={tk.active}>
+                {@const stale = isStale(tk, row)}
+                <li class="take" class:active={tk.active && !stale} class:picked={person === tk.authorId}>
                   <span class="who"><strong>{tk.authorName}</strong> <span class="muted small">{day(tk.updatedAt)}</span></span>
-                  {#if tk.active}<span class="badge">{t('studio.active')}</span>{/if}
+                  {#if stale}<span class="badge warn">{t('studio.staleText')}</span><span class="muted small">«{tk.text}»</span>
+                  {:else if tk.active}<span class="badge">{t('studio.active')}</span>{/if}
                   <div class="take-actions">
                     <button type="button" disabled={busy !== null} onclick={() => playTake(tk)}>▶ {t('studio.play')}</button>
                     <button type="button" class:on={tk.votedByMe} disabled={busy !== null} onclick={() => toggleVote(tk)} aria-pressed={tk.votedByMe}>♥ {tk.votes}</button>
-                    {#if admin && !tk.active}
+                    {#if admin && stale}
+                      <button type="button" disabled={busy !== null} onclick={() => confirmTake(tk)}>{t('studio.confirmTake')}</button>
+                    {:else if admin && !tk.active}
                       <button type="button" class="primary" disabled={busy !== null} onclick={() => choose(row, tk)}>{t('studio.use')}</button>
                     {/if}
                     {#if admin || tk.authorId === me}
@@ -565,6 +762,69 @@
   }
   .rec {
     animation: pulse 1s ease-in-out infinite;
+  }
+  .lang {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.25rem;
+    padding: 0.25rem;
+    margin: 0 0 1rem;
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: 0 0 0 1px var(--line) inset;
+  }
+  .lang button {
+    min-height: 40px;
+    margin: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--muted);
+  }
+  .lang button.on {
+    background: var(--raised);
+    color: var(--text);
+  }
+  .person-progress {
+    font-weight: 600;
+    font-size: var(--t-sm);
+  }
+  .add-line,
+  .edit {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+  .edit textarea {
+    width: 100%;
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0 0 0.3rem;
+  }
+  .badge.soft {
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .badge.warn {
+    background: var(--ember, #f5a524);
+    color: #2a1700;
+  }
+  .take.picked {
+    box-shadow: 0 0 0 2px var(--accent) inset;
+  }
+  .history {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+    font-size: var(--t-sm);
+  }
+  .history li {
+    display: grid;
+    gap: 0.1rem;
   }
   .danger {
     color: var(--danger, #e5484d);

@@ -68,6 +68,30 @@ export function lookupChain(tone: CoachTone, locale: CoachLocale): [CoachTone, C
   return chain;
 }
 
+/**
+ * What the voice studio adds to the built-in catalog at runtime: approved added lines (as templates, by tone,
+ * language and event) and edited texts (original rendering to new text).
+ */
+export interface CatalogExtras {
+  lines: { tone: CoachTone; locale: CoachLocale; event: CoachEvent; template: string }[];
+  overrides: Map<string, string>;
+}
+
+let extras: CatalogExtras = { lines: [], overrides: new Map() };
+
+export function setCatalogExtras(next: CatalogExtras) {
+  extras = next;
+}
+
+/** The built-in lines of a tone, language and event, plus the ones added in the voice studio. */
+export function linesFor(tone: CoachTone, locale: CoachLocale, event: CoachEvent): Line[] {
+  const added = extras.lines.filter((l) => l.tone === tone && l.locale === locale && l.event === event).map((l) => l.template);
+  return [...(LINES[tone][locale]?.[event] ?? []), ...added];
+}
+
+/** The text a rendered line says now (an edit from the voice studio, or itself). */
+export const currentText = (rendered: string): string => extras.overrides.get(rendered) ?? rendered;
+
 /** A random line for the event, skipping the recent ones; null when the catalog has nothing usable. */
 export function pickLine(event: CoachEvent, o: PickOptions): PickedLine | null {
   const vars = o.vars ?? {};
@@ -75,12 +99,12 @@ export function pickLine(event: CoachEvent, o: PickOptions): PickedLine | null {
   const random = o.random ?? Math.random;
   const recent = new Set(o.recent ?? []);
   for (const [tone, locale] of lookupChain(o.tone, o.locale)) {
-    const ok = (LINES[tone][locale]?.[event] ?? []).filter((l) => eligible(l, vars, time)).map(lineText);
+    const ok = linesFor(tone, locale, event).filter((l) => eligible(l, vars, time)).map(lineText);
     if (!ok.length) continue;
     const fresh = ok.filter((t) => !recent.has(t));
     const pool = fresh.length ? fresh : ok;
     const template = pool[Math.floor(random() * pool.length)]!;
-    return { template, text: render(template, o.addressForm, vars), locale, tone };
+    return { template, text: currentText(render(template, o.addressForm, vars)), locale, tone };
   }
   return null;
 }

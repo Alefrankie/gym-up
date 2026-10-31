@@ -486,3 +486,43 @@ export const studioUsage = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
 );
+
+/** A line added in the voice studio, one row per address-form variant (`groupId` ties them together). */
+export const studioCustomLines = sqliteTable('studio_custom_lines', {
+  lineId: text('line_id').primaryKey(),
+  groupId: text('group_id').notNull(),
+  form: text('form'),
+  tone: text('tone').notNull(),
+  locale: text('locale').notNull(),
+  event: text('event').notNull(),
+  text: text('text').notNull(),
+  /** 'approved' plays in the app; 'pending' waits for the admin (proposed by a collaborator). */
+  status: text('status').notNull().default('pending'),
+  authorId: text('author_id').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+/** New text for a built-in line, keyed by the line's id (the hash of its original rendering). */
+export const studioOverrides = sqliteTable('studio_overrides', {
+  lineId: text('line_id').primaryKey(),
+  originalText: text('original_text').notNull(),
+  text: text('text').notNull(),
+  tone: text('tone').notNull(),
+  locale: text('locale').notNull(),
+  event: text('event').notNull(),
+  form: text('form'),
+  updatedBy: text('updated_by').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+/** Who changed a line's text and when: create, edit, revert, approve. */
+export const studioLineHistory = sqliteTable('studio_line_history', {
+  id: text('id').primaryKey(),
+  lineId: text('line_id').notNull(),
+  kind: text('kind').notNull(),
+  previousText: text('previous_text'),
+  newText: text('new_text'),
+  authorId: text('author_id').notNull(),
+  createdAt: integer('created_at').notNull(),
+});

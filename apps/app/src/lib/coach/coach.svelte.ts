@@ -5,6 +5,7 @@ import { session } from '#lib/session';
 import type { CoachEvent } from './lines';
 import { pickLine, type CoachVars, type PickedLine } from './pick';
 import { Limiter, speaksAloud } from './triggers';
+import { coachCatalog } from './catalog.svelte';
 import { coachVoice } from './voice.svelte';
 
 /** Lines of the same event not repeated while others are left. */
@@ -35,6 +36,8 @@ function remember(event: CoachEvent, template: string) {
  * exercise's stored (English) name: it is shown in the line's language.
  */
 export function coachLine(event: CoachEvent, vars: CoachVars = {}): PickedLine | null {
+  // Lines added or edited in the voice studio join the catalog as soon as they arrive (cached for offline).
+  void coachCatalog.load();
   const tone = session.user?.coachTone ?? 'normal';
   const locale = tone === 'gymrat' ? 'es' : i18n.locale;
   const first = session.user?.displayName.split(' ')[0];

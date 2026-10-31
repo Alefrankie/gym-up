@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coachToneSchema, type CoachTone } from '@gym-up/contracts';
+import { coachTextProblems, coachToneSchema, type CoachTone } from '@gym-up/contracts';
 import { COACH_EVENTS, LINES, type CoachLocale, type Line } from './lines';
 import { lineText, lineVars, lookupChain, pickLine, render, timeOfDay } from './pick';
 import { pickMaleVoice } from './male-voice';
@@ -70,40 +70,21 @@ describe('coach catalog', () => {
     }
   });
 
-  it('is read aloud: no emojis and no long dashes', () => {
-    for (const { text } of all()) {
-      expect(/\p{Extended_Pictographic}/u.test(text), text).toBe(false);
-      expect(text.includes('—') || text.includes('–'), text).toBe(false);
+  it('passes the content rules: no emojis or long dashes, no slurs, bodies, disability, threats or pain', () => {
+    for (const { tone, text } of all()) {
+      const problems = coachTextProblems(text, tone, { template: true }).filter((p) => p.kind !== 'swearing');
+      expect(problems, text).toEqual([]);
     }
   });
 
-  it('never says slurs, body or disability jokes, threats, or to train through pain', () => {
-    const words_ = [
-      // racial and origin slurs
-      'negro', 'negra', 'indio', 'india', 'sudaca', 'veneco', 'chino', 'nigger', 'spic',
-      // sexuality
-      'maricon', 'maricona', 'maricones', 'puto', 'joto', 'gay', 'fag', 'faggot', 'tortillera', 'homosexual', 'trolo',
-      // disability
-      'retrasado', 'retrasada', 'mongolico', 'mongolica', 'subnormal', 'invalido', 'invalida', 'tarado', 'tarada', 'autista', 'retard', 'cripple', 'cojo', 'coja', 'manco', 'manca', 'lisiado',
-      // bodies
-      'gordo', 'gorda', 'gordito', 'gordita', 'obeso', 'obesa', 'panzon', 'panzona', 'barrigon', 'flaco', 'flaca', 'fofo', 'fofa', 'lonjas', 'fat', 'chubby', 'skinny', 'fatty',
-    ];
-    // Word stems match anywhere ("lesionado", "injury"); phrases match whole words.
-    const STEMS = new Set(['lesion', 'injur']);
-    const phrases = [
-      // threats
-      'te mato', 'te voy a matar', 'te parto', 'te reviento', 'te voy a pegar', 'ver las caras', 'kill you', 'beat you',
-      // "marico" is only a friendly vocative: never a statement about someone's sexuality
-      'eres marico', 'eres marica', 'es marico', 'como marico', 'de marico', 'pareces marico', 'pareces marica',
-      // training through pain or injury
-      'aunque duela', 'con dolor', 'ignora el dolor', 'sin dolor no', 'lesion', 'no pain', 'through the pain', 'injur',
-    ];
-    for (const { text } of all()) {
-      const w = words(text);
-      const flat = ` ${w.join(' ')} `;
-      for (const bad of words_) expect(w.includes(bad), `"${bad}" in: ${text}`).toBe(false);
-      for (const bad of phrases) expect(STEMS.has(bad) ? flat.includes(bad) : flat.includes(` ${bad} `), `"${bad}" in: ${text}`).toBe(false);
-    }
+  it('blocks the things the rules name, wherever they appear', () => {
+    expect(coachTextProblems('Eres un gordo', 'gymrat')).toContainEqual({ kind: 'blocked', word: 'gordo' });
+    expect(coachTextProblems('Sigue aunque duela', 'gymrat')).toContainEqual({ kind: 'blocked', word: 'aunque duela' });
+    expect(coachTextProblems('Estás lesionado, sigue', 'normal')).toContainEqual({ kind: 'blocked', word: 'lesion' });
+    expect(coachTextProblems('Eres marico', 'gymrat')).toContainEqual({ kind: 'blocked', word: 'eres marico' });
+    expect(coachTextProblems('¡Dale, marico!', 'gymrat')).toEqual([]);
+    expect(coachTextProblems('Dale 💪', 'normal')).toContainEqual({ kind: 'emoji' });
+    expect(coachTextProblems('Hola {name}', 'normal')).toContainEqual({ kind: 'tokens' });
   });
 
   it('keeps gymrat street: most of its lines swear or use Venezuelan slang', () => {
@@ -116,14 +97,11 @@ describe('coach catalog', () => {
   });
 
   it('keeps swearing and street slang to gymrat', () => {
-    const swear = [
-      'coño', 'carajo', 'verga', 'vergación', 'joder', 'jodas', 'jodiendo', 'mierda', 'bolas', 'pendejo', 'pendeja', 'marico', 'marica',
-      'mamagüevo', 'mariquera', 'mariqueras', 'güevón', 'güevona', 'pajúo', 'pajúa', 'mojón', 'cagando', 'fuck', 'shit', 'damn',
-    ];
     for (const { tone, text } of all().filter((l) => l.tone !== 'gymrat')) {
-      const w = text.toLowerCase().split(/[^\p{L}]+/u);
-      for (const bad of swear) expect(w.includes(bad), `"${bad}" in ${tone}: ${text}`).toBe(false);
+      expect(coachTextProblems(text, tone, { template: true }).filter((p) => p.kind === 'swearing'), `${tone}: ${text}`).toEqual([]);
     }
+    expect(coachTextProblems('¡Coño, dale!', 'normal')).toContainEqual({ kind: 'swearing', word: 'coño' });
+    expect(coachTextProblems('¡Coño, dale!', 'gymrat')).toEqual([]);
   });
 });
 

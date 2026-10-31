@@ -1,4 +1,4 @@
-import type { AddressForm, CoachTone } from '@gym-up/contracts';
+import type { AddressForm, CoachTone, StudioCustomLineDto, StudioOverrideDto } from '@gym-up/contracts';
 import { COACH_EVENTS, LINES, type CoachEvent, type CoachLocale } from './lines';
 import { lineText, lineVars, render } from './pick';
 
@@ -61,4 +61,36 @@ export type VoiceSource = 'recording' | 'cloud' | 'phone';
 export function chooseSource(o: { recorded: boolean; cloudChosen: boolean; cloudAvailable: boolean }): VoiceSource {
   if (o.recorded) return 'recording';
   return o.cloudChosen && o.cloudAvailable ? 'cloud' : 'phone';
+}
+
+/** A line as the studio shows it: its current text (after edits), and where it came from. */
+export interface StudioRow extends StudioLine {
+  id: string;
+  /** The text before any edit (the built-in rendering, or the added line's current text). */
+  originalText: string;
+  edited: boolean;
+  custom: { groupId: string; status: 'approved' | 'pending'; authorId: string; authorName: string } | null;
+}
+
+/**
+ * Merges the built-in lines (with their ids) with the studio's edits and added lines. A built-in line keeps its id
+ * when its text is edited, so its takes stay attached; added lines come after the built-in ones.
+ */
+export function studioRows(builtIn: (StudioLine & { id: string })[], custom: StudioCustomLineDto[], overrides: StudioOverrideDto[]): StudioRow[] {
+  const edits = new Map(overrides.map((o) => [o.lineId, o.text]));
+  const rows: StudioRow[] = builtIn.map((l) => ({ ...l, originalText: l.text, text: edits.get(l.id) ?? l.text, edited: edits.has(l.id), custom: null }));
+  for (const c of custom) {
+    rows.push({
+      id: c.lineId,
+      tone: c.tone,
+      locale: c.locale,
+      event: c.event as CoachEvent,
+      form: c.form,
+      text: c.text,
+      originalText: c.text,
+      edited: false,
+      custom: { groupId: c.groupId, status: c.status, authorId: c.authorId, authorName: c.authorName },
+    });
+  }
+  return rows;
 }

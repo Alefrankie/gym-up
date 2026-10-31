@@ -26,8 +26,15 @@ import {
   STUDIO_USER_TOTAL_BYTES,
   coachRecordingIdSchema,
   coachRecordingMetaSchema,
+  coachTextProblems,
   studioActiveRequestSchema,
   studioCommentRequestSchema,
+  studioCustomLineRequestSchema,
+  studioLineTextRequestSchema,
+  type StudioCustomLineDto,
+  type StudioCustomLineRequest,
+  type StudioHistoryEntryDto,
+  type StudioLineTextRequest,
   type CoachRecordingMeta,
   type StudioAccess,
   type StudioCommentDto,
@@ -36,7 +43,17 @@ import {
   type StudioTakeDto,
 } from '@gym-up/contracts';
 import { and, asc, eq, like, or, sql } from 'drizzle-orm';
-import { profiles, studioActive, studioComments, studioMembers, studioTakes, studioVotes } from '@db/schema';
+import {
+  profiles,
+  studioActive,
+  studioComments,
+  studioCustomLines,
+  studioLineHistory,
+  studioMembers,
+  studioOverrides,
+  studioTakes,
+  studioVotes,
+} from '@db/schema';
 import type { Db } from '@/lib/db/client';
 import type { User } from '@/lib/contexts/auth/auth.types';
 import { AuthGuard, CurrentUser } from '../common/auth.guard';
@@ -53,6 +70,20 @@ interface ResponseLike {
 const lineIdPipe = new ZodValidationPipe(coachRecordingIdSchema);
 const takeMetaPipe = new ZodValidationPipe(coachRecordingMetaSchema.extend({ form: coachRecordingMetaSchema.shape.form.optional() }));
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** 400 with the reasons when a line breaks the content rules (slurs, bodies, threats, pain, swearing outside gymrat...). */
+function checkText(text: string, tone: string) {
+  const problems = coachTextProblems(text, tone);
+  if (problems.length) {
+    throw new BadRequestException(`The line breaks the content rules: ${problems.map((p) => ('word' in p ? `${p.kind}:${p.word}` : p.kind)).join(', ')}`);
+  }
+}
+
+/** Stable id of an added line's variant (same 32-hex shape as the built-in line ids). */
+async function customLineId(groupId: string, form: string | null): Promise<string> {
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`main|custom|${groupId}|${form ?? '-'}`)));
+  return [...hash].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * The voice studio. The admin lets people in; everyone inside records one take per line (and may redo it), plays
@@ -91,6 +122,18 @@ export class StudioController {
       WHERE studio_usage.writes + 1 <= ${STUDIO_DAILY_WRITES} AND studio_usage.bytes + excluded.bytes <= ${STUDIO_DAILY_BYTES}
       RETURNING writes`);
     if (!rows.length || bytes > STUDIO_DAILY_BYTES) throw new HttpException('Daily studio limit reached, try again tomorrow', HttpStatus.TOO_MANY_REQUESTS);
+  }
+
+  /** The text a line says now: an edit of a built-in line, else an added line's text; null when neither exists. */
+  async #currentText(lineId: string): Promise<string | null> {
+    const [o] = await this.db.select({ text: studioOverrides.text }).from(studioOverrides).where(eq(studioOverrides.lineId, lineId)).limit(1);
+    if (o) return o.text;
+    const [c] = await this.db.select({ text: studioCustomLines.text }).from(studioCustomLines).where(eq(studioCustomLines.lineId, lineId)).limit(1);
+    return c?.text ?? null;
+  }
+
+  async #history(lineId: string, kind: StudioHistoryEntryDto['kind'], previousText: string | null, newText: string | null, user: User) {
+    await this.db.insert(studioLineHistory).values({ id: crypto.randomUUID(), lineId, kind, previousText, newText, authorId: user.id, createdAt: Date.now() });
   }
 
   @Get('access')
@@ -181,7 +224,37 @@ export class StudioController {
       .from(studioComments)
       .innerJoin(profiles, eq(profiles.id, studioComments.authorId))
       .orderBy(asc(studioComments.createdAt));
+    const custom = await this.db
+      .select({
+        lineId: studioCustomLines.lineId,
+        groupId: studioCustomLines.groupId,
+        form: studioCustomLines.form,
+        tone: studioCustomLines.tone,
+        locale: studioCustomLines.locale,
+        event: studioCustomLines.event,
+        text: studioCustomLines.text,
+        status: studioCustomLines.status,
+        authorId: studioCustomLines.authorId,
+        authorName: profiles.displayName,
+        createdAt: studioCustomLines.createdAt,
+        updatedAt: studioCustomLines.updatedAt,
+      })
+      .from(studioCustomLines)
+      .innerJoin(profiles, eq(profiles.id, studioCustomLines.authorId))
+      .orderBy(asc(studioCustomLines.createdAt));
+    const overrides = await this.db
+      .select({
+        lineId: studioOverrides.lineId,
+        originalText: studioOverrides.originalText,
+        text: studioOverrides.text,
+        updatedAt: studioOverrides.updatedAt,
+        updatedByName: profiles.displayName,
+      })
+      .from(studioOverrides)
+      .innerJoin(profiles, eq(profiles.id, studioOverrides.updatedBy));
     return {
+      custom: custom.map((c) => ({ ...c, form: (c.form ?? null) as StudioCustomLineDto['form'] }) as StudioCustomLineDto),
+      overrides,
       me: { userId: user.id, admin: a.admin },
       takes: takes.map((t) => ({
         ...t,
@@ -286,6 +359,9 @@ export class StudioController {
     this.#admin(user);
     const [t] = await this.db.select({ lineId: studioTakes.lineId }).from(studioTakes).where(eq(studioTakes.id, body.takeId)).limit(1);
     if (!t || t.lineId !== lineId) throw new BadRequestException('That take is not a take of this line');
+    const [take] = await this.db.select({ text: studioTakes.text }).from(studioTakes).where(eq(studioTakes.id, body.takeId)).limit(1);
+    const current = await this.#currentText(lineId);
+    if (current !== null && take!.text !== current) throw new BadRequestException('That take says the previous text: record it again or confirm it first');
     const now = Date.now();
     await this.db
       .insert(studioActive)
@@ -345,5 +421,187 @@ export class StudioController {
     if (!c) throw new NotFoundException('Comment not found');
     if (c.authorId !== user.id && !isAdmin(user)) throw new ForbiddenException('You can only delete your own comments');
     await this.db.delete(studioComments).where(eq(studioComments.id, id));
+  }
+
+  // ---- added lines --------------------------------------------------------------------------------------------
+
+  /** Adds a line. The admin's lines play at once; the ones collaborators add wait for the admin's approval. */
+  @Post('custom-lines')
+  async addLine(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(studioCustomLineRequestSchema)) body: StudioCustomLineRequest,
+  ): Promise<{ items: StudioCustomLineDto[] }> {
+    const a = await this.#member(user);
+    checkText(body.textM, body.tone);
+    if (body.textF) checkText(body.textF, body.tone);
+    await this.#spend(user);
+    const groupId = crypto.randomUUID();
+    const now = Date.now();
+    const variants: { form: 'm' | 'f' | null; text: string }[] =
+      body.textF && body.textF.trim() !== body.textM.trim()
+        ? [{ form: 'm', text: body.textM }, { form: 'f', text: body.textF }]
+        : [{ form: null, text: body.textM }];
+    const items: StudioCustomLineDto[] = [];
+    for (const v of variants) {
+      const row = {
+        lineId: await customLineId(groupId, v.form),
+        groupId,
+        form: v.form,
+        tone: body.tone,
+        locale: body.locale,
+        event: body.event,
+        text: v.text.trim(),
+        status: a.admin ? ('approved' as const) : ('pending' as const),
+        authorId: user.id,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await this.db.insert(studioCustomLines).values(row);
+      await this.#history(row.lineId, 'create', null, row.text, user);
+      items.push({ ...row, authorName: user.displayName });
+    }
+    return { items };
+  }
+
+  @Put('custom-lines/:groupId/approve')
+  @HttpCode(204)
+  async approveLine(@CurrentUser() user: User, @Param('groupId') groupId: string): Promise<void> {
+    this.#admin(user);
+    const rows = await this.db
+      .select({ lineId: studioCustomLines.lineId, text: studioCustomLines.text })
+      .from(studioCustomLines)
+      .where(eq(studioCustomLines.groupId, groupId));
+    if (!rows.length) throw new NotFoundException('Line not found');
+    await this.db.update(studioCustomLines).set({ status: 'approved', updatedAt: Date.now() }).where(eq(studioCustomLines.groupId, groupId));
+    for (const r of rows) await this.#history(r.lineId, 'approve', null, r.text, user);
+  }
+
+  /** The admin deletes any added line; its author may withdraw it while it waits for approval. Its takes go too. */
+  @Delete('custom-lines/:groupId')
+  @HttpCode(204)
+  async deleteLine(@CurrentUser() user: User, @Param('groupId') groupId: string): Promise<void> {
+    await this.#member(user);
+    const rows = await this.db.select().from(studioCustomLines).where(eq(studioCustomLines.groupId, groupId));
+    if (!rows.length) throw new NotFoundException('Line not found');
+    const ownPending = rows.every((r) => r.authorId === user.id && r.status === 'pending');
+    if (!isAdmin(user) && !ownPending) throw new ForbiddenException('Only the admin deletes approved lines');
+    for (const r of rows) {
+      const takes = await this.db.select({ id: studioTakes.id }).from(studioTakes).where(eq(studioTakes.lineId, r.lineId));
+      for (const t of takes) await this.db.delete(studioVotes).where(eq(studioVotes.takeId, t.id));
+      await this.db.delete(studioActive).where(eq(studioActive.lineId, r.lineId));
+      await this.db.delete(studioComments).where(eq(studioComments.lineId, r.lineId));
+      await this.db.delete(studioTakes).where(eq(studioTakes.lineId, r.lineId));
+    }
+    await this.db.delete(studioCustomLines).where(eq(studioCustomLines.groupId, groupId));
+  }
+
+  // ---- editing a line's text (admin) --------------------------------------------------------------------------
+
+  /**
+   * New text for any line: an added line's own text, or an override of a built-in one (which needs its original
+   * rendering). Takes recorded for the previous text stay, marked as such, and cannot play until recorded again or
+   * confirmed.
+   */
+  @Put('lines/:lineId/text')
+  @HttpCode(204)
+  async editText(
+    @CurrentUser() user: User,
+    @Param('lineId', lineIdPipe) lineId: string,
+    @Body(new ZodValidationPipe(studioLineTextRequestSchema)) body: StudioLineTextRequest,
+  ): Promise<void> {
+    this.#admin(user);
+    const text = body.text.trim();
+    const now = Date.now();
+    const [custom] = await this.db.select().from(studioCustomLines).where(eq(studioCustomLines.lineId, lineId)).limit(1);
+    if (custom) {
+      checkText(text, custom.tone);
+      if (custom.text === text) return;
+      await this.db.update(studioCustomLines).set({ text, updatedAt: now }).where(eq(studioCustomLines.lineId, lineId));
+      await this.#history(lineId, 'edit', custom.text, text, user);
+      return;
+    }
+    if (!body.originalText || !body.tone || !body.locale || !body.event) {
+      throw new BadRequestException('A built-in line needs its original text, tone, language and moment');
+    }
+    checkText(text, body.tone);
+    const [existing] = await this.db.select().from(studioOverrides).where(eq(studioOverrides.lineId, lineId)).limit(1);
+    const original = existing?.originalText ?? body.originalText;
+    const previous = existing?.text ?? original;
+    if (previous === text) return;
+    if (text === original) {
+      await this.db.delete(studioOverrides).where(eq(studioOverrides.lineId, lineId));
+      await this.#history(lineId, 'revert', previous, text, user);
+      return;
+    }
+    const row = {
+      lineId,
+      originalText: original,
+      text,
+      tone: body.tone,
+      locale: body.locale,
+      event: body.event,
+      form: body.form ?? null,
+      updatedBy: user.id,
+      updatedAt: now,
+    };
+    await this.db
+      .insert(studioOverrides)
+      .values(row)
+      .onConflictDoUpdate({ target: studioOverrides.lineId, set: { text, updatedBy: user.id, updatedAt: now } });
+    await this.#history(lineId, 'edit', previous, text, user);
+  }
+
+  /** Back to the original text: a built-in line drops its edit; an added line gets the text it was created with. */
+  @Delete('lines/:lineId/text')
+  @HttpCode(204)
+  async revertText(@CurrentUser() user: User, @Param('lineId', lineIdPipe) lineId: string): Promise<void> {
+    this.#admin(user);
+    const [o] = await this.db.select().from(studioOverrides).where(eq(studioOverrides.lineId, lineId)).limit(1);
+    if (o) {
+      await this.db.delete(studioOverrides).where(eq(studioOverrides.lineId, lineId));
+      await this.#history(lineId, 'revert', o.text, o.originalText, user);
+      return;
+    }
+    const [c] = await this.db.select().from(studioCustomLines).where(eq(studioCustomLines.lineId, lineId)).limit(1);
+    if (!c) throw new NotFoundException('Nothing to revert');
+    const [created] = await this.db
+      .select({ text: studioLineHistory.newText })
+      .from(studioLineHistory)
+      .where(and(eq(studioLineHistory.lineId, lineId), eq(studioLineHistory.kind, 'create')))
+      .limit(1);
+    if (!created?.text || created.text === c.text) return;
+    await this.db.update(studioCustomLines).set({ text: created.text, updatedAt: Date.now() }).where(eq(studioCustomLines.lineId, lineId));
+    await this.#history(lineId, 'revert', c.text, created.text, user);
+  }
+
+  @Get('lines/:lineId/history')
+  async lineHistory(@CurrentUser() user: User, @Param('lineId', lineIdPipe) lineId: string): Promise<{ items: StudioHistoryEntryDto[] }> {
+    await this.#member(user);
+    const rows = await this.db
+      .select({
+        id: studioLineHistory.id,
+        lineId: studioLineHistory.lineId,
+        kind: studioLineHistory.kind,
+        previousText: studioLineHistory.previousText,
+        newText: studioLineHistory.newText,
+        authorName: profiles.displayName,
+        createdAt: studioLineHistory.createdAt,
+      })
+      .from(studioLineHistory)
+      .innerJoin(profiles, eq(profiles.id, studioLineHistory.authorId))
+      .where(eq(studioLineHistory.lineId, lineId))
+      .orderBy(asc(studioLineHistory.createdAt));
+    return { items: rows.map((r) => ({ ...r, kind: r.kind as StudioHistoryEntryDto['kind'] })) };
+  }
+
+  /** The admin accepts a take recorded for the previous text as good for the new one. */
+  @Post('takes/:takeId/confirm')
+  @HttpCode(204)
+  async confirmTake(@CurrentUser() user: User, @Param('takeId') takeId: string): Promise<void> {
+    this.#admin(user);
+    const [t] = await this.db.select({ lineId: studioTakes.lineId }).from(studioTakes).where(eq(studioTakes.id, takeId)).limit(1);
+    if (!t) throw new NotFoundException('Take not found');
+    const current = await this.#currentText(t.lineId);
+    if (current !== null) await this.db.update(studioTakes).set({ text: current }).where(eq(studioTakes.id, takeId));
   }
 }
