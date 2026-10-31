@@ -22,10 +22,16 @@ pnpm build       # all packages
 pnpm --filter @gym-up/app dev
 pnpm --filter @gym-up/app android:debug   # debug APK on the connected Android phone
 pnpm --filter @gym-up/app android:share   # signed release APK for sharing
-pnpm --filter @gym-up/app deploy:web      # publish /descarga and the latest share APK to Cloudflare
 ```
 
-Every deploy goes through `pnpm release` (or `pnpm release major|minor|patch`). It bumps the semver version from Conventional Commits since the last `v*` tag (`feat` → minor, `fix`/other → patch, `!`/`BREAKING CHANGE` → major), deploys the API and web/APK, then commits, tags `vX.Y.Z` and pushes. The web deploy generates `update.json` from the signed APK; installed Android apps check it on launch and from Settings.
+Pushing to `main` starts the GitHub Actions release pipeline. It chooses a version from Conventional Commits since the last `v*` tag (`feat` → minor, `fix`/other → patch, `!`/`BREAKING CHANGE` → major), deploys the API, builds and publishes the web app plus signed Android APK, then commits the version bump and pushes a `vX.Y.Z` tag. `pnpm release [major|minor|patch]` runs that release locally instead.
+
+Before the first pipeline run, add these GitHub Actions repository secrets:
+
+- `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for both Worker deployments.
+- `GYM_UP_ANDROID_KEYSTORE_BASE64`, `GYM_UP_ANDROID_STORE_PASSWORD`, and `GYM_UP_ANDROID_KEY_PASSWORD` for the same signing key used by existing installs. Do not generate a replacement key; Android will reject updates signed with a different key.
+
+The web deployment publishes `/update.json` with the APK version code, download URL, and SHA-256 checksum. Installed Android release builds check that file when they open and in Settings. If its version code is newer, the app offers the download and Android asks the user to approve installation.
 
 ## Notes
 
