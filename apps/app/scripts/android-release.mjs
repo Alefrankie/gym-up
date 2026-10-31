@@ -156,7 +156,7 @@ console.log(`Verified release package metadata: ${packageLine}`);
 const verification = run(apksigner, ['verify', '--verbose', '--print-certs', apk], { cwd: androidDir, capture: true });
 const verificationOutput = `${verification.stdout ?? ''}${verification.stderr ?? ''}`;
 process.stdout.write(verificationOutput);
-if (verification.status !== 0 || !/Signer #1 certificate DN:.*CN=GymUp/i.test(verificationOutput)) {
+if (verification.status !== 0 || !/(?:Signer #1 certificate DN:|V2 Signer: certificate DN:).*CN=GymUp/i.test(verificationOutput)) {
   throw new Error('APK signature verification failed or the release certificate is not Gym Up.');
 }
 
