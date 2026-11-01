@@ -40,6 +40,12 @@ export interface LogSetInput {
   completed: boolean;
   notes: string | null;
   setType?: 'normal' | 'warmup' | 'drop' | 'failure';
+  /**
+   * Body weight captured by the client for a bodyweight set, already in kg (`weightUnit` does not
+   * apply to it). Null/undefined keeps whatever the entry already had, so replaying an old queued
+   * command, or editing from a device that knows nothing about it, never erases the capture.
+   */
+  bodyWeightKgAtSet?: number | null;
 }
 
 export type LogSetResult =
@@ -98,7 +104,17 @@ export class LogSetUseCase {
       (e) => e.exerciseId === input.exerciseId && e.setNumber === input.setNumber,
     );
 
-    // 5. Update or create.
+    // 5. A body weight belongs only to a lift where the lifter's own mass is part of the load. On
+    // anything else the capture is dropped — a wrong field must not fail the set, and the row keeps
+    // whatever it already had, so nothing written before this guard is rewritten here.
+    const captured =
+      input.bodyWeightKgAtSet != null &&
+      (await this.workoutRepository.getExerciseType(input.exerciseId)) ===
+        'bodyweight_reps'
+        ? input.bodyWeightKgAtSet
+        : null;
+
+    // 6. Update or create.
     if (existing) {
       const updated = await this.workoutRepository.updateEntry(
         existing.id,
@@ -108,6 +124,8 @@ export class LogSetUseCase {
           completed: input.completed,
           notes: input.notes,
           setType: input.setType ?? existing.setType,
+          // The first capture wins: a profile that changed later must not rewrite history.
+          bodyWeightKgAtSet: existing.bodyWeightKgAtSet ?? captured,
         },
         input.userId,
       );
@@ -124,6 +142,7 @@ export class LogSetUseCase {
           completed: input.completed,
           notes: input.notes,
           setType: input.setType ?? 'normal',
+          bodyWeightKgAtSet: captured,
         },
         input.userId,
       );
@@ -156,6 +175,13 @@ export class LogSetUseCase {
     ) {
       throw new LogSetValidationError(
         `weight out of range: ${input.weight} (must be ${WorkoutEntryRules.MinWeight}..${WorkoutEntryRules.MaxWeight})`,
+      );
+    }
+    // Same range the profile accepts: a captured body weight outside it is a bad client, not a lifter.
+    const body = input.bodyWeightKgAtSet;
+    if (body !== undefined && body !== null && (body < 25 || body > 300)) {
+      throw new LogSetValidationError(
+        `bodyWeightKgAtSet out of range: ${body} (must be 25..300)`,
       );
     }
     if (input.notes !== null && input.notes.length > WorkoutEntryRules.MaxNotesLength) {

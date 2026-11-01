@@ -38,6 +38,36 @@ export class WorkoutView {
   get unit(): 'kg' | 'lbs' {
     return this.snap?.unit ?? 'kg';
   }
+
+  /** Exercises measured in reps of your own body: the ones where `weight` means added weight. */
+  isBodyweight(ex: Pick<RoutineExerciseDto, 'type'>): boolean {
+    return ex.type === 'bodyweight_reps';
+  }
+
+  /**
+   * Body weight to show next to the added weight, in the display unit: what the set captured when it
+   * was logged, else what the profile says now. Null when the profile has none — the 75 kg that
+   * `workout-math.ts` assumes for calories is a calorie estimate, not a weight anyone lifted.
+   */
+  bodyWeight(ex: RoutineExerciseDto, n?: number): number | null {
+    if (!this.isBodyweight(ex)) return null;
+    const captured = n !== undefined ? this.row(ex.exerciseId, n)?.bodyWeightKg : null;
+    const kg = captured ?? session.user?.bodyWeightKg ?? null;
+    return kg ? toDisplay(kg, this.unit) : null;
+  }
+
+  /**
+   * Captures the profile's body weight on a bodyweight set the first time it is sent. Only the first
+   * capture counts: editing the set later, or replaying it after the profile changed, keeps it.
+   * `undefined` means never captured; `null` means captured while the profile had no body weight,
+   * and that is an answer, not a gap — a profile filled in afterwards must not rewrite it.
+   */
+  #capture(exerciseId: string, r: WorkoutSnapshot['rows'][string]) {
+    if (r.bodyWeightKg !== undefined) return;
+    const ex = this.snap?.exercises.find((e) => e.exerciseId === exerciseId);
+    if (!ex || !this.isBodyweight(ex)) return;
+    r.bodyWeightKg = session.user?.bodyWeightKg ?? null;
+  }
   get isCompleted(): boolean {
     return this.snap?.status === 'completed';
   }
@@ -72,11 +102,21 @@ export class WorkoutView {
   }
 
   /** Completed sets of one exercise, in order, for summaries (history, finished workout). */
-  doneSets(ex: RoutineExerciseDto): { n: number; reps: number; weight: number; type: SetType; record?: boolean }[] {
+  doneSets(ex: RoutineExerciseDto): { n: number; reps: number; weight: number; body: number | null; type: SetType; record?: boolean }[] {
     const sets = this.setNumbers(ex)
       .map((n) => ({ n, r: this.row(ex.exerciseId, n) }))
       .filter((x) => x.r?.completed)
-      .map(({ n, r }) => ({ n, reps: r!.reps, weight: r!.weight, type: r!.type ?? 'normal' as SetType, record: false }));
+      // Only what the set itself captured, and only where body mass is part of the lift: a summary
+      // must not read today's profile into a past set, nor show a body weight a bad write left on a
+      // barbell or machine set.
+      .map(({ n, r }) => ({
+        n,
+        reps: r!.reps,
+        weight: r!.weight,
+        body: this.isBodyweight(ex) && r!.bodyWeightKg ? toDisplay(r!.bodyWeightKg, this.unit) : null,
+        type: r!.type ?? ('normal' as SetType),
+        record: false,
+      }));
     const best = this.#recordSet(ex, sets);
     if (best) best.record = true;
     return sets;
@@ -118,19 +158,25 @@ export class WorkoutView {
     // the reps and weight to beat are already in the boxes. Warm-ups keep their planned reps.
     const working = (ex.sets ?? []).slice(0, n).filter((p) => p.type !== 'warmup').length || n;
     const before = type === 'warmup' ? undefined : (ex.last?.sets?.[working - 1] ?? ex.last?.sets?.at(-1));
+    // On a bodyweight exercise the box is the added weight, and sets logged before that distinction
+    // existed may hold something else entirely: only a load the routine states explicitly is carried
+    // over, never a past session's. Every other exercise keeps the number to beat in the box.
+    const weight = this.isBodyweight(ex)
+      ? planned?.weight !== undefined
+        ? toDisplay(planned.weight, s.unit)
+        : 0
+      : planned?.weight !== undefined
+        ? toDisplay(planned.weight, s.unit)
+        : before
+          ? toDisplay(before.weight, s.unit)
+          : ex.last && type !== 'warmup'
+            ? toDisplay(ex.last.weight, s.unit)
+            : 0;
     s.rows[k] ??= {
       id: crypto.randomUUID(),
       reps: before?.reps ?? planned?.reps ?? ex.targetReps,
       type,
-      // A weight written in the routine plan wins; otherwise the last session's, so the number to beat is there.
-      weight:
-        planned?.weight !== undefined
-          ? toDisplay(planned.weight, s.unit)
-          : before
-            ? toDisplay(before.weight, s.unit)
-            : ex.last && type !== 'warmup'
-              ? toDisplay(ex.last.weight, s.unit)
-              : 0,
+      weight,
       completed: false,
     };
   }
@@ -179,6 +225,7 @@ export class WorkoutView {
               exerciseId: e.exerciseId,
               exerciseName: e.exerciseName,
               muscleGroup: e.muscleGroup,
+              type: e.exerciseType,
               targetSets: 0,
               targetReps: 10,
               exerciseOrder: seen.size + 1,
@@ -203,6 +250,7 @@ export class WorkoutView {
           id: e.id,
           reps: e.reps,
           weight: toDisplay(e.weight, u),
+          bodyWeightKg: e.bodyWeightKgAtSet,
           completed: e.completed,
           type: e.setType,
         };
@@ -228,7 +276,15 @@ export class WorkoutView {
         const k = rowKey(e.exerciseId, e.setNumber);
         const mine = snap.rows[k];
         if (mine && pending.has(mine.id)) continue;
-        snap.rows[k] = { id: e.id, reps: e.reps, weight: toDisplay(e.weight, snap.unit), completed: e.completed, type: e.setType };
+        snap.rows[k] = {
+          id: e.id,
+          reps: e.reps,
+          weight: toDisplay(e.weight, snap.unit),
+          // What the server kept wins over a local guess; a set it has no capture for keeps ours.
+          bodyWeightKg: e.bodyWeightKgAtSet ?? mine?.bodyWeightKg ?? null,
+          completed: e.completed,
+          type: e.setType,
+        };
       }
       if (detail.workout.completedAt) snap.endedAt = Date.parse(detail.workout.completedAt);
       if (detail.workout.status === 'completed' && !snap.editing) snap.status = 'completed';
@@ -246,6 +302,7 @@ export class WorkoutView {
     const was = r.completed;
     r.completed = completed;
     r.doneAt = completed ? Date.now() : undefined;
+    this.#capture(exerciseId, r);
     await saveSnapshot(snap);
     await sync.enqueue({
       type: 'upsert-set',
@@ -260,6 +317,7 @@ export class WorkoutView {
         completed,
         notes: null,
         setType: r.type ?? 'normal',
+        bodyWeightKgAtSet: r.bodyWeightKg ?? null,
       },
     });
     if (completed) {
@@ -397,10 +455,18 @@ export class WorkoutView {
     const nums = this.setNumbers(ex);
     const n = (nums[nums.length - 1] ?? 0) + 1;
     const prev = snap.rows[rowKey(ex.exerciseId, n - 1)];
+    // Same rule as a row created with the exercise: on a bodyweight lift the box is the added
+    // weight, so only a load the routine states for this set is carried in, never the set before.
+    const planned = ex.sets?.[n - 1]?.weight;
+    const weight = this.isBodyweight(ex)
+      ? planned !== undefined
+        ? toDisplay(planned, snap.unit)
+        : 0
+      : (prev?.weight ?? 0);
     snap.rows[rowKey(ex.exerciseId, n)] = {
       id: crypto.randomUUID(),
       reps: prev?.reps ?? ex.targetReps,
-      weight: prev?.weight ?? 0,
+      weight,
       completed: false,
     };
     await saveSnapshot(snap);
@@ -451,10 +517,22 @@ export class WorkoutView {
   }
 
   #send(exerciseId: string, setNumber: number, r: WorkoutSnapshot['rows'][string], completed: boolean) {
+    this.#capture(exerciseId, r);
     return sync.enqueue({
       type: 'upsert-set',
       workoutId: this.#id,
-      set: { id: r.id, exerciseId, setNumber, reps: r.reps, weight: r.weight, weightUnit: this.snap!.unit, completed, notes: null, setType: r.type ?? 'normal' },
+      set: {
+        id: r.id,
+        exerciseId,
+        setNumber,
+        reps: r.reps,
+        weight: r.weight,
+        weightUnit: this.snap!.unit,
+        completed,
+        notes: null,
+        setType: r.type ?? 'normal',
+        bodyWeightKgAtSet: r.bodyWeightKg ?? null,
+      },
     });
   }
 

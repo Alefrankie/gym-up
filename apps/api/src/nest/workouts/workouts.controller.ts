@@ -107,6 +107,7 @@ export class WorkoutsController {
         muscleGroup: e.exercise.muscleGroup,
         secondaryMuscles: parseMuscles(e.exercise.secondaryMuscles),
         equipment: e.exercise.equipment,
+        type: e.exercise.exerciseType,
         targetSets: e.targetSets,
         targetReps: e.targetReps,
         last: result.last[e.exerciseId] ?? null,
@@ -187,6 +188,7 @@ export class WorkoutsController {
       completed: body.completed,
       notes: body.notes,
       setType: body.setType,
+      bodyWeightKgAtSet: body.bodyWeightKgAtSet,
     });
     return toWorkoutEntryDto(result.entry);
   }

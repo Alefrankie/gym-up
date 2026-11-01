@@ -35,6 +35,7 @@ const EXERCISES: NewExercise[] = EXERCISE_CATALOG.map((e) => ({
   secondaryMuscles: JSON.stringify(e.secondary),
   equipment: e.equipment,
   exerciseType: e.type,
+  styles: JSON.stringify(e.styles ?? []),
   instructions: e.instructions ?? null,
 }));
 

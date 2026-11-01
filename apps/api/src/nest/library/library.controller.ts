@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   createExerciseRequestSchema,
+  exerciseStyleSchema,
   updateExerciseRequestSchema,
   type CreateExerciseRequest,
   type LibraryExerciseDto,
@@ -19,13 +20,17 @@ import {
 import { AuthGuard, CurrentUser } from '../common/auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
-export function toLibraryExerciseDto(e: Exercise): LibraryExerciseDto {
-  let secondary: string[] = [];
+const parseList = (raw: string): string[] => {
   try {
-    secondary = JSON.parse(e.secondaryMuscles) as string[];
+    const v: unknown = JSON.parse(raw);
+    return Array.isArray(v) ? (v as string[]) : [];
   } catch {
-    secondary = [];
+    return [];
   }
+};
+
+export function toLibraryExerciseDto(e: Exercise): LibraryExerciseDto {
+  const secondary = parseList(e.secondaryMuscles);
   return {
     id: e.id,
     name: e.name,
@@ -33,6 +38,7 @@ export function toLibraryExerciseDto(e: Exercise): LibraryExerciseDto {
     secondaryMuscles: secondary,
     equipment: e.equipment,
     exerciseType: e.exerciseType,
+    styles: parseList(e.styles),
     instructions: e.instructions,
     videoUrl: e.videoUrl,
     isCustom: e.ownerId !== null,
@@ -47,6 +53,7 @@ const toPatch = (b: UpdateExerciseRequest) => ({
   ...(b.secondaryMuscles !== undefined && { secondaryMuscles: b.secondaryMuscles }),
   ...(b.equipment !== undefined && { equipment: b.equipment }),
   ...(b.exerciseType !== undefined && { exerciseType: b.exerciseType }),
+  ...(b.styles !== undefined && { styles: b.styles }),
   ...(b.instructions !== undefined && { instructions: b.instructions ?? null }),
   ...(b.videoUrl !== undefined && { videoUrl: b.videoUrl ?? null }),
 });
@@ -68,6 +75,7 @@ export class LibraryController {
     @Query('q') q?: string,
     @Query('muscle') muscle?: string,
     @Query('equipment') equipment?: string,
+    @Query('style') style?: string,
     @Query('mine') mine?: string,
   ): Promise<LibraryExerciseListResponse> {
     const rows = await this.list.execute({
@@ -75,6 +83,8 @@ export class LibraryController {
       q: q?.trim() || undefined,
       muscle: muscle || undefined,
       equipment: equipment || undefined,
+      // Only a slug from the contracts enum: the repository builds a LIKE pattern, where `%` would be a wildcard.
+      style: exerciseStyleSchema.safeParse(style).data,
       mine: mine === 'true' || mine === '1',
     });
     return { items: rows.map(toLibraryExerciseDto) };
@@ -98,6 +108,7 @@ export class LibraryController {
       secondaryMuscles: body.secondaryMuscles,
       equipment: body.equipment,
       exerciseType: body.exerciseType,
+      styles: body.styles,
       instructions: body.instructions,
       videoUrl: body.videoUrl,
     });

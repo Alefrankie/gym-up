@@ -14,6 +14,7 @@ export interface CustomExerciseInput {
   secondaryMuscles: string[];
   equipment: string;
   exerciseType: string;
+  styles?: string[];
   instructions?: string | null;
   videoUrl?: string | null;
 }
@@ -58,6 +59,7 @@ export class CreateCustomExerciseUseCase {
       secondaryMuscles: input.secondaryMuscles,
       equipment: input.equipment,
       exerciseType: input.exerciseType,
+      styles: input.styles ?? [],
       instructions: input.instructions ?? null,
       videoUrl: input.videoUrl ?? null,
     });

@@ -1,9 +1,17 @@
 // More system exercises, picked from free-exercise-db (github.com/yuhonas/free-exercise-db, public domain under
 // the Unlicense) plus a few common gym names, mapped to our taxonomy (ADR-017). Their Spanish names and search
-// aliases live in @gym-up/contracts (EXERCISE_NAMES_ES). They ship without instructions for now.
+// aliases live in @gym-up/contracts (EXERCISE_NAMES_ES). Most ship without instructions for now; rows added
+// later carry a short Spanish how-to in the sixth field.
 import type { CatalogExercise } from './catalog';
 
-type Row = [name: string, primary: string, secondary: string[], equipment: string, type: string];
+type Row = [
+  name: string,
+  primary: string,
+  secondary: string[],
+  equipment: string,
+  type: string,
+  instructions?: string,
+];
 
 const W = 'weight_reps';
 const B = 'bodyweight_reps';
@@ -48,11 +56,11 @@ const ROWS: Row[] = [
   ['Behind the Neck Pulldown', 'lats', ['shoulders', 'upper_back'], 'cable', W],
   ['Rope Straight Arm Pulldown', 'lats', [], 'cable', W],
   ['Weighted Pull Up', 'lats', ['biceps', 'upper_back'], 'other', W],
-  ['Wide Grip Pull Up', 'lats', ['biceps', 'upper_back'], 'bodyweight', B],
-  ['Neutral Grip Pull Up', 'lats', ['biceps'], 'bodyweight', B],
+  ['Wide Grip Pull Up', 'lats', ['biceps', 'upper_back'], 'pull_up_bar', B],
+  ['Neutral Grip Pull Up', 'lats', ['biceps'], 'pull_up_bar', B],
   ['Band Assisted Pull Up', 'lats', ['biceps'], 'band', B],
-  ['Muscle Up', 'lats', ['triceps', 'chest'], 'bodyweight', B],
-  ['Scapular Pull Up', 'traps', ['lats'], 'bodyweight', B],
+  ['Muscle Up', 'lats', ['triceps', 'chest'], 'pull_up_bar', B],
+  ['Scapular Pull Up', 'traps', ['lats'], 'pull_up_bar', B],
   ['Inverted Row', 'upper_back', ['lats', 'biceps'], 'bodyweight', B],
   ['Pendlay Row', 'upper_back', ['lats', 'biceps'], 'barbell', W],
   ['Reverse Grip Barbell Row', 'upper_back', ['lats', 'biceps'], 'barbell', W],
@@ -72,6 +80,30 @@ const ROWS: Row[] = [
   ['Reverse Hyperextension', 'glutes', ['hamstrings', 'lower_back'], 'machine', W],
   ['Superman', 'lower_back', ['glutes'], 'bodyweight', B],
   ['Bird Dog', 'lower_back', ['abdominals', 'glutes'], 'bodyweight', B],
+
+  // Back without a pull-up bar: floor work and bands
+  ['Prone Y Raise', 'traps', ['shoulders', 'upper_back'], 'bodyweight', B,
+    '1. Túmbate boca abajo con la frente apoyada y los brazos estirados formando una Y.\n2. Levanta los brazos con los pulgares hacia el techo juntando los omóplatos.\n3. Baja despacio hasta rozar el suelo.'],
+  ['Prone T Raise', 'upper_back', ['traps', 'shoulders'], 'bodyweight', B,
+    '1. Boca abajo, abre los brazos en cruz a la altura de los hombros.\n2. Eleva los brazos juntando los omóplatos, con los pulgares hacia el techo.\n3. Baja controlando hasta rozar el suelo.'],
+  ['Prone W Raise', 'upper_back', ['traps', 'shoulders'], 'bodyweight', B,
+    '1. Boca abajo, flexiona los codos cerca del cuerpo formando una W.\n2. Eleva codos y manos llevando los omóplatos hacia la columna.\n3. Baja despacio manteniendo el cuello relajado.'],
+  ['Reverse Snow Angel', 'upper_back', ['traps', 'shoulders'], 'bodyweight', B,
+    '1. Boca abajo con los brazos pegados al cuerpo y las palmas hacia abajo.\n2. Desliza los brazos por el suelo hasta llevarlos por encima de la cabeza sin doblar los codos.\n3. Vuelve al inicio por el mismo recorrido, despacio.'],
+  ['Prone Cobra', 'upper_back', ['lower_back', 'traps'], 'bodyweight', D,
+    '1. Boca abajo con los brazos a los lados y las palmas hacia el suelo.\n2. Despega pecho y brazos girando las palmas hacia fuera y juntando los omóplatos.\n3. Mantén la posición respirando con normalidad y baja despacio.'],
+  ['Band Lat Pulldown', 'lats', ['biceps', 'upper_back'], 'band', W,
+    '1. Ancla la banda por encima de la cabeza y sujeta un extremo con cada mano.\n2. Tira hacia abajo llevando los codos hacia las costillas.\n3. Sube los brazos despacio hasta estirarlos del todo.'],
+  ['Band Straight Arm Pulldown', 'lats', [], 'band', W,
+    '1. Ancla la banda a la altura de la cabeza y agárrala con los brazos estirados.\n2. Baja los brazos rectos hasta los muslos sin flexionar los codos.\n3. Vuelve arriba controlando la tensión.'],
+  ['Band Seated Row', 'upper_back', ['lats', 'biceps'], 'band', W,
+    '1. Siéntate en el suelo con las piernas estiradas y pasa la banda por las plantas de los pies.\n2. Tira de los extremos hacia el abdomen llevando los codos atrás.\n3. Estira los brazos despacio manteniendo la espalda recta.'],
+  ['Single Arm Band Row', 'upper_back', ['lats', 'biceps'], 'band', W,
+    '1. Ancla la banda a la altura del pecho y sujétala con una mano.\n2. Tira del extremo hacia el costado pegando el codo al cuerpo.\n3. Estira el brazo despacio y repite con el otro lado.'],
+  ['Band Bent Over Row', 'upper_back', ['lats', 'biceps'], 'band', W,
+    '1. Pisa el centro de la banda y sujeta un extremo con cada mano.\n2. Inclina el tronco con la espalda recta y tira de la banda hacia el abdomen.\n3. Baja los brazos despacio sin encorvar la espalda.'],
+  ['Band Face Pull', 'shoulders', ['upper_back', 'traps'], 'band', W,
+    '1. Ancla la banda a la altura de la cara y agárrala con las dos manos.\n2. Tira hacia la frente abriendo los codos a la altura de los hombros.\n3. Vuelve al inicio controlando la tensión.'],
   ['Rack Pull', 'lower_back', ['glutes', 'hamstrings', 'traps'], 'barbell', W],
   ['Deficit Deadlift', 'lower_back', ['hamstrings', 'glutes'], 'barbell', W],
   ['Trap Bar Deadlift', 'quadriceps', ['glutes', 'hamstrings', 'lower_back'], 'barbell', W],
@@ -80,6 +112,8 @@ const ROWS: Row[] = [
   ['Barbell Shrug', 'traps', [], 'barbell', W],
   ['Cable Shrug', 'traps', [], 'cable', W],
   ['Smith Machine Shrug', 'traps', [], 'machine', W],
+  ['Band Shrug', 'traps', [], 'band', W,
+    '1. Pisa el centro de la banda y sujeta un extremo con cada mano, con los brazos estirados.\n2. Eleva los hombros hacia las orejas sin flexionar los codos.\n3. Baja despacio hasta notar el estiramiento del trapecio.'],
 
   // Shoulders
   ['Seated Barbell Shoulder Press', 'shoulders', ['triceps'], 'barbell', W],
@@ -159,7 +193,7 @@ const ROWS: Row[] = [
   ['Cable Wrist Curl', 'forearms', [], 'cable', W],
   ['Wrist Roller', 'forearms', [], 'other', W],
   ['Plate Pinch', 'forearms', [], 'other', D],
-  ['Dead Hang', 'forearms', ['lats'], 'bodyweight', D],
+  ['Dead Hang', 'forearms', ['lats'], 'pull_up_bar', D],
   ["Farmer's Walk", 'forearms', ['traps', 'abdominals'], 'dumbbell', W],
 
   // Abs
@@ -179,8 +213,8 @@ const ROWS: Row[] = [
   ['Mountain Climber', 'abdominals', ['quadriceps', 'shoulders'], 'bodyweight', B],
   ['Lying Leg Raise', 'abdominals', [], 'bodyweight', B],
   ["Captain's Chair Knee Raise", 'abdominals', [], 'bodyweight', B],
-  ['Hanging Knee Raise', 'abdominals', ['forearms'], 'bodyweight', B],
-  ['Toes to Bar', 'abdominals', ['lats', 'forearms'], 'bodyweight', B],
+  ['Hanging Knee Raise', 'abdominals', ['forearms'], 'pull_up_bar', B],
+  ['Toes to Bar', 'abdominals', ['lats', 'forearms'], 'pull_up_bar', B],
   ['V-Up', 'abdominals', [], 'bodyweight', B],
   ['Flutter Kicks', 'abdominals', [], 'bodyweight', B],
   ['Heel Touches', 'abdominals', [], 'bodyweight', B],
@@ -290,10 +324,13 @@ const ROWS: Row[] = [
   ['Plate Neck Extension', 'neck', [], 'other', W],
 ];
 
-export const EXTRA_EXERCISES: CatalogExercise[] = ROWS.map(([name, primary, secondary, equipment, type]) => ({
-  name,
-  primary,
-  secondary,
-  equipment,
-  type,
-}));
+export const EXTRA_EXERCISES: CatalogExercise[] = ROWS.map(
+  ([name, primary, secondary, equipment, type, instructions]) => ({
+    name,
+    primary,
+    secondary,
+    equipment,
+    type,
+    instructions,
+  }),
+);

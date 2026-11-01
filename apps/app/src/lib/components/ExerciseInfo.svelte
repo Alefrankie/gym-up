@@ -1,7 +1,7 @@
 <script lang="ts">
   import { exerciseHistoryResponseSchema, type ChartPointDto } from '@gym-up/contracts';
   import { t } from '#lib/i18n';
-  import { TYPE_LABELS, equipment, muscle } from '#lib/labels';
+  import { TYPE_LABELS, equipment, muscle, style } from '#lib/labels';
   import { cachedGet } from '#lib/offline/cache';
   import { toDisplay } from '#lib/offline/workout-view.svelte';
   import { session } from '#lib/session';
@@ -23,6 +23,7 @@
       secondaryMuscles: string[];
       equipment?: string;
       exerciseType?: string;
+      styles?: string[];
       instructions?: string | null;
       videoUrl?: string | null;
     };
@@ -71,6 +72,10 @@
     {#if exercise.exerciseType}
       <dt>{t('exercise.tracking')}</dt>
       <dd>{TYPE_LABELS[exercise.exerciseType] ?? exercise.exerciseType}</dd>
+    {/if}
+    {#if exercise.styles?.length}
+      <dt>{t('library.style')}</dt>
+      <dd>{exercise.styles.map(style).join(', ')}</dd>
     {/if}
   </dl>
 </section>

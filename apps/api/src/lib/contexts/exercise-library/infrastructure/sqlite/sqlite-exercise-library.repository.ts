@@ -29,6 +29,8 @@ export class SqliteExerciseLibraryRepository implements ExerciseLibraryRepositor
       );
     }
     if (filter.equipment) conditions.push(eq(exercises.equipment, filter.equipment));
+    // `styles` is a JSON array of slugs, so the quotes keep "calisthenics" from matching a longer slug.
+    if (filter.style) conditions.push(like(exercises.styles, `%"${filter.style}"%`));
     return this.db
       .select()
       .from(exercises)
@@ -61,6 +63,7 @@ export class SqliteExerciseLibraryRepository implements ExerciseLibraryRepositor
         secondaryMuscles: JSON.stringify(input.secondaryMuscles),
         equipment: input.equipment,
         exerciseType: input.exerciseType,
+        styles: JSON.stringify(input.styles),
         instructions: input.instructions,
         videoUrl: input.videoUrl,
         createdAt: Date.now(),
@@ -76,6 +79,7 @@ export class SqliteExerciseLibraryRepository implements ExerciseLibraryRepositor
     if (patch.secondaryMuscles !== undefined) set.secondaryMuscles = JSON.stringify(patch.secondaryMuscles);
     if (patch.equipment !== undefined) set.equipment = patch.equipment;
     if (patch.exerciseType !== undefined) set.exerciseType = patch.exerciseType;
+    if (patch.styles !== undefined) set.styles = JSON.stringify(patch.styles);
     if (patch.instructions !== undefined) set.instructions = patch.instructions;
     if (patch.videoUrl !== undefined) set.videoUrl = patch.videoUrl;
     if (patch.isArchived !== undefined) set.isArchived = patch.isArchived;

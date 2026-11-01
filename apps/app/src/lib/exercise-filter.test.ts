@@ -9,6 +9,7 @@ const ex = (name: string, primaryMuscle: string, equipment: string, secondaryMus
   secondaryMuscles,
   equipment,
   exerciseType: 'weight_reps',
+  styles: [],
   instructions: null,
   videoUrl: null,
   isCustom: false,

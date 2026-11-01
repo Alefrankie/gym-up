@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { idSchema, isoDateSchema, setPlanSchema, setTypeSchema, weightUnitSchema } from './common';
 
+/**
+ * Body weight of the profile when the set was logged, in kg. Only bodyweight sets carry it; it is a
+ * snapshot, never recomputed, and `null` when the profile has no body weight. It never replaces
+ * `weight`, which stays the external load (added weight).
+ */
+const bodyWeightAtSetSchema = z.number().min(25).max(300).nullable().default(null);
+
 export const workoutStatusSchema = z.enum(['in_progress', 'completed']);
 export type WorkoutStatus = z.infer<typeof workoutStatusSchema>;
 
@@ -33,11 +40,13 @@ export const workoutEntrySchema = z.object({
   exerciseId: z.string(),
   setNumber: z.number().int().min(1),
   reps: z.number().int().min(1).max(100),
-  /** Stored in kg (ADR-006). */
+  /** External load (added weight) in kg (ADR-006). Not the lifter's own body weight. */
   weight: z.number().min(0).max(500),
   completed: z.boolean(),
   notes: z.string().max(500).nullable(),
   setType: setTypeSchema.default('normal'),
+  /** Body weight captured when the set was logged; null outside bodyweight sets. */
+  bodyWeightKgAtSet: bodyWeightAtSetSchema,
   createdAt: isoDateSchema,
 });
 export type WorkoutEntryDto = z.infer<typeof workoutEntrySchema>;
@@ -48,12 +57,18 @@ export const upsertSetRequestSchema = z.object({
   exerciseId: z.string().min(1),
   setNumber: z.number().int().min(1).max(10),
   reps: z.number().int().min(1).max(100),
-  /** Value as typed by the user, in `weightUnit`; the API converts to kg. */
+  /** External load (added weight) as typed by the user, in `weightUnit`; the API converts to kg. */
   weight: z.number().min(0),
   weightUnit: weightUnitSchema,
   completed: z.boolean().default(true),
   notes: z.string().max(500).nullable().default(null),
   setType: setTypeSchema.default('normal'),
+  /**
+   * Body weight captured by the client for a bodyweight set, always in kg (`weightUnit` does not
+   * apply to it). Replaying a queued set sends the value captured back then; null or absent (an
+   * older client) leaves whatever the entry already had.
+   */
+  bodyWeightKgAtSet: z.number().min(25).max(300).nullish(),
 });
 export type UpsertSetRequest = z.infer<typeof upsertSetRequestSchema>;
 
@@ -63,13 +78,17 @@ export const workoutDetailEntrySchema = z.object({
   exerciseId: z.string(),
   exerciseName: z.string(),
   muscleGroup: z.string(),
+  /** How the exercise is measured, so a session rebuilt from the detail still knows a bodyweight one. */
+  exerciseType: z.string().default('weight_reps'),
   setNumber: z.number().int().min(1),
   reps: z.number().int(),
-  /** In kg (ADR-006). */
+  /** External load (added weight) in kg (ADR-006). */
   weight: z.number(),
   completed: z.boolean(),
   notes: z.string().nullable(),
   setType: setTypeSchema.default('normal'),
+  /** Body weight captured when the set was logged; null outside bodyweight sets. */
+  bodyWeightKgAtSet: bodyWeightAtSetSchema,
 });
 export type WorkoutDetailEntryDto = z.infer<typeof workoutDetailEntrySchema>;
 
@@ -117,6 +136,8 @@ export const routineExerciseSchema = z.object({
   muscleGroup: z.string(),
   secondaryMuscles: z.array(z.string()).optional(),
   equipment: z.string().optional(),
+  /** How the exercise is measured; `bodyweight_reps` is what makes the workout screen capture body weight. */
+  type: z.string().optional(),
   targetSets: z.number().int(),
   targetReps: z.number().int(),
   exerciseOrder: z.number().int(),

@@ -118,6 +118,8 @@ export const es = {
   'library.muscle': 'Músculo',
   'library.equipment': 'Equipo',
   'library.allEquipment': 'Todo el equipo',
+  'library.style': 'Colección',
+  'library.allStyles': 'Todas las colecciones',
   'library.mineOnly': 'Solo los míos',
   'library.noMatch': 'Ningún ejercicio coincide.',
   'library.createOwn': 'Crear un ejercicio propio',
@@ -176,6 +178,7 @@ export const es = {
   'labels.equipment.machine': 'Máquina',
   'labels.equipment.cable': 'Polea',
   'labels.equipment.bodyweight': 'Peso corporal',
+  'labels.equipment.pull_up_bar': 'Barra de dominadas',
   'labels.equipment.kettlebell': 'Kettlebell',
   'labels.equipment.band': 'Banda',
   'labels.equipment.other': 'Otro',
@@ -183,6 +186,7 @@ export const es = {
   'labels.type.bodyweight_reps': 'Repeticiones con peso corporal',
   'labels.type.duration': 'Duración',
   'labels.type.distance_duration': 'Distancia y duración',
+  'labels.style.calisthenics': 'Calistenia',
 } as const;
 
 export const en: Record<keyof typeof es, string> = {
@@ -304,6 +308,8 @@ export const en: Record<keyof typeof es, string> = {
   'library.muscle': 'Muscle',
   'library.equipment': 'Equipment',
   'library.allEquipment': 'All equipment',
+  'library.style': 'Collection',
+  'library.allStyles': 'All collections',
   'library.mineOnly': 'Only mine',
   'library.noMatch': 'No exercises match.',
   'library.createOwn': 'Create your own exercise',
@@ -362,6 +368,7 @@ export const en: Record<keyof typeof es, string> = {
   'labels.equipment.machine': 'Machine',
   'labels.equipment.cable': 'Cable',
   'labels.equipment.bodyweight': 'Bodyweight',
+  'labels.equipment.pull_up_bar': 'Pull-up bar',
   'labels.equipment.kettlebell': 'Kettlebell',
   'labels.equipment.band': 'Band',
   'labels.equipment.other': 'Other',
@@ -369,4 +376,5 @@ export const en: Record<keyof typeof es, string> = {
   'labels.type.bodyweight_reps': 'Bodyweight reps',
   'labels.type.duration': 'Duration',
   'labels.type.distance_duration': 'Distance and duration',
+  'labels.style.calisthenics': 'Calisthenics',
 };

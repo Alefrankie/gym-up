@@ -47,12 +47,16 @@ export interface WorkoutDetailEntry {
   exerciseId: string;
   exerciseName: string;
   muscleGroup: string;
+  /** `weight_reps` | `bodyweight_reps` | `duration` | `distance_duration` (exercises.exercise_type). */
+  exerciseType: string;
   setNumber: number;
   reps: number;
-  weight: number; // kg
+  weight: number; // kg — external load (added weight)
   completed: boolean;
   notes: string | null;
   setType: 'normal' | 'warmup' | 'drop' | 'failure';
+  /** Body weight when the set was logged (kg); null outside bodyweight sets and on older rows. */
+  bodyWeightKgAtSet: number | null;
 }
 
 /**
@@ -198,6 +202,13 @@ export abstract class WorkoutRepository {
   abstract getEntriesWithExercises(
     workoutId: string,
   ): Promise<WorkoutDetailEntry[]>;
+
+  /**
+   * `exercises.exercise_type` of one exercise (`weight_reps`, `bodyweight_reps`, ...), or
+   * `undefined` when the id is unknown. Used to refuse a body-weight capture on a lift where the
+   * lifter's own mass is not part of the load.
+   */
+  abstract getExerciseType(exerciseId: string): Promise<string | undefined>;
 }
 
 /**
@@ -206,6 +217,9 @@ export abstract class WorkoutRepository {
  * define the entry's identity).
  */
 export type WorkoutEntryPatch = Partial<
-  Pick<WorkoutEntry, 'reps' | 'weight' | 'completed' | 'notes' | 'setType'>
+  Pick<
+    WorkoutEntry,
+    'reps' | 'weight' | 'completed' | 'notes' | 'setType' | 'bodyWeightKgAtSet'
+  >
 >;
 

@@ -21,6 +21,9 @@
   const ex = $derived(index >= 0 ? exercises[index]! : null);
   const isLast = $derived(index === exercises.length - 1);
   const active = $derived(ex ? view.activeSet(ex) : null);
+  // Bodyweight exercises load the body, not the bar: the number in the box is the added weight only.
+  const bodyweight = $derived(!!ex && view.isBodyweight(ex));
+  const bodyWeight = $derived(ex ? view.bodyWeight(ex) : null);
 
   const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const ago = (iso: string) => {
@@ -63,6 +66,13 @@
   <div class="pills">
     <span class="chip"><Icon name="timer" size={14} />{mmss(ex.restSeconds ?? REST_SECONDS)}</span>
     <span class="chip">{muscle(ex.muscleGroup)}</span>
+    {#if bodyweight}
+      {#if bodyWeight}
+        <span class="chip on">{t('workout.bodyWeight')}: {bodyWeight} {view.unit}</span>
+      {:else}
+        <a class="chip link" href="/settings">{t('workout.bodyWeightUnset')}</a>
+      {/if}
+    {/if}
     {#if ex.last}
       <span class="chip on"><Icon name="history" size={14} />{ago(ex.last.date)}: {toDisplay(ex.last.weight, view.unit)} {view.unit} × {ex.last.reps}</span>
       {#if ex.last.record}<span class="chip record"><Icon name="flame" size={14} />{t('workout.record')}: {toDisplay(ex.last.record.weight, view.unit)} {view.unit} × {ex.last.record.reps}</span>{/if}
@@ -77,7 +87,7 @@
     <div class="heads">
       <span>{t('workout.set')}</span>
       <span>{t('workout.reps')}</span>
-      <span>{view.unit.toUpperCase()}</span>
+      <span>{bodyweight ? `${t('workout.addedWeight')} (${view.unit})` : view.unit.toUpperCase()}</span>
       <span></span>
     </div>
     <SortableRows
@@ -113,7 +123,7 @@
               view.weightChanged(ex, n);
               view.edited(ex.exerciseId, n);
             }}
-            aria-label={t('workout.setWeight', { n, unit: view.unit })}
+            aria-label={bodyweight ? t('workout.setAddedWeight', { n, unit: view.unit }) : t('workout.setWeight', { n, unit: view.unit })}
           />
           <button
             type="button"

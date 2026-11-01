@@ -26,9 +26,11 @@ export interface ExerciseFilter {
   muscle: string;
   /** '' = any. */
   equipment: string;
+  /** Style collection the exercise is tagged with ('calisthenics'); '' = any. Equipment is a separate filter. */
+  style: string;
 }
 
-export const emptyFilter = (): ExerciseFilter => ({ q: '', muscle: '', equipment: '' });
+export const emptyFilter = (): ExerciseFilter => ({ q: '', muscle: '', equipment: '', style: '' });
 
 /** Words people type for each muscle slug, in Spanish and English, so "pecho" or "piernas" find exercises. */
 const MUSCLE_WORDS: Record<string, string> = {
@@ -58,9 +60,15 @@ const EQUIPMENT_WORDS: Record<string, string> = {
   dumbbell: 'mancuerna mancuernas dumbbell',
   machine: 'maquina machine',
   cable: 'polea poleas cable',
-  bodyweight: 'peso corporal sin peso calistenia bodyweight',
+  bodyweight: 'peso corporal sin peso bodyweight',
+  pull_up_bar: 'barra dominadas barra fija pull up bar colgarse',
   kettlebell: 'kettlebell pesa rusa',
   band: 'banda liga elastico band',
+};
+
+/** Words that find a style collection; "calistenia" now reaches the tagged exercises, not every bodyweight one. */
+const STYLE_WORDS: Record<string, string> = {
+  calisthenics: 'calistenia calisthenics street workout',
 };
 
 /** Words that carry no meaning in a search ("press de banca con barra" → press, banca, barra). */
@@ -134,9 +142,12 @@ function indexed(e: LibraryExerciseDto): Indexed {
     ix = {
       names: words(text),
       tags: words(
-        [MUSCLE_WORDS[e.primaryMuscle] ?? e.primaryMuscle, ...e.secondaryMuscles.map((m) => m.replace('_', ' ')), EQUIPMENT_WORDS[e.equipment] ?? ''].join(
-          ' ',
-        ),
+        [
+          MUSCLE_WORDS[e.primaryMuscle] ?? e.primaryMuscle,
+          ...e.secondaryMuscles.map((m) => m.replace('_', ' ')),
+          EQUIPMENT_WORDS[e.equipment] ?? '',
+          ...(e.styles ?? []).map((s) => STYLE_WORDS[s] ?? s),
+        ].join(' '),
       ),
       full: [e.name, ...es].map(norm),
     };
@@ -250,6 +261,8 @@ export function filterExercises(
   for (const e of items) {
     if (f.muscle && e.primaryMuscle !== f.muscle && !e.secondaryMuscles.includes(f.muscle)) continue;
     if (f.equipment && e.equipment !== f.equipment) continue;
+    // A collection is independent of the equipment: only exercises actually tagged with it pass.
+    if (f.style && !(e.styles ?? []).includes(f.style)) continue;
     const score = searchScore(e, f.q);
     if (score > 0) scored.push({ e, score, label: name(e) });
   }

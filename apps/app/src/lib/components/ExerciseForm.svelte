@@ -6,6 +6,7 @@
     secondaryMuscles: string[];
     equipment: string;
     exerciseType: string;
+    styles: string[];
     instructions: string | null;
     videoUrl: string | null;
   }
@@ -13,8 +14,8 @@
 
 <script lang="ts">
   import { t } from '#lib/i18n';
-  import { EQUIPMENT, EXERCISE_TYPES, MUSCLE_GROUPS, type LibraryExerciseDto } from '@gym-up/contracts';
-  import { EQUIPMENT_LABELS, MUSCLE_LABELS, TYPE_LABELS } from '#lib/labels';
+  import { EQUIPMENT, EXERCISE_STYLES, EXERCISE_TYPES, MUSCLE_GROUPS, type LibraryExerciseDto } from '@gym-up/contracts';
+  import { EQUIPMENT_LABELS, MUSCLE_LABELS, STYLE_LABELS, TYPE_LABELS } from '#lib/labels';
 
   let {
     initial,
@@ -35,11 +36,17 @@
   let secondary = $state<string[]>(initial?.secondaryMuscles ?? []);
   let equipment = $state<string>(initial?.equipment ?? 'dumbbell');
   let exerciseType = $state<string>(initial?.exerciseType ?? 'weight_reps');
+  let styles = $state<string[]>(initial?.styles ?? []);
   let instructions = $state(initial?.instructions ?? '');
   let videoUrl = $state(initial?.videoUrl ?? '');
 
   function toggleSecondary(m: string) {
     secondary = secondary.includes(m) ? secondary.filter((x) => x !== m) : [...secondary, m];
+  }
+
+  // Opt-in: a bodyweight exercise is not calisthenics by itself, so the owner says which collections it joins.
+  function toggleStyle(s: string) {
+    styles = styles.includes(s) ? styles.filter((x) => x !== s) : [...styles, s];
   }
 
   function submit(ev: SubmitEvent) {
@@ -50,6 +57,7 @@
       secondaryMuscles: secondary.filter((m) => m !== primaryMuscle),
       equipment,
       exerciseType,
+      styles,
       instructions: instructions || null,
       videoUrl: videoUrl || null,
     });
@@ -80,6 +88,16 @@
     {t('exercise.type')}
     <Select bind:value={exerciseType} options={EXERCISE_TYPES.map((ty) => ({ value: ty, label: TYPE_LABELS[ty] }))} />
   </label>
+  <fieldset>
+    <legend class="muted">{t('library.style')}</legend>
+    <div class="chips">
+      {#each EXERCISE_STYLES as s}
+        <button type="button" class="chip" class:on={styles.includes(s)} aria-pressed={styles.includes(s)} onclick={() => toggleStyle(s)}>
+          {STYLE_LABELS[s]}
+        </button>
+      {/each}
+    </div>
+  </fieldset>
   <label>{t('exercise.instructions')} <textarea rows="4" maxlength="2000" bind:value={instructions}></textarea></label>
   <label>{t('exercise.videoUrl')} <input type="url" maxlength="300" bind:value={videoUrl} /></label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}

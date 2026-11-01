@@ -27,13 +27,22 @@ export const MUSCLE_GROUPS = [
 export const muscleGroupSchema = z.enum(MUSCLE_GROUPS);
 export type MuscleGroup = z.infer<typeof muscleGroupSchema>;
 
-export const EQUIPMENT = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'kettlebell', 'band', 'other'] as const;
+/** `pull_up_bar` is its own category: hanging work needs a bar, unlike floor and parallel-bar bodyweight work. */
+export const EQUIPMENT = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'pull_up_bar', 'kettlebell', 'band', 'other'] as const;
 export const equipmentSchema = z.enum(EQUIPMENT);
 export type Equipment = z.infer<typeof equipmentSchema>;
 
 export const EXERCISE_TYPES = ['weight_reps', 'bodyweight_reps', 'duration', 'distance_duration'] as const;
 export const exerciseTypeSchema = z.enum(EXERCISE_TYPES);
 export type ExerciseType = z.infer<typeof exerciseTypeSchema>;
+
+/**
+ * Training-style collections an exercise belongs to, independent of the equipment it needs: a pull-up is
+ * calisthenics and still requires a bar. A list, so more collections can join `calisthenics` later.
+ */
+export const EXERCISE_STYLES = ['calisthenics'] as const;
+export const exerciseStyleSchema = z.enum(EXERCISE_STYLES);
+export type ExerciseStyle = z.infer<typeof exerciseStyleSchema>;
 
 export const libraryExerciseDtoSchema = z.object({
   id: z.string(),
@@ -42,6 +51,8 @@ export const libraryExerciseDtoSchema = z.object({
   secondaryMuscles: z.array(z.string()),
   equipment: z.string(),
   exerciseType: z.string(),
+  /** Style collections this exercise belongs to; absent in payloads cached before collections existed. */
+  styles: z.array(z.string()).default([]),
   instructions: z.string().nullable(),
   videoUrl: z.string().nullable(),
   /** `true` for exercises created by a user (editable by the owner only). */
@@ -60,6 +71,8 @@ const exerciseFields = {
   secondaryMuscles: z.array(muscleGroupSchema).max(5).default([]),
   equipment: equipmentSchema,
   exerciseType: exerciseTypeSchema.default('weight_reps'),
+  /** Opt-in: a custom exercise joins a collection only when its owner says so. */
+  styles: z.array(exerciseStyleSchema).max(EXERCISE_STYLES.length).default([]),
   instructions: z.string().trim().max(2000).nullish(),
   videoUrl: z.string().trim().url().max(300).nullish(),
 };

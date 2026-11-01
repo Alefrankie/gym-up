@@ -4,6 +4,8 @@ export interface ExerciseFilter {
   q?: string;
   muscle?: string;
   equipment?: string;
+  /** One style collection slug (`calisthenics`): only exercises tagged with it. */
+  style?: string;
   /** Only the caller's own custom exercises (archived ones included). */
   mine?: boolean;
   userId: string;
@@ -17,6 +19,7 @@ export interface NewCustomExercise {
   secondaryMuscles: string[];
   equipment: string;
   exerciseType: string;
+  styles: string[];
   instructions: string | null;
   videoUrl: string | null;
 }

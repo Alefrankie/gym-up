@@ -24,9 +24,11 @@ const MUSCLE_SLUGS = [
   'other',
 ] as const;
 
-const EQUIPMENT_SLUGS = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'kettlebell', 'band', 'other'] as const;
+const EQUIPMENT_SLUGS = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'pull_up_bar', 'kettlebell', 'band', 'other'] as const;
 
 const TYPE_SLUGS = ['weight_reps', 'bodyweight_reps', 'duration', 'distance_duration'] as const;
+
+const STYLE_SLUGS = ['calisthenics'] as const;
 
 /** A read-only map whose values are looked up in the current language each time they are read. */
 function labelMap(slugs: readonly string[], prefix: string): Record<string, string> {
@@ -40,6 +42,8 @@ function labelMap(slugs: readonly string[], prefix: string): Record<string, stri
 export const MUSCLE_LABELS = labelMap(MUSCLE_SLUGS, 'labels.muscle');
 export const EQUIPMENT_LABELS = labelMap(EQUIPMENT_SLUGS, 'labels.equipment');
 export const TYPE_LABELS = labelMap(TYPE_SLUGS, 'labels.type');
+export const STYLE_LABELS = labelMap(STYLE_SLUGS, 'labels.style');
 
 export const muscle = (slug: string): string => MUSCLE_LABELS[slug] ?? slug;
 export const equipment = (slug: string): string => EQUIPMENT_LABELS[slug] ?? slug;
+export const style = (slug: string): string => STYLE_LABELS[slug] ?? slug;

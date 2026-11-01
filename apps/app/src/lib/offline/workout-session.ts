@@ -10,8 +10,14 @@ export interface SetRow {
   /** Client-generated id; the same id is sent on every retry (idempotent upsert). */
   id: string;
   reps: number;
-  /** In `WorkoutSnapshot.unit`, as typed by the user. */
+  /** External load (added weight) in `WorkoutSnapshot.unit`, as typed by the user. */
   weight: number;
+  /**
+   * Body weight of the profile when this set was first logged, always in kg (never converted to the
+   * display unit). Only bodyweight sets get one, and only when the profile has a body weight; it is
+   * captured once, so a profile edited before the outbox drains cannot change what was sent.
+   */
+  bodyWeightKg?: number | null;
   completed: boolean;
   /** Missing on snapshots saved before set types existed: read as 'normal'. */
   type?: SetType;

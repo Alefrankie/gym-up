@@ -300,12 +300,14 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         exerciseId: workoutEntries.exerciseId,
         exerciseName: exercises.name,
         muscleGroup: exercises.muscleGroup,
+        exerciseType: exercises.exerciseType,
         setNumber: workoutEntries.setNumber,
         reps: workoutEntries.reps,
         weight: workoutEntries.weight,
         completed: workoutEntries.completed,
         notes: workoutEntries.notes,
         setType: workoutEntries.setType,
+        bodyWeightKgAtSet: workoutEntries.bodyWeightKgAtSet,
       })
       .from(workoutEntries)
       .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
@@ -320,12 +322,23 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       exerciseId: row.exerciseId,
       exerciseName: row.exerciseName,
       muscleGroup: row.muscleGroup,
+      exerciseType: row.exerciseType,
       setNumber: row.setNumber,
       reps: row.reps,
       weight: row.weight,
       completed: row.completed,
       notes: row.notes,
       setType: row.setType,
+      bodyWeightKgAtSet: row.bodyWeightKgAtSet ?? null,
     }));
+  }
+
+  async getExerciseType(exerciseId: string): Promise<string | undefined> {
+    const rows = await this.db
+      .select({ exerciseType: exercises.exerciseType })
+      .from(exercises)
+      .where(eq(exercises.id, exerciseId))
+      .limit(1);
+    return rows[0]?.exerciseType;
   }
 }

@@ -79,6 +79,8 @@ export const exercises = sqliteTable('exercises', {
   secondaryMuscles: text('secondary_muscles').notNull().default('[]'),
   equipment: text('equipment').notNull().default('other'),
   exerciseType: text('exercise_type').notNull().default('weight_reps'),
+  /** JSON array of style collections (`["calisthenics"]`), independent of `equipment`. */
+  styles: text('styles').notNull().default('[]'),
   instructions: text('instructions'),
   videoUrl: text('video_url'),
   /** NULL = system exercise; otherwise the profile that created it (ADR-017). */
@@ -216,7 +218,14 @@ export const workoutEntries = sqliteTable('workout_entries', {
     .references(() => exercises.id),
   setNumber: integer('set_number').notNull(),
   reps: integer('reps').notNull(),
+  /** External load (added weight), in kg. Never the lifter's own body weight. */
   weight: integer('weight').notNull().default(0),
+  /**
+   * Body weight of the profile when the set was logged, in kg. Only bodyweight sets carry it, and
+   * only when the profile has one; a snapshot, so a later profile change never rewrites it. Rows
+   * logged before this column existed stay null (no backfill).
+   */
+  bodyWeightKgAtSet: real('body_weight_kg_at_set'),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
   notes: text('notes'),
   /** normal | warmup | drop | failure. Warm-up sets do not count toward volume. */

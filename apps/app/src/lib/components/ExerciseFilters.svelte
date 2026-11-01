@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { EQUIPMENT } from '@gym-up/contracts';
+  import { EQUIPMENT, EXERCISE_STYLES } from '@gym-up/contracts';
   import { t } from '#lib/i18n';
   import { FILTER_MUSCLES, type ExerciseFilter } from '#lib/exercise-filter';
-  import { equipment, muscle } from '#lib/labels';
+  import { equipment, muscle, style } from '#lib/labels';
   import Icon from './Icon.svelte';
   import MuscleFigure from './MuscleFigure.svelte';
 
@@ -20,6 +20,16 @@
     <Icon name="search" size={16} />
     <input bind:this={input} type="search" placeholder={t('library.search')} aria-label={t('library.search')} bind:value={filter.q} />
   </label>
+
+  <!-- A collection is a training style, not equipment: each exercise keeps showing the gear it needs. -->
+  <div class="chips" role="group" aria-label={t('library.style')}>
+    <button type="button" class="chip" class:on={!filter.style} aria-pressed={!filter.style} onclick={() => (filter.style = '')}>{t('library.allStyles')}</button>
+    {#each EXERCISE_STYLES as s (s)}
+      <button type="button" class="chip" class:on={filter.style === s} aria-pressed={filter.style === s} onclick={() => (filter.style = filter.style === s ? '' : s)}>
+        {style(s)}
+      </button>
+    {/each}
+  </div>
 
   <div class="chips" role="group" aria-label={t('library.muscle')}>
     <button type="button" class="chip" class:on={!filter.muscle} aria-pressed={!filter.muscle} onclick={() => (filter.muscle = '')}>{t('programs.filterAll')}</button>

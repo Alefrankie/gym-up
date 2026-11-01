@@ -1,5 +1,6 @@
 // Exercise catalog for the system exercises (ADR-017): Hevy muscle taxonomy, equipment, type, Spanish instructions.
 import { EXTRA_EXERCISES } from './catalog-extra';
+import { STYLES_BY_NAME } from './catalog-styles';
 
 export interface CatalogExercise {
   name: string;
@@ -9,6 +10,8 @@ export interface CatalogExercise {
   type: string;
   /** Spanish how-to; the imported extra exercises have none yet. */
   instructions?: string;
+  /** Style collections (`['calisthenics']`), set from db/catalog-styles.ts; equipment is unaffected. */
+  styles?: string[];
 }
 
 const BASE_CATALOG: CatalogExercise[] = [
@@ -603,7 +606,7 @@ const BASE_CATALOG: CatalogExercise[] = [
       "biceps",
       "upper_back"
     ],
-    "equipment": "bodyweight",
+    "equipment": "pull_up_bar",
     "type": "bodyweight_reps",
     "instructions": "1. Cuélgate de la barra con agarre prono algo más abierto que los hombros.\n2. Sube llevando el pecho hacia la barra.\n3. Baja despacio hasta extender los brazos."
   },
@@ -613,7 +616,7 @@ const BASE_CATALOG: CatalogExercise[] = [
     "secondary": [
       "biceps"
     ],
-    "equipment": "bodyweight",
+    "equipment": "pull_up_bar",
     "type": "bodyweight_reps",
     "instructions": "1. Cuélgate con agarre supino a la anchura de los hombros.\n2. Sube hasta pasar la barbilla por encima de la barra.\n3. Baja con control."
   },
@@ -873,7 +876,7 @@ const BASE_CATALOG: CatalogExercise[] = [
     "name": "Hanging Leg Raise",
     "primary": "abdominals",
     "secondary": [],
-    "equipment": "bodyweight",
+    "equipment": "pull_up_bar",
     "type": "bodyweight_reps",
     "instructions": "1. Cuélgate de una barra con los brazos extendidos.\n2. Eleva las piernas hasta la horizontal o más.\n3. Baja despacio sin balancearte."
   },
@@ -1082,4 +1085,11 @@ const BASE_CATALOG: CatalogExercise[] = [
   }
 ];
 
-export const EXERCISE_CATALOG: CatalogExercise[] = [...BASE_CATALOG, ...EXTRA_EXERCISES];
+export const EXERCISE_CATALOG: CatalogExercise[] = [...BASE_CATALOG, ...EXTRA_EXERCISES].map((e) => {
+  const styles = STYLES_BY_NAME.get(e.name);
+  return styles ? { ...e, styles } : e;
+});
+
+// A tagged name that no longer matches any exercise would drop out silently, so say it out loud.
+const unknown = [...STYLES_BY_NAME.keys()].filter((name) => !EXERCISE_CATALOG.some((e) => e.name === name));
+if (unknown.length) throw new Error(`db/catalog-styles.ts names no exercise in the catalog: ${unknown.join(', ')}`);
