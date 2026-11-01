@@ -3,6 +3,8 @@ import { addressFormSchema, coachToneSchema, isoDateSchema, routineTypeSchema, w
 
 export const registerRequestSchema = z.object({
   email: z.string().email(),
+  /** Optional for older clients; the current registration UI always asks for it. */
+  username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
   password: z.string().min(8).max(128),
   displayName: z.string().trim().min(1).max(80),
   routineType: routineTypeSchema,
@@ -11,8 +13,13 @@ export const registerRequestSchema = z.object({
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 
 export const loginRequestSchema = z.object({
-  email: z.string().email(),
+  /** New clients send one identifier; `email` remains accepted for older app builds. */
+  identifier: z.string().trim().min(1).max(254).optional(),
+  email: z.string().email().optional(),
   password: z.string().min(1).max(128),
+}).refine((input) => Boolean(input.identifier || input.email), {
+  message: 'Enter your email or username',
+  path: ['identifier'],
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 

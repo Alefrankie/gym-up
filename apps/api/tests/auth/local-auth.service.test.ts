@@ -18,6 +18,7 @@ const DDL = `
   CREATE TABLE profiles (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
+    username TEXT UNIQUE,
     password_hash TEXT NOT NULL,
     display_name TEXT NOT NULL,
     routine_type TEXT NOT NULL,

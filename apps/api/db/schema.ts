@@ -36,6 +36,8 @@ export const profiles = sqliteTable('profiles', {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(),
+  /** Optional only for accounts created before username login was introduced. */
+  username: text('username').unique(),
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name').notNull(),
   routineType: text('routine_type', { enum: ['hombre', 'mujer'] }).notNull(),

@@ -43,6 +43,13 @@
       "when": 1793380000000,
       "tag": "0012_feedback_board",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793558400000,
+      "tag": "0022_profile_username",
+      "breakpoints": true
     }
   ]
 }

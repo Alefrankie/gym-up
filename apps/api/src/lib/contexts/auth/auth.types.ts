@@ -38,6 +38,7 @@ export interface Session {
  */
 export interface RegisterInput {
   email: string;
+  username?: string;
   password: string;
   displayName: string;
   routineType: 'hombre' | 'mujer';
@@ -48,7 +49,9 @@ export interface RegisterInput {
  * Input for user login.
  */
 export interface LoginInput {
-  email: string;
+  identifier?: string;
+  /** Kept for compatibility with older clients that send an email property. */
+  email?: string;
   password: string;
 }
 

@@ -40,10 +40,10 @@ export class AuthController {
     @Optional() @Inject(RATE_LIMITER) private readonly limiter?: RateLimiter,
   ) {}
 
-  /** Hashing is memory-hard, so register and login are rate limited per client and email. */
-  private async throttle(kind: string, ip: string | undefined, email: string): Promise<void> {
+  /** Hashing is memory-hard, so register and login are rate limited per client and identifier. */
+  private async throttle(kind: string, ip: string | undefined, identifier: string): Promise<void> {
     if (!this.limiter) return;
-    const ok = await this.limiter.allow(`${kind}:${ip ?? 'unknown'}:${email.toLowerCase()}`);
+    const ok = await this.limiter.allow(`${kind}:${ip ?? 'unknown'}:${identifier.toLowerCase()}`);
     if (!ok) throw new HttpException('Too many attempts, try again later', 429);
   }
 
@@ -62,7 +62,7 @@ export class AuthController {
     @Body(new ZodValidationPipe(loginRequestSchema)) body: LoginRequest,
     @Headers('cf-connecting-ip') ip?: string,
   ): Promise<SessionResponse> {
-    await this.throttle('login', ip, body.email);
+    await this.throttle('login', ip, body.identifier ?? body.email ?? '');
     return toSessionResponse(await this.auth.login(body));
   }
 

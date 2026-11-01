@@ -18,6 +18,7 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   LogSetValidationError: 400,
   InvalidRoutineDayError: 400,
   EmailAlreadyRegisteredError: 409,
+  UsernameAlreadyRegisteredError: 409,
   InvalidCredentialsError: 401,
   NutritionEntryOwnershipError: 403,
   InvalidPhotoError: 400,

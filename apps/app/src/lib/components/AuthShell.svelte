@@ -31,11 +31,17 @@
 <style>
   .shell {
     min-height: 100dvh;
-    max-width: 24rem;
+    max-width: 29rem;
     margin: 0 auto;
-    padding: calc(env(safe-area-inset-top) + 2rem) 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
+    padding: calc(env(safe-area-inset-top) + 1.5rem) 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
+    justify-content: center;
+  }
+  @media (max-height: 700px) {
+    .shell {
+      justify-content: flex-start;
+    }
   }
   .brand {
     display: flex;
@@ -61,8 +67,11 @@
     letter-spacing: -0.01em;
   }
   .body {
-    padding-top: 3rem;
-    animation: rise 520ms var(--ease) both;
+    margin-top: 2.25rem;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.025) inset, var(--shadow-pop);
   }
   h1 {
     margin: 0;
@@ -73,7 +82,7 @@
     line-height: 1.15;
   }
   .lead {
-    margin: 0.5rem 0 2rem;
+    margin: 0.5rem 0 1.5rem;
     color: var(--muted);
     font-size: var(--t-base);
     line-height: 1.45;
@@ -81,7 +90,8 @@
   .actions {
     display: grid;
     gap: 0.5rem;
-    padding-top: 1.75rem;
+    padding-top: 1rem;
+    padding-inline: 1.5rem;
   }
   .actions :global(.alt) {
     margin: 0;
@@ -98,7 +108,7 @@
   }
   .actions :global(.primary) {
     margin-top: 0;
-    min-height: 44px;
+    min-height: 48px;
     border-radius: var(--radius-sm);
     background: var(--accent);
     box-shadow: none;
@@ -117,7 +127,7 @@
     letter-spacing: 0.01em;
   }
   .body :global(input:not([type='radio'])) {
-    min-height: var(--control);
+    min-height: 48px;
     border-radius: var(--radius-sm);
     background: var(--surface);
     box-shadow: 0 0 0 1px var(--line) inset;
@@ -132,15 +142,17 @@
     caret-color: var(--accent);
     box-shadow: 0 0 0 1px var(--line) inset, 0 0 0 100px var(--surface) inset;
   }
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(0.6rem);
-    }
+  .body :global(label small) {
+    color: var(--muted);
+    font-size: var(--t-xs);
+    line-height: 1.4;
   }
-  @media (prefers-reduced-motion: reduce) {
+  @media (min-width: 520px) {
+    .shell {
+      padding-inline: 2rem;
+    }
     .body {
-      animation: none;
+      padding: 2rem;
     }
   }
 </style>

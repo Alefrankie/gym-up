@@ -10,6 +10,7 @@
   import PasswordField from '#lib/components/PasswordField.svelte';
 
   let email = $state('');
+  let username = $state('');
   let password = $state('');
   let displayName = $state('');
   let routineType = $state<'hombre' | 'mujer'>('hombre');
@@ -21,7 +22,7 @@
     error = null;
     busy = true;
     try {
-      const body = { email, password, displayName, routineType };
+      const body = { email, username, password, displayName, routineType };
       const res = await api('/auth/register', { body, schema: sessionResponseSchema });
       tokenStore.set(res.token);
       await session.set(res.user);
@@ -41,6 +42,21 @@
     <label>
       {t('auth.name')}
       <input bind:value={displayName} autocomplete="name" required />
+    </label>
+    <label>
+      {t('auth.username')}
+      <input
+        bind:value={username}
+        autocomplete="username"
+        autocapitalize="none"
+        autocorrect="off"
+        minlength="3"
+        maxlength="30"
+        pattern="[A-Za-z0-9_]+"
+        aria-describedby="username-hint"
+        required
+      />
+      <small id="username-hint">{t('auth.usernameHint')}</small>
     </label>
     <label>
       {t('auth.email')}

@@ -13,10 +13,21 @@ function normalizeEmail(email: string): string {
   return email.trim().replace(/[A-Z]/g, (letter) => letter.toLowerCase());
 }
 
+function normalizeUsername(username: string): string {
+  return username.trim().replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+}
+
 export class EmailAlreadyRegisteredError extends Error {
   constructor() {
     super('Email already registered');
     this.name = 'EmailAlreadyRegisteredError';
+  }
+}
+
+export class UsernameAlreadyRegisteredError extends Error {
+  constructor() {
+    super('Username already registered');
+    this.name = 'UsernameAlreadyRegisteredError';
   }
 }
 
@@ -69,6 +80,7 @@ export class LocalAuthService implements AuthService {
    */
   async register(input: RegisterInput): Promise<Session> {
     const email = normalizeEmail(input.email);
+    const username = input.username ? normalizeUsername(input.username) : null;
 
     // Check if user already exists
     const existingUser = await this.db
@@ -80,6 +92,14 @@ export class LocalAuthService implements AuthService {
       throw new EmailAlreadyRegisteredError();
     }
 
+    if (username) {
+      const existingUsername = await this.db
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(sql`lower(${profiles.username}) = ${username}`);
+      if (existingUsername.length > 0) throw new UsernameAlreadyRegisteredError();
+    }
+
     // Hash password
     const passwordHash = await this.passwordHasher.hash(input.password);
 
@@ -88,6 +108,7 @@ export class LocalAuthService implements AuthService {
     await this.db.insert(profiles).values({
       id: userId,
       email,
+      username,
       passwordHash,
       displayName: input.displayName,
       routineType: input.routineType,
@@ -119,13 +140,16 @@ export class LocalAuthService implements AuthService {
    * Verifies password, creates session row, sets httpOnly cookie.
    */
   async login(input: LoginInput): Promise<Session> {
-    const email = normalizeEmail(input.email);
+    const identifier = (input.identifier ?? input.email ?? '').trim();
+    const email = normalizeEmail(identifier);
+    const username = normalizeUsername(identifier);
 
     // Find user by email
     const userResult = await this.db
       .select({
         id: profiles.id,
         email: profiles.email,
+        username: profiles.username,
         passwordHash: profiles.passwordHash,
         displayName: profiles.displayName,
         routineType: profiles.routineType,
@@ -137,18 +161,18 @@ export class LocalAuthService implements AuthService {
         createdAt: profiles.createdAt,
       })
       .from(profiles)
-      .where(sql`lower(${profiles.email}) = ${email}`);
+      .where(sql`lower(${profiles.email}) = ${email} OR lower(${profiles.username}) = ${username}`);
 
     if (userResult.length === 0) {
       throw new InvalidCredentialsError();
     }
 
     // Legacy registrations may have the same email stored with different casing.
-    // Prefer an exact-casing match if present, then check other case-insensitive matches.
-    const exactEmail = input.email.trim();
+    // Prefer an exact email or username match, then check case-insensitive matches.
     const candidates = [
-      ...userResult.filter((candidate) => candidate.email === exactEmail),
-      ...userResult.filter((candidate) => candidate.email !== exactEmail),
+      ...userResult.filter((candidate) => candidate.email === identifier),
+      ...userResult.filter((candidate) => candidate.username === identifier),
+      ...userResult.filter((candidate) => candidate.email !== identifier && candidate.username !== identifier),
     ];
     let user: (typeof userResult)[number] | undefined;
     for (const candidate of candidates) {

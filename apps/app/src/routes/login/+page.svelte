@@ -9,7 +9,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import PasswordField from '#lib/components/PasswordField.svelte';
 
-  let email = $state('');
+  let identifier = $state('');
   let password = $state('');
   let error = $state<string | null>(null);
   let busy = $state(false);
@@ -19,7 +19,7 @@
     error = null;
     busy = true;
     try {
-      const body: LoginRequest = { email, password };
+      const body: LoginRequest = { identifier, password };
       const res = await api('/auth/login', { body, schema: sessionResponseSchema });
       tokenStore.set(res.token);
       await session.set(res.user);
@@ -37,8 +37,16 @@
 <AuthShell title={t('auth.login')} lead={t('auth.loginLead')}>
   <form id="auth" onsubmit={submit}>
     <label>
-      {t('auth.email')}
-      <input type="email" bind:value={email} autocomplete="email" inputmode="email" required />
+      {t('auth.identifier')}
+      <input
+        type="text"
+        bind:value={identifier}
+        placeholder={t('auth.identifierPlaceholder')}
+        autocomplete="username"
+        autocapitalize="none"
+        autocorrect="off"
+        required
+      />
     </label>
     <PasswordField bind:value={password} label={t('auth.password')} autocomplete="current-password" />
     {#if error}<p class="error" role="alert"><Icon name="alert" size={20} /> {error}</p>{/if}
