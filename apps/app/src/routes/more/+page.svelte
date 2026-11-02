@@ -40,7 +40,12 @@
   });
   const visibleLinks = $derived(
     session.user?.isAdmin || studioAllowed
-      ? [...links.slice(0, -1), { href: '/voice-studio', title: 'more.voiceStudio', hint: 'more.voiceStudioHint', icon: 'mic' } as const, links.at(-1)!]
+      ? [
+          ...links.slice(0, -1),
+          ...(session.user?.isAdmin ? [{ href: '/admin/users', title: 'admin.users.navTitle', hint: 'admin.users.navHint', icon: 'users' } as const] : []),
+          { href: '/voice-studio', title: 'more.voiceStudio', hint: 'more.voiceStudioHint', icon: 'mic' } as const,
+          links.at(-1)!,
+        ]
       : links,
   );
 

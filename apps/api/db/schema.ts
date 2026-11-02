@@ -62,6 +62,8 @@ export const profiles = sqliteTable('profiles', {
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
+  /** Latest authenticated app activity; nullable for accounts predating its migration. */
+  lastAccessAt: integer('last_access_at', { mode: 'timestamp' }),
 });
 
 export type Profile = typeof profiles.$inferSelect;
