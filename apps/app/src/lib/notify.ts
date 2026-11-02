@@ -1,9 +1,13 @@
+import { t } from '#lib/i18n';
+
 // Rest timer alerts. While the screen is off the WebView is suspended and its JavaScript timer stops, so on
 // Android the end of the rest is scheduled as a local notification handled by the OS (tauri-plugin-notification).
 // On the web build these functions do nothing and the on-screen timer plus vibration are used.
 
 const REST_NOTIFICATION_ID = 7001;
 const CREATINE_NOTIFICATION_ID = 7002;
+const WORKOUT_NOTIFICATION_ID = 7003;
+const WORKOUT_TIMER_CHANNEL_ID = 'gym-up-workout-timers';
 const CREATINE_REMINDER_FIRST_ID = 7100;
 const CREATINE_REMINDER_DAYS = 30;
 const CREATINE_REMINDER_START_HOUR = 9;
@@ -24,9 +28,28 @@ const CREATINE_REMINDER_MESSAGES = [
 ];
 
 const inTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+let workoutNotificationStartedAt: number | null = null;
+let workoutNotificationGeneration = 0;
 
 async function plugin() {
   return import('@tauri-apps/plugin-notification');
+}
+
+async function ensureWorkoutTimerChannel(api: Awaited<ReturnType<typeof plugin>>): Promise<string | undefined> {
+  try {
+    await api.createChannel({
+      id: WORKOUT_TIMER_CHANNEL_ID,
+      name: t('workout.notificationChannel'),
+      description: t('workout.notificationChannelDescription'),
+      importance: api.Importance.Low,
+      vibration: false,
+      lights: false,
+    });
+    return WORKOUT_TIMER_CHANNEL_ID;
+  } catch {
+    // Desktop builds do not use Android notification channels.
+    return undefined;
+  }
 }
 
 /** Asks for the notification permission once (Android 13 and later). Safe to call repeatedly. */
@@ -45,13 +68,28 @@ export async function scheduleRestEnd(seconds: number): Promise<void> {
   if (!inTauri()) return;
   try {
     if (!(await ensureNotificationPermission())) return;
-    const { sendNotification, Schedule, cancel } = await plugin();
+    const api = await plugin();
+    const { sendNotification, Schedule, cancel } = api;
     await cancel([REST_NOTIFICATION_ID]).catch(() => {});
+    const endsAt = Date.now() + seconds * 1000;
+    const channelId = await ensureWorkoutTimerChannel(api);
+    // Android's native chronometer keeps counting down while the WebView is asleep.
     sendNotification({
       id: REST_NOTIFICATION_ID,
-      title: 'Descanso terminado',
-      body: 'Es hora de tu siguiente serie.',
-      schedule: Schedule.at(new Date(Date.now() + seconds * 1000), false, true),
+      title: t('workout.rest'),
+      body: t('workout.notificationNextSet'),
+      ...(channelId ? { channelId } : {}),
+      when: endsAt,
+      usesChronometer: true,
+      chronometerCountDown: true,
+      ongoing: true,
+      silent: true,
+    });
+    sendNotification({
+      id: REST_NOTIFICATION_ID,
+      title: t('workout.notificationRestDone'),
+      body: t('workout.notificationRestDoneBody'),
+      schedule: Schedule.at(new Date(endsAt), false, true),
     });
   } catch {
     /* alerts are a convenience: never break logging a set */
@@ -61,8 +99,51 @@ export async function scheduleRestEnd(seconds: number): Promise<void> {
 export async function cancelRestEnd(): Promise<void> {
   if (!inTauri()) return;
   try {
-    const { cancel } = await plugin();
+    const { cancel, removeActive } = await plugin();
     await cancel([REST_NOTIFICATION_ID]);
+    await removeActive([{ id: REST_NOTIFICATION_ID }]).catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
+/** A native stopwatch in Android's notification shade; the OS keeps it running in the background. */
+export async function startWorkoutNotification(startedAt: number): Promise<void> {
+  if (!inTauri() || workoutNotificationStartedAt === startedAt) return;
+  workoutNotificationStartedAt = startedAt;
+  const generation = ++workoutNotificationGeneration;
+  try {
+    if (!(await ensureNotificationPermission())) {
+      if (generation === workoutNotificationGeneration) workoutNotificationStartedAt = null;
+      return;
+    }
+    if (generation !== workoutNotificationGeneration) return;
+    const api = await plugin();
+    const { sendNotification } = api;
+    const channelId = await ensureWorkoutTimerChannel(api);
+    sendNotification({
+      id: WORKOUT_NOTIFICATION_ID,
+      title: t('workout.notificationActive'),
+      body: t('workout.notificationElapsed'),
+      ...(channelId ? { channelId } : {}),
+      when: startedAt,
+      usesChronometer: true,
+      ongoing: true,
+      silent: true,
+    });
+  } catch {
+    if (generation === workoutNotificationGeneration) workoutNotificationStartedAt = null;
+  }
+}
+
+export async function cancelWorkoutNotification(startedAt: number): Promise<void> {
+  if (workoutNotificationStartedAt !== startedAt) return;
+  workoutNotificationStartedAt = null;
+  workoutNotificationGeneration++;
+  if (!inTauri()) return;
+  try {
+    const { removeActive } = await plugin();
+    await removeActive([{ id: WORKOUT_NOTIFICATION_ID }]);
   } catch {
     /* ignore */
   }

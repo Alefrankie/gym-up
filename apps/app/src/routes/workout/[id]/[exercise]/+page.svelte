@@ -101,7 +101,7 @@
       {@const r = view.row(ex.exerciseId, n)}
       {#if r}
         <div class="set" class:done={r.completed} class:active={active === n}>
-          <SetTypeCell {n} type={r.type} disabled={view.isCompleted} onpick={(type) => view.retype(ex.exerciseId, n, type)} />
+          <SetTypeCell n={view.displaySetNumber(ex, n)} type={r.type} disabled={view.isCompleted} onpick={(type) => view.retype(ex.exerciseId, n, type)} />
           <input
             type="number"
             inputmode="numeric"

@@ -91,6 +91,12 @@ export class WorkoutView {
     return Array.from({ length: Math.max(ex.targetSets, ...used, 0) }, (_, i) => i + 1);
   }
 
+  /** Working sets are numbered from 1; warm-ups keep their letter and do not advance the count. */
+  displaySetNumber(ex: RoutineExerciseDto, n: number): number {
+    return this.setNumbers(ex)
+      .filter((k) => k < n && this.row(ex.exerciseId, k)?.type !== 'warmup').length + 1;
+  }
+
   row(exerciseId: string, n: number) {
     return this.snap?.rows[rowKey(exerciseId, n)];
   }
