@@ -19,36 +19,38 @@
   .rest-countdown {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.55rem;
     min-height: 48px;
-    margin-top: 0.8rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--line);
+    flex: none;
+    padding: 0 0.5rem 0 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-hi);
   }
   .rest-copy {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.35rem;
     color: var(--accent-hi);
   }
   .rest-label {
     color: var(--muted);
-    font-size: var(--t-sm);
+    font-size: var(--t-xs);
     font-weight: 600;
   }
   .rest-copy strong {
     color: var(--accent-hi);
     font-family: var(--font-display);
-    font-size: var(--t-xl);
+    font-size: var(--t-lg);
     font-variant-numeric: tabular-nums;
     line-height: 1;
   }
   .skip {
-    min-width: 64px;
+    min-width: 48px;
     min-height: 48px;
-    padding: 0 0.5rem;
-    background: transparent;
+    padding: 0 0.35rem;
+    border-radius: 9px;
+    background: var(--accent-soft);
     box-shadow: none;
     color: var(--accent-hi);
     font-size: var(--t-sm);

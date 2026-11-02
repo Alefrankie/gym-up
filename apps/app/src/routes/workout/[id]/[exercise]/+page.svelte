@@ -62,7 +62,6 @@
       <span class="count">{t('workout.exerciseOf', { n: index + 1, total: exercises.length })}</span>
       <h1>{exerciseName(ex.exerciseName)}</h1>
     </div>
-    <RestCountdown />
   </section>
 
   <div class="pills">
@@ -84,7 +83,10 @@
     <a class="chip link" href={`/library/${ex.exerciseId}`}><Icon name="book" size={14} />{t('workout.howTo')}</a>
   </div>
 
-  <h2>{t('workout.sets')}</h2>
+  <div class="sets-heading">
+    <h2>{t('workout.sets')}</h2>
+    <RestCountdown />
+  </div>
   <div class="table" role="group" aria-label={t('workout.sets')}>
     <div class="heads">
       <span>{t('workout.set')}</span>
@@ -105,21 +107,40 @@
         <div class="set" class:done={r.completed} class:active={active === n}>
           <SetTypeCell n={view.displaySetNumber(ex, n)} type={r.type} disabled={view.isCompleted} onpick={(type) => view.retype(ex.exerciseId, n, type)} />
           <input
-            type="number"
+            type="text"
             inputmode="numeric"
-            min="1"
-            max="100"
-            bind:value={r.reps}
+            value={r.reps}
+            onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
+            oninput={(e) => {
+              const input = e.currentTarget as HTMLInputElement;
+              const value = Number(input.value);
+              if (input.value !== '' && Number.isInteger(value) && value >= 1 && value <= 100) r.reps = value;
+            }}
+            onblur={(e) => {
+              const input = e.currentTarget as HTMLInputElement;
+              const value = Number(input.value);
+              if (!Number.isInteger(value) || value < 1 || value > 100) input.value = String(r.reps);
+            }}
             disabled={view.isCompleted}
             onchange={() => view.edited(ex.exerciseId, n)}
             aria-label={t('workout.setReps', { n })}
           />
           <input
-            type="number"
+            type="text"
             inputmode="decimal"
-            min="0"
-            step="0.5"
-            bind:value={r.weight}
+            value={r.weight}
+            onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
+            oninput={(e) => {
+              const input = e.currentTarget as HTMLInputElement;
+              const raw = input.value.replace(',', '.');
+              const value = Number(raw);
+              if (raw !== '' && Number.isFinite(value) && value >= 0) r.weight = value;
+            }}
+            onblur={(e) => {
+              const input = e.currentTarget as HTMLInputElement;
+              const value = Number(input.value.replace(',', '.'));
+              if (input.value === '' || !Number.isFinite(value) || value < 0) input.value = String(r.weight);
+            }}
             disabled={view.isCompleted}
             onchange={() => {
               view.weightChanged(ex, n);
@@ -241,6 +262,16 @@
   .table {
     display: grid;
     gap: 0.5rem;
+  }
+  .sets-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 1rem 0 0.65rem;
+  }
+  .sets-heading h2 {
+    margin: 0;
   }
   .heads,
   .set {
