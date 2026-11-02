@@ -25,7 +25,8 @@ export interface ChartDataPoint {
 }
 
 /**
- * Current consecutive workout days + total all-time workouts.
+ * Current streak across planned training days (planned rest days do not break
+ * the streak) + total all-time completed workout days.
  * Per architecture readme.
  */
 export interface Streak {

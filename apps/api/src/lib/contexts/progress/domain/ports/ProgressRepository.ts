@@ -47,8 +47,8 @@ export abstract class ProgressRepository {
   ): Promise<CalendarDay[]>;
 
   /**
-   * Count consecutive workout days ending today (or yesterday if no
-   * workout today) + total all-time completed workouts.
+   * Count completed workouts across planned training days, skipping planned
+   * rest days. A missed planned training day breaks the streak.
    */
   abstract getStreak(userId: string): Promise<Streak>;
 }

@@ -49,7 +49,7 @@ Calendar grid showing last 4 weeks. Dots on workout days.
 
 #### FR-PR-007
 
-Current consecutive workout days count. Total workouts completed.
+Current workout streak across the active program's planned training days. Planned rest days do not break the streak; missing a planned training day does. Total completed workout days.
 
 ---
 

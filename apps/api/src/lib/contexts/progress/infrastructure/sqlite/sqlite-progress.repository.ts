@@ -11,7 +11,7 @@
 
 import { and, asc, eq, gte } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
-import { workoutEntries, workouts } from '@db/schema';
+import { profiles, routineDays, workoutEntries, workouts } from '@db/schema';
 import type { CalendarDay, Streak } from '../../domain/progress.types';
 import {
   type ProgressRepository,
@@ -87,26 +87,50 @@ export class SqliteProgressRepository implements ProgressRepository {
     }
 
     const dateSet = new Set(dates);
+    const restDays = await this.getPlannedRestDays(userId);
     const today = startOfTodayUtc();
     const yesterday = new Date(today.getTime() - 86_400_000);
 
-    // Streak counts back from today (or yesterday if no workout today).
-    let cursor: Date | null = null;
-    if (dateSet.has(toDateKey(today))) {
-      cursor = today;
-    } else if (dateSet.has(toDateKey(yesterday))) {
-      cursor = yesterday;
-    }
-    if (cursor === null) {
-      return { current: 0, total };
+    // Planned rest days are neutral; a missed planned training day breaks the streak.
+    let cursor = today;
+    if (!dateSet.has(toDateKey(today)) && !restDays.has(today.getUTCDay())) {
+      if (dateSet.has(toDateKey(yesterday))) {
+        cursor = yesterday;
+      } else {
+        return { current: 0, total };
+      }
     }
 
     let current = 0;
-    while (dateSet.has(toDateKey(cursor))) {
-      current++;
+    while (true) {
+      if (dateSet.has(toDateKey(cursor))) {
+        current++;
+      } else if (!restDays.has(cursor.getUTCDay())) {
+        break;
+      }
       cursor = new Date(cursor.getTime() - 86_400_000);
     }
     return { current, total };
+  }
+
+  /** Weekdays omitted from the active program schedule are planned rest days. */
+  private async getPlannedRestDays(userId: string): Promise<Set<number>> {
+    const profileRows = await this.db
+      .select({ activeProgramId: profiles.activeProgramId })
+      .from(profiles)
+      .where(eq(profiles.id, userId))
+      .limit(1);
+    const programId = profileRows[0]?.activeProgramId;
+    if (!programId) return new Set();
+
+    const rows = await this.db
+      .select({ weekday: routineDays.weekday })
+      .from(routineDays)
+      .where(eq(routineDays.routineId, programId));
+    const plannedDays = new Set(rows.flatMap((row) => row.weekday === null ? [] : [row.weekday]));
+    if (plannedDays.size === 0) return new Set();
+
+    return new Set([0, 1, 2, 3, 4, 5, 6].filter((day) => !plannedDays.has(day)));
   }
 }
 
