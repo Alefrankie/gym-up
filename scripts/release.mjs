@@ -64,9 +64,6 @@ run('pnpm', ['--filter', '@gym-up/api', 'run', 'build:worker']);
 const cloudflareEnv = { ...childEnv };
 if (process.env.CLOUDFLARE_API_TOKEN) cloudflareEnv.CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 if (process.env.CLOUDFLARE_ACCOUNT_ID) cloudflareEnv.CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'd1', 'migrations', 'apply', 'gym-up', '--remote'], {
-  env: cloudflareEnv,
-});
 run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'deploy'], {
   env: cloudflareEnv,
 });
