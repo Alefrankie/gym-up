@@ -18,6 +18,7 @@
   import OverflowMenu from '#lib/components/OverflowMenu.svelte';
   import SaveBar from '#lib/components/SaveBar.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
+  import RestCountdown from '#lib/components/RestCountdown.svelte';
 
   const view = useWorkoutView();
   let finishing = $state(false);
@@ -128,6 +129,7 @@
   {#if exercises.length}<p class="meta">{sessionSummary(exercises)}</p>{/if}
   <div class="progress" aria-label={t('workout.setsDone', { done, total })}><span style:width={`${total ? (done / total) * 100 : 0}%`}></span></div>
   <span class="muted count">{t('workout.setsDone', { done, total })}</span>
+  <RestCountdown />
 </section>
 
 

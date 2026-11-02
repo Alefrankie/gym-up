@@ -10,6 +10,7 @@
   import { t, tn } from '#lib/i18n';
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
+  import RestCountdown from '#lib/components/RestCountdown.svelte';
   import SetTypeCell from '#lib/components/SetTypeCell.svelte';
   import SortableRows from '#lib/components/SortableRows.svelte';
 
@@ -61,6 +62,7 @@
       <span class="count">{t('workout.exerciseOf', { n: index + 1, total: exercises.length })}</span>
       <h1>{exerciseName(ex.exerciseName)}</h1>
     </div>
+    <RestCountdown />
   </section>
 
   <div class="pills">
@@ -161,7 +163,8 @@
   .hero {
     position: relative;
     margin: -0.5rem -1rem 0;
-    padding: calc(env(safe-area-inset-top) + 3.25rem) 1rem 0.9rem;
+    /* main already accounts for Android's safe area. */
+    padding: 3.25rem 1rem 0.9rem;
     background: var(--surface);
     box-shadow: 0 1px 0 var(--line);
   }
@@ -181,12 +184,12 @@
   }
   .back-btn {
     position: absolute;
-    top: calc(env(safe-area-inset-top) + 0.5rem);
+    top: 0.5rem;
     left: 1rem;
   }
   .elapsed {
     position: absolute;
-    top: calc(env(safe-area-inset-top) + 0.5rem + 6px);
+    top: calc(0.5rem + 6px);
     right: 1rem;
     display: inline-flex;
     align-items: center;
