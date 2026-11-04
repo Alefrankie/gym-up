@@ -38,10 +38,13 @@
     return out;
   });
 
-  /** Share of the days so far this month on which each supplement was taken. */
+  /** Days each supplement was taken out of all days in the shown month (taken daily, training or not). */
   const adherence = $derived.by(() => {
-    const past = cells.filter((c) => c && !c.future).length || 1;
-    return items.map((s, i) => ({ name: s.name, color: colorOf(i), pct: Math.round((cells.filter((c) => c?.taken.includes(i)).length / past) * 100) }));
+    const total = cells.filter((c) => c).length;
+    return items.map((s, i) => {
+      const n = cells.filter((c) => c?.taken.includes(i)).length;
+      return { name: s.name, color: colorOf(i), n, total, pct: total ? Math.round((n / total) * 100) : 0 };
+    });
   });
 </script>
 
@@ -81,7 +84,7 @@
         <i style:background={a.color}></i>
         <span class="name">{a.name}</span>
         <span class="track"><span style:width={`${a.pct}%`} style:background={a.color}></span></span>
-        <span class="pct">{a.pct}%</span>
+        <span class="pct">{t('supplements.daysOf', { n: a.n, total: a.total })}</span>
       </li>
     {/each}
   </ul>
@@ -171,7 +174,7 @@
   }
   .legend li {
     display: grid;
-    grid-template-columns: 10px 6.5rem 1fr 2.5rem;
+    grid-template-columns: 10px minmax(0, 6.5rem) 1fr auto;
     align-items: center;
     gap: 0.5rem;
     font-size: var(--t-sm);

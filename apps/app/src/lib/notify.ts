@@ -12,6 +12,8 @@ const CREATINE_REMINDER_CHANNEL_ID = 'gym-up-creatine-reminders';
 const WORKOUT_NOTIFICATION_ID = 7003;
 const WORKOUT_TIMER_CHANNEL_ID = 'gym-up-workout-timers';
 const CREATINE_REMINDER_FIRST_ID = 7100;
+// Monochrome status-bar glyph in res/drawable; Android's default is a generic bell.
+const NOTIFICATION_ICON = 'ic_stat_gymup';
 const CREATINE_REMINDER_DAYS = 30;
 const CREATINE_REMINDER_START_HOUR = 9;
 const CREATINE_REMINDER_END_HOUR = 22;
@@ -94,6 +96,7 @@ export async function scheduleRestEnd(seconds: number): Promise<void> {
     // Android's native chronometer keeps counting down while the WebView is asleep.
     sendNotification({
       id: REST_NOTIFICATION_ID,
+      icon: NOTIFICATION_ICON,
       title: t('workout.rest'),
       body: t('workout.notificationNextSet'),
       ...(channelId ? { channelId } : {}),
@@ -105,6 +108,7 @@ export async function scheduleRestEnd(seconds: number): Promise<void> {
     });
     sendNotification({
       id: REST_NOTIFICATION_ID,
+      icon: NOTIFICATION_ICON,
       title: t('workout.notificationRestDone'),
       body: t('workout.notificationRestDoneBody'),
       schedule: Schedule.at(new Date(endsAt), false, true),
@@ -141,6 +145,7 @@ export async function startWorkoutNotification(startedAt: number): Promise<void>
     const channelId = await ensureWorkoutTimerChannel(api);
     sendNotification({
       id: WORKOUT_NOTIFICATION_ID,
+      icon: NOTIFICATION_ICON,
       title: t('workout.notificationActive'),
       body: t('workout.notificationElapsed'),
       ...(channelId ? { channelId } : {}),
@@ -198,7 +203,8 @@ async function replaceCreatineReminders(takenToday: boolean): Promise<boolean> {
           id: CREATINE_REMINDER_FIRST_ID + notifications.length,
           channelId: CREATINE_REMINDER_CHANNEL_ID,
           title: 'Creatina',
-          body: `${message} Aviso de ${at.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${hour}:00.`,
+          body: message,
+          icon: NOTIFICATION_ICON,
           schedule: Schedule.at(at, false, true),
         };
         // The Android batch command stores sourceJson for its boot restore receiver. The

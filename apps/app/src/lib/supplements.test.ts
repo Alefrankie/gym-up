@@ -46,6 +46,7 @@ describe('creatine reminder lifecycle', () => {
     preferences = new Map([['gym-up:creatine-reminder', 'on']]);
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => preferences.get(key) ?? null,
+      setItem: (key: string, value: string) => preferences.set(key, value),
       removeItem: (key: string) => preferences.delete(key),
     });
     vi.mocked(updateCached).mockResolvedValue(undefined);

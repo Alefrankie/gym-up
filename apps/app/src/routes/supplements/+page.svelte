@@ -6,17 +6,20 @@
   import { invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
   import { longDate, relativeDay } from '#lib/dates';
-  import { CREATINE_REMINDER_KEY, creatineReminderError, loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
+  import { CREATINE_REMINDER_KEY, REMINDER_SIGNATURE_KEY, creatineReminderError, loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
   import { cancelCreatineReminder, scheduleCreatineReminder } from '#lib/notify';
   import DayStrip from '#lib/components/DayStrip.svelte';
   import SupplementCalendar from '#lib/components/SupplementCalendar.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import AddSupplementSheet from '#lib/components/AddSupplementSheet.svelte';
+  import Sheet from '#lib/components/Sheet.svelte';
 
   const today = localDay();
   let list = $state<SupplementListResponse | null>(null);
-  let name = $state('');
   let error = $state<string | null>(null);
-  let busy = $state(false);
+  let adding = $state(false);
+  let removing = $state<{ id: string; name: string } | null>(null);
+  let removeBusy = $state(false);
   let creatineReminderEnabled = $state(false);
   let reminderBusy = $state(false);
 
@@ -50,6 +53,7 @@
         return;
       }
       localStorage.removeItem(CREATINE_REMINDER_KEY);
+      localStorage.removeItem(REMINDER_SIGNATURE_KEY);
       creatineReminderEnabled = false;
       creatineReminderError.set(false);
       return;
@@ -61,20 +65,13 @@
       return;
     }
     localStorage.setItem(CREATINE_REMINDER_KEY, 'on');
+    localStorage.setItem(REMINDER_SIGNATURE_KEY, `${localDay()}:${item.days.includes(localDay())}`);
     creatineReminderError.set(false);
     creatineReminderEnabled = true;
     } finally {
       reminderBusy = false;
     }
   }
-
-  /** Day by day, newest first: what was taken. Only days with something taken are listed. */
-  const history = $derived.by(() => {
-    if (!list) return [];
-    const byDay = new Map<string, string[]>();
-    for (const s of list.items) for (const d of s.days) byDay.set(d, [...(byDay.get(d) ?? []), s.name]);
-    return [...byDay].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, names]) => ({ day, names }));
-  });
 
   async function toggle(id: string, taken: boolean, day = today) {
     if (!list) return;
@@ -87,32 +84,32 @@
   /** A day picked on the calendar, to fill in what was taken on days already gone. */
   let picked = $state<string | null>(null);
 
-  async function add(event: SubmitEvent) {
-    event.preventDefault();
-    if (!name.trim()) return;
-    busy = true;
-    error = null;
+  /** Saves from the add sheet; returns an error message for the sheet to show, or null once added. */
+  async function add(value: string): Promise<string | null> {
     try {
-      await api('/supplements', { body: { id: crypto.randomUUID(), name: name.trim() } });
-      name = '';
+      await api('/supplements', { body: { id: crypto.randomUUID(), name: value } });
       await invalidateCache(['/supplements']);
       await load();
+      adding = false;
+      return null;
     } catch (e) {
-      error = e instanceof ApiRequestError ? e.message : t('supplements.addNeedsConnection');
+      return e instanceof ApiRequestError ? e.message : t('supplements.addNeedsConnection');
     }
-    busy = false;
   }
 
-  async function remove(id: string, label: string) {
-    if (!confirm(t('supplements.confirmRemove', { name: label }))) return;
+  async function remove(id: string) {
+    removeBusy = true;
     try {
       await api(`/supplements/${id}`, { method: 'DELETE' });
       await invalidateCache(['/supplements']);
       await load();
+      removing = null;
       if (!creatine(list) && creatineReminderEnabled) await toggleCreatineReminder();
     } catch {
       error = t('supplements.removeNeedsConnection');
+      removing = null;
     }
+    removeBusy = false;
   }
 </script>
 
@@ -146,12 +143,13 @@
                 {tn('supplements.daysThisMonth', s.days.filter((d) => d.startsWith(list!.day.slice(0, 7))).length)}{#if s.streak > 1} · <span class="streak">{t('supplements.streak', { n: s.streak })}</span>{/if}
               </span>
             </span>
-            <button type="button" class="ghost del" aria-label={t('supplements.removeLabel', { name: s.name })} onclick={() => remove(s.id, s.name)}><Icon name="trash" size={18} /></button>
+            <button type="button" class="ghost del" aria-label={t('supplements.removeLabel', { name: s.name })} onclick={() => (removing = { id: s.id, name: s.name })}><Icon name="trash" size={18} /></button>
           </div>
-          <DayStrip days={s.days} end={list.day} label={s.name} />
+          <DayStrip days={s.days} today={list.day} label={s.name} />
         </li>
       {/each}
     </ul>
+    <button type="button" class="add" onclick={() => (adding = true)}><Icon name="plus" size={18} /> {t('supplements.addButton')}</button>
 
     <h2>{t('supplements.calendar')}</h2>
     <p class="muted hint">{t('supplements.calendarHint')}</p>
@@ -169,29 +167,27 @@
         {/each}
       </section>
     {/if}
-
-    {#if history.length}
-      <h2>{t('supplements.dayByDay')}</h2>
-      <ul class="log">
-        {#each history as h (h.day)}
-          <li>
-            <span class="when">{relativeDay(h.day, list.day)}</span>
-            <span class="what">
-              {#each h.names as n (n)}<span class="chip on">{n}</span>{/each}
-            </span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-
-    <form class="add" onsubmit={add}>
-      <input maxlength="40" placeholder={t('supplements.addPlaceholder')} aria-label={t('supplements.newLabel')} bind:value={name} />
-      <button type="submit" disabled={busy || !name.trim()}><Icon name="plus" size={18} /> {t('common.add')}</button>
-    </form>
   {:else if !error}
     <p class="muted loading">{t('common.loading')}</p>
   {/if}
 </main>
+
+{#if adding && list}
+  <AddSupplementSheet existing={list.items.map((s) => s.name)} onadd={add} onclose={() => (adding = false)} />
+{/if}
+
+{#if removing}
+  {@const target = removing}
+  <Sheet title={t('supplements.removeTitle')} onclose={() => !removeBusy && (removing = null)}>
+    <p class="muted sheet-sub">{t('supplements.confirmRemove', { name: target.name })}</p>
+    <div class="sheet-actions">
+      <button type="button" class="danger" disabled={removeBusy} onclick={() => remove(target.id)}>
+        <Icon name="trash" size={18} /> {removeBusy ? t('common.loading') : t('supplements.removeLabel', { name: target.name })}
+      </button>
+      <button type="button" class="ghost" disabled={removeBusy} onclick={() => (removing = null)}>{t('common.cancel')}</button>
+    </div>
+  </Sheet>
+{/if}
 
 <style>
   .lead {
@@ -299,15 +295,16 @@
   }
   .add {
     display: flex;
-    gap: 0.5rem;
-  }
-  .add input {
-    flex: 1;
-  }
-  .add button {
-    display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    min-height: 48px;
+    margin: -0.25rem 0 1.75rem;
+    border-radius: var(--radius);
+    background: none;
+    box-shadow: 0 0 0 1px var(--line-strong) inset;
+    color: var(--accent-hi);
   }
   .hint {
     margin: -0.25rem 0 0.75rem;
@@ -340,28 +337,25 @@
     height: 28px;
     min-height: 28px;
   }
-  .log {
-    list-style: none;
-    margin: 0 0 1.5rem;
-    padding: 0;
-    display: grid;
+  .sheet-sub {
+    margin: -0.25rem 0 1.25rem;
+    font-size: var(--t-sm);
   }
-  .log li {
+  .sheet-actions {
     display: grid;
-    grid-template-columns: 6.5rem 1fr;
-    align-items: center;
     gap: 0.5rem;
+  }
+  .sheet-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     min-height: 48px;
-    border-bottom: 1px solid var(--line);
+    border-radius: 999px;
   }
   .when {
     color: var(--muted);
     font-size: var(--t-sm);
     text-transform: capitalize;
-  }
-  .what {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
   }
 </style>

@@ -11,6 +11,8 @@ export { localDay } from '#lib/dates';
 export const supplementsPath = (day: string) => `/supplements?day=${day}`;
 export const CREATINE_REMINDER_KEY = 'gym-up:creatine-reminder';
 export const creatineReminderError = writable(false);
+/** Day and taken-today flag of the last successful schedule; cleared whenever the reminder is turned off. */
+export const REMINDER_SIGNATURE_KEY = 'gym-up:creatine-reminder-signature';
 type SupplementMark = Extract<Command, { type: 'mark-supplement' }>;
 const activeLoads = new Set<Map<string, SupplementMark>>();
 const markKey = (mark: SupplementMark) => `${mark.supplementId}:${mark.day}`;
@@ -24,10 +26,19 @@ async function refreshCreatineReminder(response: SupplementListResponse): Promis
     const cancelled = await cancelCreatineReminder();
     if (generation !== reminderRefreshGeneration) return;
     creatineReminderError.set(!cancelled);
-    if (cancelled) localStorage.removeItem(CREATINE_REMINDER_KEY);
+    if (cancelled) {
+      localStorage.removeItem(CREATINE_REMINDER_KEY);
+      localStorage.removeItem(REMINDER_SIGNATURE_KEY);
+    }
     return;
   }
-  const scheduled = await scheduleCreatineReminder(creatine.days.includes(localDay()));
+  // Rescheduling cancels and recreates hundreds of alarms over the native bridge, which stalls the screen.
+  // The schedule only depends on the day and whether today's dose is in, so skip it when neither changed.
+  const takenToday = creatine.days.includes(localDay());
+  const signature = `${localDay()}:${takenToday}`;
+  if (localStorage.getItem(REMINDER_SIGNATURE_KEY) === signature) return;
+  const scheduled = await scheduleCreatineReminder(takenToday);
+  if (scheduled) localStorage.setItem(REMINDER_SIGNATURE_KEY, signature);
   if (generation === reminderRefreshGeneration) creatineReminderError.set(!scheduled);
 }
 
