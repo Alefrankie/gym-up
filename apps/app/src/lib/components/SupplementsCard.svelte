@@ -4,7 +4,7 @@
   import { NetworkError } from '#lib/api/errors';
   import { shortDay } from '#lib/dates';
   import { localDay } from '#lib/dates';
-  import { loadSupplements, persistMark, withMark } from '#lib/supplements';
+  import { creatineReminderError, loadSupplements, persistMark, withMark } from '#lib/supplements';
   import { t, tn } from '#lib/i18n';
   import Icon from './Icon.svelte';
 
@@ -54,6 +54,7 @@
       </div>
       <a class="manage" href="/supplements">{t('supps.history')} <Icon name="right" size={16} /></a>
     </header>
+    {#if $creatineReminderError}<p class="error" role="alert">{t('supplements.reminderError')}</p>{/if}
     {#if list.items.length <= 2}
       <!-- With one or two supplements a chip looks lost: each gets a full row with its last 7 days. -->
       <div class="rows">

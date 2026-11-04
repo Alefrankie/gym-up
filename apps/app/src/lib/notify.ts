@@ -1,4 +1,6 @@
 import { t } from '#lib/i18n';
+import { invoke } from '@tauri-apps/api/core';
+import type { Options } from '@tauri-apps/plugin-notification';
 
 // Rest timer alerts. While the screen is off the WebView is suspended and its JavaScript timer stops, so on
 // Android the end of the rest is scheduled as a local notification handled by the OS (tauri-plugin-notification).
@@ -6,6 +8,7 @@ import { t } from '#lib/i18n';
 
 const REST_NOTIFICATION_ID = 7001;
 const CREATINE_NOTIFICATION_ID = 7002;
+const CREATINE_REMINDER_CHANNEL_ID = 'gym-up-creatine-reminders';
 const WORKOUT_NOTIFICATION_ID = 7003;
 const WORKOUT_TIMER_CHANNEL_ID = 'gym-up-workout-timers';
 const CREATINE_REMINDER_FIRST_ID = 7100;
@@ -30,6 +33,21 @@ const CREATINE_REMINDER_MESSAGES = [
 const inTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 let workoutNotificationStartedAt: number | null = null;
 let workoutNotificationGeneration = 0;
+let creatineReminderQueue: Promise<unknown> = Promise.resolve();
+
+// Cache/network refreshes and ticking a dose can overlap. In particular, cancelling must run
+// after an already-started batch, otherwise that batch recreates alarms after switching off.
+function updateCreatineReminders<T>(update: () => Promise<T>): Promise<T> {
+  const result = creatineReminderQueue.then(update);
+  creatineReminderQueue = result.catch(() => {});
+  return result;
+}
+
+function creatineReminderIds(): number[] {
+  return [CREATINE_NOTIFICATION_ID, ...Array.from({
+    length: CREATINE_REMINDER_DAYS * (CREATINE_REMINDER_END_HOUR - CREATINE_REMINDER_START_HOUR + 1),
+  }, (_, i) => CREATINE_REMINDER_FIRST_ID + i)];
+}
 
 async function plugin() {
   return import('@tauri-apps/plugin-notification');
@@ -150,47 +168,64 @@ export async function cancelWorkoutNotification(startedAt: number): Promise<void
 }
 
 /** Schedules hourly, varied creatine reminders from 09:00 through 22:00 for the next 30 days. */
-export async function scheduleCreatineReminder(takenToday: boolean): Promise<boolean> {
+export function scheduleCreatineReminder(takenToday: boolean): Promise<boolean> {
+  return updateCreatineReminders(() => replaceCreatineReminders(takenToday));
+}
+
+async function replaceCreatineReminders(takenToday: boolean): Promise<boolean> {
   if (!inTauri()) return false;
   try {
     if (!(await ensureNotificationPermission())) return false;
-    const { sendNotification, Schedule, cancel } = await plugin();
-    const ids = Array.from({ length: CREATINE_REMINDER_DAYS * (CREATINE_REMINDER_END_HOUR - CREATINE_REMINDER_START_HOUR + 1) }, (_, i) => CREATINE_REMINDER_FIRST_ID + i);
-    await cancel([CREATINE_NOTIFICATION_ID, ...ids]).catch(() => {});
+    const { Schedule, cancel, createChannel, Importance } = await plugin();
+    await createChannel({
+      id: CREATINE_REMINDER_CHANNEL_ID,
+      name: t('supplements.reminderChannel'),
+      importance: Importance.Default,
+      vibration: true,
+    });
+    await cancel(creatineReminderIds());
 
     const now = new Date();
-    let scheduled = 0;
+    const notifications: (Options & { sourceJson: string })[] = [];
     for (let dayOffset = takenToday ? 1 : 0; dayOffset < CREATINE_REMINDER_DAYS; dayOffset++) {
       for (let hour = CREATINE_REMINDER_START_HOUR; hour <= CREATINE_REMINDER_END_HOUR; hour++) {
         const at = new Date(now);
         at.setDate(now.getDate() + dayOffset);
         at.setHours(hour, 0, 0, 0);
         if (at.getTime() <= now.getTime()) continue;
-        const message = CREATINE_REMINDER_MESSAGES[scheduled % CREATINE_REMINDER_MESSAGES.length];
-        await sendNotification({
-          id: CREATINE_REMINDER_FIRST_ID + scheduled,
+        const message = CREATINE_REMINDER_MESSAGES[notifications.length % CREATINE_REMINDER_MESSAGES.length];
+        const notification: Options = {
+          id: CREATINE_REMINDER_FIRST_ID + notifications.length,
+          channelId: CREATINE_REMINDER_CHANNEL_ID,
           title: 'Creatina',
           body: `${message} Aviso de ${at.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${hour}:00.`,
           schedule: Schedule.at(at, false, true),
-        });
-        scheduled++;
+        };
+        // The Android batch command stores sourceJson for its boot restore receiver. The
+        // public sendNotification() returns void and its native `show` does not persist alarms.
+        notifications.push({ ...notification, sourceJson: JSON.stringify(notification) });
       }
     }
+    await invoke('plugin:notification|batch', { notifications });
     return true;
-  } catch {
+  } catch (error) {
+    console.warn('Could not schedule creatine reminders', error);
     return false;
   }
 }
 
-export async function cancelCreatineReminder(): Promise<void> {
-  if (!inTauri()) return;
-  try {
-    const { cancel } = await plugin();
-    const ids = Array.from({ length: CREATINE_REMINDER_DAYS * (CREATINE_REMINDER_END_HOUR - CREATINE_REMINDER_START_HOUR + 1) }, (_, i) => CREATINE_REMINDER_FIRST_ID + i);
-    await cancel([CREATINE_NOTIFICATION_ID, ...ids]);
-  } catch {
-    /* ignore */
-  }
+export function cancelCreatineReminder(): Promise<boolean> {
+  return updateCreatineReminders(async () => {
+    if (!inTauri()) return false;
+    try {
+      const { cancel } = await plugin();
+      await cancel(creatineReminderIds());
+      return true;
+    } catch (error) {
+      console.warn('Could not cancel creatine reminders', error);
+      return false;
+    }
+  });
 }
 
 export function vibrateRestEnd(): void {

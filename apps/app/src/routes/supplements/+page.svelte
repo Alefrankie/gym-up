@@ -6,7 +6,7 @@
   import { invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
   import { longDate, relativeDay } from '#lib/dates';
-  import { loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
+  import { CREATINE_REMINDER_KEY, creatineReminderError, loadSupplements, localDay, persistMark, withMark } from '#lib/supplements';
   import { cancelCreatineReminder, scheduleCreatineReminder } from '#lib/notify';
   import DayStrip from '#lib/components/DayStrip.svelte';
   import SupplementCalendar from '#lib/components/SupplementCalendar.svelte';
@@ -18,31 +18,17 @@
   let error = $state<string | null>(null);
   let busy = $state(false);
   let creatineReminderEnabled = $state(false);
-  const CREATINE_REMINDER_KEY = 'gym-up:creatine-reminder';
+  let reminderBusy = $state(false);
 
   const creatine = (response: SupplementListResponse | null) =>
     response?.items.find((item) => /creatina|creatine/i.test(item.name)) ?? null;
-
-  async function refreshCreatineReminder(response: SupplementListResponse | null) {
-    if (localStorage.getItem(CREATINE_REMINDER_KEY) !== 'on') return;
-    if (response && !creatine(response)) {
-      localStorage.removeItem(CREATINE_REMINDER_KEY);
-      creatineReminderEnabled = false;
-      await cancelCreatineReminder();
-      return;
-    }
-    if (!response) return;
-    creatineReminderEnabled = true;
-    await scheduleCreatineReminder(creatine(response)!.days.includes(response.day));
-  }
 
   async function load() {
     try {
       list = (await loadSupplements(today, (r) => {
         list = r;
-        void refreshCreatineReminder(r);
       })).data;
-      await refreshCreatineReminder(list);
+      creatineReminderEnabled = localStorage.getItem(CREATINE_REMINDER_KEY) === 'on';
     } catch (e) {
       error = e instanceof NetworkError ? t('supplements.offlineEmpty') : t('supplements.loadError');
     }
@@ -54,16 +40,32 @@
   });
 
   async function toggleCreatineReminder() {
+    if (reminderBusy) return;
+    reminderBusy = true;
+    try {
+    error = null;
     if (creatineReminderEnabled) {
+      if (!(await cancelCreatineReminder())) {
+        error = t('supplements.reminderError');
+        return;
+      }
       localStorage.removeItem(CREATINE_REMINDER_KEY);
       creatineReminderEnabled = false;
-      await cancelCreatineReminder();
+      creatineReminderError.set(false);
       return;
     }
     const item = creatine(list);
-    if (!item || !(await scheduleCreatineReminder(item.days.includes(list!.day)))) return;
+    if (!item) return;
+    if (!(await scheduleCreatineReminder(item.days.includes(localDay())))) {
+      error = t('supplements.reminderError');
+      return;
+    }
     localStorage.setItem(CREATINE_REMINDER_KEY, 'on');
+    creatineReminderError.set(false);
     creatineReminderEnabled = true;
+    } finally {
+      reminderBusy = false;
+    }
   }
 
   /** Day by day, newest first: what was taken. Only days with something taken are listed. */
@@ -80,9 +82,6 @@
     const next = withMark($state.snapshot(list), id, taken, day);
     list = next;
     void persistMark(next, id, taken, day);
-    if (day === today && creatine(next)?.id === id && creatineReminderEnabled) {
-      void scheduleCreatineReminder(taken);
-    }
   }
 
   /** A day picked on the calendar, to fill in what was taken on days already gone. */
@@ -122,11 +121,16 @@
   <h1>{t('supplements.title')}</h1>
   <p class="muted lead">{t('supplements.lead', { date: longDate() })}</p>
   {#if creatine(list)}
-    <button type="button" class="reminder" aria-pressed={creatineReminderEnabled} onclick={toggleCreatineReminder}>
-      {creatineReminderEnabled ? t('supplements.reminderOn') : t('supplements.reminderOff')}
+    <button type="button" class="reminder" role="switch" aria-checked={creatineReminderEnabled} aria-labelledby="reminder-label" aria-describedby="reminder-detail" aria-busy={reminderBusy} disabled={reminderBusy} onclick={toggleCreatineReminder}>
+      <span class="reminder-copy">
+        <strong id="reminder-label">{t('supplements.reminderChannel')}</strong>
+        <span id="reminder-detail">{t('supplements.reminderSchedule')}</span>
+        <span class="reminder-status" class:warn={$creatineReminderError && !reminderBusy} aria-live="polite">{reminderBusy ? t('common.loading') : $creatineReminderError ? t('supplements.reminderNeedsAttention') : ''}</span>
+      </span>
+      <span class="reminder-track" class:on={creatineReminderEnabled} aria-hidden="true"><span class="reminder-thumb"></span></span>
     </button>
   {/if}
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error || $creatineReminderError}<p class="error" role="alert">{error ?? t('supplements.reminderError')}</p>{/if}
 
   {#if list}
     <ul class="items">
@@ -195,8 +199,53 @@
     font-size: var(--t-sm);
   }
   .reminder {
-    margin: 0.25rem 0 0.75rem;
-    font-size: var(--t-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.875rem 1rem;
+    margin: 0.25rem 0 1.25rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--line) inset;
+    color: var(--text);
+    text-align: left;
+    font-weight: 400;
+  }
+  .reminder:active:not(:disabled) { transform: none; }
+  .reminder:disabled { opacity: 1; cursor: progress; }
+  .reminder:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .reminder-copy { display: grid; gap: 0.125rem; min-width: 0; }
+  .reminder-copy strong { font-size: var(--t-base); font-weight: 600; }
+  .reminder-copy > span { color: var(--muted); font-size: var(--t-sm); line-height: 1.4; }
+  .reminder-copy .reminder-status:empty { display: none; }
+  .reminder-copy .reminder-status { font-size: var(--t-xs); }
+  .reminder-copy .reminder-status.warn { color: var(--danger); }
+  .reminder-track {
+    position: relative;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    transition: background-color 200ms var(--ease);
+  }
+  .reminder-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  }
+  .reminder-track.on { background: var(--accent); }
+  .reminder-track.on .reminder-thumb { background: var(--accent-ink); transform: translateX(18px); }
+  .reminder:disabled .reminder-track { opacity: 0.6; }
+  @media (prefers-reduced-motion: no-preference) {
+    .reminder-thumb { transition: transform 180ms var(--ease), background-color 180ms var(--ease); }
   }
   .items {
     list-style: none;
