@@ -113,6 +113,9 @@
         weekday = r.weekday === null || r.weekday === undefined ? [] : [r.weekday];
         exercises = r.exercises.map((e) => ({ ...e, key: e.id, secondaryMuscles: e.secondaryMuscles ?? [], sets: planOf(e) }));
         baseline = fingerprint();
+        // Home links straight to one exercise (?exercise=<exerciseId>) to edit it.
+        const want = page.url.searchParams.get('exercise');
+        if (want && !open) open = exercises.find((e) => e.exerciseId === want)?.key ?? null;
         return true;
       };
       const res = await cachedGet(`/programs/${programId}`, programDetailDtoSchema, { onCached: (c) => void show(c.data) });

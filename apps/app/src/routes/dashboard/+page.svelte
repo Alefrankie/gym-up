@@ -141,11 +141,16 @@
   let nextUp = $state<{ name: string; weekday: number } | null>(null);
   let restDay = $state(false);
   let byWeekday = $state(false);
+  // Active program, so today's card can open its routine to edit.
+  let activeProgramId = $state<string | null>(null);
+  const editHref = (routineId: string, exerciseId?: string) =>
+    activeProgramId ? `/programs/${activeProgramId}/${routineId}${exerciseId ? `?exercise=${encodeURIComponent(exerciseId)}` : ''}` : undefined;
 
   async function followWeekday() {
     try {
       const list = (await cachedGet('/programs', programListResponseSchema)).data;
       if (!list.activeProgramId) return;
+      activeProgramId = list.activeProgramId;
       const program = (await cachedGet(`/programs/${list.activeProgramId}`, programDetailDtoSchema)).data;
       const pick = routineForDate(program.routines, new Date());
       if (!pick) return;
@@ -241,10 +246,12 @@
         </a>
       {:else}
         <section class="today">
-          <span class="label">{#if byWeekday}{t('home.todayRoutine')}{:else}{t('home.todayIs')}{#if w.week?.target}{' · '}{t('home.dayOf', { n: w.dayNumber, total: w.week.target })}{/if}{/if}</span>
-          <strong>{w.routineDay.dayName}</strong>
-          <span class="meta">{w.routineDay.focus ? `${w.routineDay.focus} · ` : ''}{sessionSummary(w.exercises)}</span>
-          <TargetMuscles muscles={muscleLoad(w.exercises)} compact />
+          <a class="edit" href={editHref(w.routineDay.id)}>
+            <span class="label">{#if byWeekday}{t('home.todayRoutine')}{:else}{t('home.todayIs')}{#if w.week?.target}{' · '}{t('home.dayOf', { n: w.dayNumber, total: w.week.target })}{/if}{/if}</span>
+            <strong>{w.routineDay.dayName}</strong>
+            <span class="meta">{w.routineDay.focus ? `${w.routineDay.focus} · ` : ''}{sessionSummary(w.exercises)}</span>
+            <TargetMuscles muscles={muscleLoad(w.exercises)} compact />
+          </a>
           <div class="actions">
             <button type="button" class="ghost toggle" aria-expanded={showExercises} onclick={() => (showExercises = !showExercises)}>
               {showExercises ? t('home.hideExercises') : t('home.showExercises')} <Icon name={showExercises ? 'up' : 'down'} size={16} />
@@ -254,7 +261,11 @@
           {#if showExercises}
             <ul class="rows" transition:slide={{ duration: 240, easing: cubicOut }}>
               {#each w.exercises as ex (ex.id)}
-                <li><ExerciseRow {ex} unit={w.weightUnit} onclick={() => start(w, ex.exerciseId)} /></li>
+                <li><ExerciseRow {ex} unit={w.weightUnit} onclick={() => {
+                  const href = editHref(w.routineDay.id, ex.exerciseId);
+                  if (href) void goto(href);
+                  else void start(w, ex.exerciseId);
+                }} /></li>
               {/each}
             </ul>
           {/if}
@@ -395,6 +406,13 @@
   }
   .label.ok {
     color: var(--ok);
+  }
+  .today .edit {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+    color: inherit;
+    text-decoration: none;
   }
   .today strong {
     font-size: var(--t-lg);
