@@ -1,3 +1,5 @@
+> Product intent lives in [PRODUCT.md](../../PRODUCT.md) at the repo root; this overview is historical scope and defers to it where they differ.
+
 # Product Overview
 
 Parent: [./readme.md](./readme.md) · Up: [../README.md](../README.md)

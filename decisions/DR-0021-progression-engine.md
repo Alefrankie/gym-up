@@ -1,16 +1,40 @@
 ---
-id: ADR-021
-title: Progression Engine — Deterministic Double Progression, Plateau Detection, Deload
-type: decision
+id: DR-0021
+title: "Progression Engine — Deterministic Double Progression, Plateau Detection, Deload"
 status: accepted
+tier: 1
 date: 2026-10-01
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: cross-team
+reversibility: easy
+risk_flags: []
+
+depends_on: []
+supersedes: []
+superseded_by: null
+conflicts_with: []
+
+links:
+  code: []
+  issues:
+    - "docs/stories/phase-2/readme.md"
+  prs: []
+
+validation:
+  criteria: []
+  review_by: null
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-021
 ---
+# DR-0021 · Progression Engine — Deterministic Double Progression, Plateau Detection, Deload
 
-# ADR-021: Progression Engine — Deterministic Double Progression, Plateau Detection, Deload
-
-Parent: [./readme.md](./readme.md) · Up: [../../README.md](../../README.md)
-
-## Status
+## Legacy status
 
 Accepted
 
@@ -20,7 +44,7 @@ Gravl tells the user what to lift next session, adapts when they stall, and sche
 
 ## Decision
 
-The progression engine is a **pure domain module** in a new `progression` context ([context](../contexts/progression/readme.md)). Its inputs are the user's history and settings; its output is a suggestion per exercise. No AI. All rules are unit-tested with Object Mothers ([ADR-009](./009-object-mothers.md)).
+The progression engine is a **pure domain module** in a new `progression` context ([context](../docs/architecture/contexts/progression/readme.md)). Its inputs are the user's history and settings; its output is a suggestion per exercise. No AI. All rules are unit-tested with Object Mothers ([ADR-009](./DR-0009-object-mothers.md)).
 
 ### 1. Exposure
 
@@ -41,7 +65,7 @@ Let `last` be the most recent exposure, `W` its top working weight (the most com
 | All sets reached `≥ min` reps (but not all reached `max`) | **Hold**: weight = `W`, reps = best reps of `last` + 1 (capped at `max`) |
 | Any set `< min` reps, and the exposure before `last` also missed `min` at the same `W` | **Reduce**: weight = `W × 0.9` (rounded), reps = `min` |
 | Any set `< min` reps (first miss) | **Hold**: weight = `W`, reps = `min` |
-| No exposure | No suggestion (see [ADR-019 §4](./019-rotation-scheduling-and-onboarding.md)) |
+| No exposure | No suggestion (see [ADR-019 §4](./DR-0019-rotation-scheduling-and-onboarding.md)) |
 
 For rep-only types (`bodyweight_reps`, `assisted_bodyweight`): increase reps by 1 per set until `max`. Then suggest adding load (`weighted_bodyweight`) or reducing assistance by one increment. Duration types: +5 s per session. Distance types: no suggestion.
 
@@ -57,13 +81,13 @@ For rep-only types (`bodyweight_reps`, `assisted_bodyweight`): increase reps by 
 
 **lbs users** get unit-native steps; suggestions are rounded in display units: barbell 10 / 5 lb, dumbbell 5 lb, machine/cable 10 / 5 lb, kettlebell 9 lb, other 5 lb.
 
-**Rounding** to loadable weights: barbell suggestions round **down** to a multiple of `2 × smallest available plate` above the bar, using the user's plate settings ([PRD FR-WT-037](../../prd/features/workout-tracking.md)). Other equipment rounds to the nearest increment step.
+**Rounding** to loadable weights: barbell suggestions round **down** to a multiple of `2 × smallest available plate` above the bar, using the user's plate settings ([PRD FR-WT-037](../docs/prd/features/workout-tracking.md)). Other equipment rounds to the nearest increment step.
 
 **Safety caps** from `HealthRules`: an increase never exceeds `MaxWeightIncreasePerSessionKg` (5 kg) or 10 % of `W`, whichever is smaller (minimum one increment step).
 
 ### 5. Plateau detection
 
-An exercise is **plateaued** when the best e1RM ([ADR-020](./020-personal-records.md)) has not improved over the last **3 exposures** relative to the best e1RM before them, *and* the exercise has ≥ 4 exposures. For rep-only types the metric is best reps.
+An exercise is **plateaued** when the best e1RM ([ADR-020](./DR-0020-personal-records.md)) has not improved over the last **3 exposures** relative to the best e1RM before them, *and* the exercise has ≥ 4 exposures. For rep-only types the metric is best reps.
 
 The plateau response is shown to the user, who decides:
 
@@ -99,15 +123,22 @@ PRs still count during a deload. Deload workouts are excluded from the plateau w
 ## Trade-offs
 
 - **Pro:** Zero cost, offline-capable (suggestions are computed server-side at load and shipped in the island props), fully testable.
-- **Con:** Less adaptive than ML coaching. The weekly AI summary ([ADR-026](./026-weekly-ai-coach-summary.md)) covers the "coach voice".
+- **Con:** Less adaptive than ML coaching. The weekly AI summary ([ADR-026](./DR-0026-weekly-ai-coach-summary.md)) covers the "coach voice".
 
 ## Consequences
 
-- Tables: `exercise_progression_overrides(user_id, exercise_id, rep_min, rep_max, range_until, dismissed_until_exposures, rebuild_pending)` (owner-only); `profiles.deload_until`, `profiles.last_deload_at`, `profiles.deload_snoozed_until`, `profiles.progression_enabled`. DDL: [database-schema.md → 007](../database-schema.md#007--progression-adr-021-adr-022).
+- Tables: `exercise_progression_overrides(user_id, exercise_id, rep_min, rep_max, range_until, dismissed_until_exposures, rebuild_pending)` (owner-only); `profiles.deload_until`, `profiles.last_deload_at`, `profiles.deload_snoozed_until`, `profiles.progression_enabled`. DDL: [database-schema.md → 007](../docs/architecture/database-schema.md#007--progression-adr-021-adr-022).
 - Every suggestion carries a `reason` code (`increase_all_sets_hit_max`, `hold_progressing`, `reduce_two_misses`, `deload`, `readiness_low`, `plateau_rebuild`) rendered by the UI with i18n strings.
-- The readiness adjustments ([ADR-022](./022-readiness-and-recovery.md)) apply **after** the progression output.
+- The readiness adjustments ([ADR-022](./DR-0022-readiness-and-recovery.md)) apply **after** the progression output.
 
 ## Referenced by
 
-- [progression PRD](../../prd/features/progression.md)
-- [progression context](../contexts/progression/readme.md)
+- [progression PRD](../docs/prd/features/progression.md)
+- [progression context](../docs/architecture/contexts/progression/readme.md)
+
+## Log
+
+- 2026-10-01 accepted as ADR-021 (legacy record)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/021-progression-engine.md; status mapped to the code as of today: accepted. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 T1: no validation.criteria required.
+- 2026-11-04 note: Not built on 2026-11-04 (no progression context found).

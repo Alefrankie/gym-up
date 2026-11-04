@@ -1,21 +1,46 @@
 ---
-id: ADR-025
-title: Offline-First Live Workout — IndexedDB Outbox, Idempotent Sync
-type: decision
-status: accepted
+id: DR-0025
+title: "Offline-First Live Workout — IndexedDB Outbox, Idempotent Sync"
+status: implemented
+tier: 3
 date: 2026-10-01
-amended: 2026-10-29
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: system
+reversibility: costly
+risk_flags: [data]
+
+depends_on: []
+supersedes: []
+superseded_by: null
+conflicts_with: []
+
+links:
+  code:
+    - "apps/app/src/lib/offline/"
+  issues: []
+  prs: []
+
+validation:
+  criteria:
+    - "A full workout can be logged with the network off and syncs without loss"
+    - "Create endpoints are idempotent upserts by client-generated id"
+  review_by: 2027-02-04
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-025
 ---
+# DR-0025 · Offline-First Live Workout — IndexedDB Outbox, Idempotent Sync
 
-# ADR-025: Offline-First Live Workout — IndexedDB Outbox, Idempotent Sync
-
-Parent: [./readme.md](./readme.md) · Up: [../../README.md](../../README.md)
-
-## Status
+## Legacy status
 
 Accepted. Implements PI-007.
 
-**Amended 2026-10-29 by [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) section 5 and the implementation of Phase 4 of the [mobile migration plan](../../planning/mobile-migration-plan.md).** The original decision assumed an Astro web app with a hand-written service worker and a PWA manifest. The app is now a static SvelteKit SPA bundled into a Tauri build, so the **service worker and the manifest are dropped** and the outbox, client ids, idempotent upserts and sync loop are kept and built. What changed is marked below; sections 3 to 6 keep their decisions.
+**Amended 2026-10-29 by [ADR-027](./DR-0027-mobile-architecture-nestjs-sveltekit-tauri.md) section 5 and the implementation of Phase 4 of the [mobile migration plan](../docs/planning/mobile-migration-plan.md).** The original decision assumed an Astro web app with a hand-written service worker and a PWA manifest. The app is now a static SvelteKit SPA bundled into a Tauri build, so the **service worker and the manifest are dropped** and the outbox, client ids, idempotent upserts and sync loop are kept and built. What changed is marked below; sections 3 to 6 keep their decisions.
 
 | Piece | Original | Now |
 |-------|----------|-----|
@@ -27,7 +52,7 @@ Accepted. Implements PI-007.
 
 ## Context
 
-Gyms often have no signal (basements). Hevy works fully offline during a workout and syncs later. Our live workout ([ADR-015](./015-live-workout-react-island.md)) funnels every mutation through an outbox.
+Gyms often have no signal (basements). Hevy works fully offline during a workout and syncs later. Our live workout ([ADR-015](./DR-0015-live-workout-react-island.md)) funnels every mutation through an outbox.
 
 ## Decision
 
@@ -83,12 +108,20 @@ The only realistic conflict is the same workout edited on two devices. The decid
 - Tests: 12 unit tests of the outbox with `fake-indexeddb` (order, backoff, 5xx, 4xx, 401, coalescing, remap, no concurrent drains, retry and discard); API end-to-end tests for idempotent start and set upserts.
 - Phase 2 stories that add commands extend `Command` in `apps/app/src/lib/offline/outbox.ts` and the sender, and add the matching idempotent endpoint.
 
-## Verification
+## Validation
 
 Checked in a real browser against the deployed API (2026-10-29): with the network simulated as down, a workout was started, two sets were logged and the workout was finished; the outbox held `start-workout`, `upsert-set`, `upsert-set`, `finish-workout`; on reconnect it drained in order with 0 failures and the server ended with the workout completed and exactly those two sets. An automated Playwright version of this check is still to be written (the original plan for story 12.3).
 
 ## Referenced by
 
-- [workout-tracking PRD](../../prd/features/workout-tracking.md) (NFR-WT-P2-01..03)
-- [system.md](../system.md) (Offline)
-- [mobile migration plan](../../planning/mobile-migration-plan.md) (Phase 4)
+- [workout-tracking PRD](../docs/prd/features/workout-tracking.md) (NFR-WT-P2-01..03)
+- [system.md](../docs/architecture/system.md) (Offline)
+- [mobile migration plan](../docs/planning/mobile-migration-plan.md) (Phase 4)
+
+## Log
+
+- 2026-10-01 accepted as ADR-025 (legacy record)
+- 2026-10-29 amended (legacy `amended` field)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/025-offline-live-workout.md; status mapped to the code as of today: implemented. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 validation.criteria derived from the Decision text at migration; no evidence recorded yet. review_by 2027-02-04 set at migration as a placeholder deadline.
+- 2026-11-04 note: Legacy frontmatter had `amended: 2026-10-29`: amended by DR-0027 section 5 (no service worker or manifest; outbox, client ids, idempotent upserts and sync loop implemented; LWW and tombstones deferred). Kept as one record because the core decision stands.

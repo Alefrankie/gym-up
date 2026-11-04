@@ -1,16 +1,41 @@
 ---
-id: ADR-010
-title: Per-Context Composition Files
-type: decision
+id: DR-0010
+title: "Per-Context Composition Files"
 status: superseded
+tier: 3
 date: 2026-07-21
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: system
+reversibility: costly
+risk_flags: []
+
+depends_on: []
+supersedes: []
+superseded_by: DR-0027
+conflicts_with: []
+
+links:
+  code: []
+  issues: []
+  prs: []
+
+validation:
+  criteria: []
+  review_by: null
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-010
 ---
+# DR-0010 · Per-Context Composition Files
 
-# ADR-010: Per-Context Composition Files
+## Legacy status
 
-## Status
-
-Superseded by [ADR-027](./027-mobile-architecture-nestjs-sveltekit-tauri.md) on 2026-10-29: composition files and `STORAGE_BACKEND` are replaced by one Nest module per context with factory providers (see [system.md](../system.md#wiring-nest-modules)). The original decision is kept below for history.
+Superseded by [ADR-027](./DR-0027-mobile-architecture-nestjs-sveltekit-tauri.md) on 2026-10-29: composition files and `STORAGE_BACKEND` are replaced by one Nest module per context with factory providers (see [system.md](../docs/architecture/system.md#wiring-nest-modules)). The original decision is kept below for history.
 
 _Original status:_
 
@@ -138,7 +163,7 @@ const todayWorkout = await startWorkoutUseCase.getToday(currentUserId);
 - **Bounded contexts** — matches DDD bounded context pattern.
 - **Clear ownership** — each context owns its wiring.
 
-## Consequence
+## Consequences
 
 - Each context has a `[name].composition.ts` file at the context root.
 - No `container.ts` or `composition-root.ts`.
@@ -148,5 +173,11 @@ const todayWorkout = await startWorkoutUseCase.getToday(currentUserId);
 
 ## Referenced by
 
-- [system.md](../system.md) — composition strategy
-- [all contexts](../contexts/) — each has its own composition
+- [system.md](../docs/architecture/system.md) — composition strategy
+- [all contexts](../docs/architecture/contexts) — each has its own composition
+
+## Log
+
+- 2026-07-21 superseded as ADR-010 (legacy record)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/010-per-context-composition.md; status mapped to the code as of today: superseded. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 validation.criteria left empty: superseded before any criteria were recorded.

@@ -1,3 +1,5 @@
+> Product intent lives in [PRODUCT.md](../../PRODUCT.md) at the repo root; this file is kept for design context (impeccable schema) and defers to it.
+
 # Product
 
 <!-- impeccable:product-schema 1 -->

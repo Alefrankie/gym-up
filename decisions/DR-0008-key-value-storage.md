@@ -1,14 +1,39 @@
 ---
-id: ADR-008
-title: KeyValueStorage Abstraction
-type: decision
+id: DR-0008
+title: "KeyValueStorage Abstraction"
 status: accepted
+tier: 1
 date: 2026-07-21
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: cross-team
+reversibility: easy
+risk_flags: []
+
+depends_on: []
+supersedes: []
+superseded_by: null
+conflicts_with: []
+
+links:
+  code: []
+  issues: []
+  prs: []
+
+validation:
+  criteria: []
+  review_by: null
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-008
 ---
+# DR-0008 · KeyValueStorage Abstraction
 
-# ADR-008: KeyValueStorage Abstraction
-
-## Status
+## Legacy status
 
 Accepted
 
@@ -87,7 +112,7 @@ class SqliteKeyValueStorage implements KeyValueStorage {
 }
 ```
 
-> **Note**: Per [ADR-011](./011-implements-not-extends.md), concrete classes use `implements`, not `extends`. No inheritance chain.
+> **Note**: Per [ADR-011](./DR-0011-implements-not-extends.md), concrete classes use `implements`, not `extends`. No inheritance chain.
 
 ## SQLite Schema
 
@@ -104,7 +129,7 @@ CREATE TABLE key_value (
 - Tests can use SQLite `key_value` table — fast, no browser needed.
 - Production uses browser localStorage — same interface, different impl.
 - Ephemeral data (timer state, drafts) lives outside DB domain tables.
-- Per [ADR-007](./007-repository-pattern.md) pattern: abstract class, two impls.
+- Per [ADR-007](./DR-0007-repository-pattern.md) pattern: abstract class, two impls.
 
 ## Use Cases for KeyValueStorage
 
@@ -113,7 +138,7 @@ CREATE TABLE key_value (
 - User preferences not in profile (UI theme, etc.)
 - Last-used filters, sort orders
 
-## Consequence
+## Consequences
 
 - No code calls `window.localStorage` directly.
 - All use cases that need persistence of ephemeral state depend on `KeyValueStorage`.
@@ -121,5 +146,12 @@ CREATE TABLE key_value (
 
 ## Referenced by
 
-- [system.md](../system.md) — composition
-- [workout-tracking context](../contexts/workout-tracking/readme.md) — rest timer, draft state
+- [system.md](../docs/architecture/system.md) — composition
+- [workout-tracking context](../docs/architecture/contexts/workout-tracking/readme.md) — rest timer, draft state
+
+## Log
+
+- 2026-07-21 accepted as ADR-008 (legacy record)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/008-key-value-storage.md; status mapped to the code as of today: accepted. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 T1: no validation.criteria required.
+- 2026-11-04 note: No KeyValueStorage abstraction found in the code on 2026-11-04 (offline state uses IndexedDB, see DR-0025). Owner should confirm whether this is still wanted or should be rejected.

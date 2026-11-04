@@ -1,14 +1,39 @@
 ---
-id: ADR-009
-title: Object Mothers Test Pattern with @faker-js/faker
-type: decision
+id: DR-0009
+title: "Object Mothers Test Pattern with @faker-js/faker"
 status: accepted
+tier: 1
 date: 2026-07-21
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: cross-team
+reversibility: easy
+risk_flags: []
+
+depends_on: []
+supersedes: []
+superseded_by: null
+conflicts_with: []
+
+links:
+  code: []
+  issues: []
+  prs: []
+
+validation:
+  criteria: []
+  review_by: null
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-009
 ---
+# DR-0009 · Object Mothers Test Pattern with @faker-js/faker
 
-# ADR-009: Object Mothers Test Pattern with @faker-js/faker
-
-## Status
+## Legacy status
 
 Accepted
 
@@ -110,7 +135,7 @@ We use **fakes** only. Tests run real code against real (but in-memory) SQLite.
 - **SQLite fakes** run actual SQL queries — same bugs would appear in production.
 - **Per-test fresh DB** — no test pollution, parallel test runs safe.
 
-## Consequence
+## Consequences
 
 - Every entity has a `XxxMother` class in `src/test/mothers/`.
 - Tests import mothers instead of hardcoding data.
@@ -129,5 +154,12 @@ We use **fakes** only. Tests run real code against real (but in-memory) SQLite.
 
 ## Referenced by
 
-- [system.md](../system.md) — testing strategy
-- [test setup guide](../testing/) (TODO)
+- [system.md](../docs/architecture/system.md) — testing strategy
+- [test setup guide](../docs/architecture/testing) (TODO)
+
+## Log
+
+- 2026-07-21 accepted as ADR-009 (legacy record)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/009-object-mothers.md; status mapped to the code as of today: accepted. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 T1: no validation.criteria required.
+- 2026-11-04 note: No object mothers and no @faker-js/faker dependency found in the code on 2026-11-04. Owner should confirm whether this is still wanted or should be rejected.

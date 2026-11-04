@@ -1,0 +1,243 @@
+{
+  "generated": "2026-11-04",
+  "nodes": [
+    {
+      "id": "DR-0001",
+      "title": "Supabase Client-side SDK",
+      "status": "superseded",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0002",
+      "title": "Chart.js via React Island",
+      "status": "superseded",
+      "tier": 1,
+      "scope": "local",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0003",
+      "title": "Routines as Seed Data",
+      "status": "superseded",
+      "tier": 1,
+      "scope": "local",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0004",
+      "title": "RLS — write own, read all",
+      "status": "implemented",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0005",
+      "title": "Private Progress Photos",
+      "status": "implemented",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0006",
+      "title": "Store in kg, display per unit",
+      "status": "implemented",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0007",
+      "title": "Repository Pattern — Abstract Class, Dual Implementations",
+      "status": "implemented",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0008",
+      "title": "KeyValueStorage Abstraction",
+      "status": "accepted",
+      "tier": 1,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0009",
+      "title": "Object Mothers Test Pattern with @faker-js/faker",
+      "status": "accepted",
+      "tier": 1,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0010",
+      "title": "Per-Context Composition Files",
+      "status": "superseded",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0011",
+      "title": "Abstract Classes as Interfaces (implements, not extends)",
+      "status": "implemented",
+      "tier": 2,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0012",
+      "title": "Drizzle ORM as SQLite/Postgres Abstraction",
+      "status": "implemented",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0013",
+      "title": "Hexagonal Architecture (Ports and Adapters) per Context",
+      "status": "implemented",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0014",
+      "title": "AI Nutrition Analysis — Google Gemini Vision Provider",
+      "status": "implemented",
+      "tier": 2,
+      "scope": "local",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0015",
+      "title": "Live Workout as a Single React Island with Client Session State",
+      "status": "implemented",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0016",
+      "title": "Workout Data Model v2 — Workout Exercises, Set Types, RPE, Exercise-Type Metrics",
+      "status": "accepted",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0017",
+      "title": "Exercise Catalog — System Library + Custom User Exercises",
+      "status": "implemented",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0018",
+      "title": "User-Owned Programs and Routines (supersedes ADR-003)",
+      "status": "implemented",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0019",
+      "title": "Rotation Scheduling and Rule-Based Program Recommendation",
+      "status": "accepted",
+      "tier": 1,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0020",
+      "title": "Personal Records — Definitions, Epley 1RM, Computed On Demand",
+      "status": "accepted",
+      "tier": 1,
+      "scope": "local",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0021",
+      "title": "Progression Engine — Deterministic Double Progression, Plateau Detection, Deload",
+      "status": "accepted",
+      "tier": 1,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0022",
+      "title": "Readiness Check-In and Muscle Recovery Model",
+      "status": "accepted",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0023",
+      "title": "Body Metrics Are Owner-Only",
+      "status": "accepted",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0024",
+      "title": "Social Interactions — Family Feed, Likes, Comments (No Follow Graph)",
+      "status": "accepted",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0025",
+      "title": "Offline-First Live Workout — IndexedDB Outbox, Idempotent Sync",
+      "status": "implemented",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0026",
+      "title": "Weekly AI Coach Summary — Gemini Text, Facts Computed First, Cached per Week",
+      "status": "accepted",
+      "tier": 2,
+      "scope": "local",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0027",
+      "title": "Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2",
+      "status": "implemented",
+      "tier": 3,
+      "scope": "system",
+      "owner": "@alefrank"
+    }
+  ],
+  "edges": [
+    {
+      "from": "DR-0018",
+      "to": "DR-0003",
+      "type": "supersedes"
+    },
+    {
+      "from": "DR-0027",
+      "to": "DR-0001",
+      "type": "supersedes"
+    },
+    {
+      "from": "DR-0027",
+      "to": "DR-0002",
+      "type": "supersedes"
+    },
+    {
+      "from": "DR-0027",
+      "to": "DR-0010",
+      "type": "supersedes"
+    }
+  ]
+}
