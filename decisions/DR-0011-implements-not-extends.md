@@ -1,20 +1,47 @@
 ---
-id: ADR-011
-title: Abstract Classes as Interfaces (implements, not extends)
-type: decision
-status: accepted
+id: DR-0011
+title: "Abstract Classes as Interfaces (implements, not extends)"
+status: implemented
+tier: 2
 date: 2026-07-21
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: system
+reversibility: easy
+risk_flags: []
+
+depends_on: []
+supersedes: []
+superseded_by: null
+conflicts_with: []
+
+links:
+  code:
+    - "apps/api/src/lib/contexts/"
+  issues: []
+  prs: []
+
+validation:
+  criteria:
+    - "Concrete adapters use `implements` an abstract class; no `extends` chains between them"
+  review_by: null
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-011
 ---
+# DR-0011 · Abstract Classes as Interfaces (implements, not extends)
 
-# ADR-011: Abstract Classes as Interfaces (implements, not extends)
-
-## Status
+## Legacy status
 
 Accepted
 
 ## Context
 
-Per [ADR-007](./007-repository-pattern.md), each entity has an abstract class defining the contract. Concretely, TypeScript supports two patterns:
+Per [ADR-007](./DR-0007-repository-pattern.md), each entity has an abstract class defining the contract. Concretely, TypeScript supports two patterns:
 
 1. **`extends`**: `class SqliteAuthAdapter extends AuthPort` — inherits from abstract class
 2. **`implements`**: `class SqliteAuthAdapter implements AuthPort` — implements the contract
@@ -77,7 +104,7 @@ class SqliteAuthAdapter implements AuthPort {
 
 ### Why abstract class, not interface?
 
-Per [ADR-007](./007-repository-pattern.md), we use **abstract class** over interface because:
+Per [ADR-007](./DR-0007-repository-pattern.md), we use **abstract class** over interface because:
 - TypeScript interfaces don't enforce implementation at runtime.
 - Abstract class is a real contract with TS support + clear pattern.
 - Can hold default implementations if needed (future flexibility).
@@ -104,8 +131,14 @@ The decision here is to use abstract class as the **contract type**, but concret
 
 ## Referenced by
 
-- [ADR-007](./007-repository-pattern.md) — Repository pattern
-- [ADR-008](./008-key-value-storage.md) — KeyValueStorage
-- [ADR-009](./009-object-mothers.md) — Test pattern
-- [ADR-010](./010-per-context-composition.md) — Per-context composition
+- [ADR-007](./DR-0007-repository-pattern.md) — Repository pattern
+- [ADR-008](./DR-0008-key-value-storage.md) — KeyValueStorage
+- [ADR-009](./DR-0009-object-mothers.md) — Test pattern
+- [ADR-010](./DR-0010-per-context-composition.md) — Per-context composition
 - All context `readme.md` files
+
+## Log
+
+- 2026-07-21 accepted as ADR-011 (legacy record)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/011-implements-not-extends.md; status mapped to the code as of today: implemented. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 validation.criteria derived from the Decision text at migration; no evidence recorded yet.

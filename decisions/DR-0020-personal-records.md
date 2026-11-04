@@ -1,16 +1,40 @@
 ---
-id: ADR-020
-title: Personal Records — Definitions, Epley 1RM, Computed On Demand
-type: decision
+id: DR-0020
+title: "Personal Records — Definitions, Epley 1RM, Computed On Demand"
 status: accepted
+tier: 1
 date: 2026-10-01
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: local
+reversibility: easy
+risk_flags: []
+
+depends_on: []
+supersedes: []
+superseded_by: null
+conflicts_with: []
+
+links:
+  code: []
+  issues:
+    - "docs/stories/phase-2/readme.md"
+  prs: []
+
+validation:
+  criteria: []
+  review_by: null
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-020
 ---
+# DR-0020 · Personal Records — Definitions, Epley 1RM, Computed On Demand
 
-# ADR-020: Personal Records — Definitions, Epley 1RM, Computed On Demand
-
-Parent: [./readme.md](./readme.md) · Up: [../../README.md](../../README.md)
-
-## Status
+## Legacy status
 
 Accepted
 
@@ -22,7 +46,7 @@ Hevy celebrates personal records (PRs) live during the workout, lists them in th
 
 ### 1. Record types (Hevy set)
 
-Per exercise, per user. Only sets with `completed = true` and `set_type ≠ 'warmup'` count ([ADR-016](./016-workout-data-model-v2.md)).
+Per exercise, per user. Only sets with `completed = true` and `set_type ≠ 'warmup'` count ([ADR-016](./DR-0016-workout-data-model-v2.md)).
 
 | Record | Key | Applies to `exercise_type` | Formula |
 |---|---|---|---|
@@ -56,7 +80,7 @@ A set *S* in workout *W* is a PR for record type *R* when its value strictly bea
 
 Records are derived from `workout_entries`. There is no `personal_records` table.
 
-- The live workout gets a **baseline** per exercise when the workout loads: the current best for each record type, excluding this workout. The client checks each completed set against the baseline and updates it locally (instant badge, works offline per [ADR-025](./025-offline-live-workout.md)).
+- The live workout gets a **baseline** per exercise when the workout loads: the current best for each record type, excluding this workout. The client checks each completed set against the baseline and updates it locally (instant badge, works offline per [ADR-025](./DR-0025-offline-live-workout.md)).
 - The summary, the exercise records page and the feed card recompute through `GetPersonalRecordsUseCase` / `GetWorkoutPrsUseCase`.
 - Editing or deleting a past workout automatically re-derives every record. There is no stale state.
 
@@ -68,7 +92,7 @@ Records are derived from `workout_entries`. There is no `personal_records` table
 ## Trade-offs
 
 - **Pro:** Always correct; zero schema.
-- **Con:** Each records page recomputes. If p95 goes above 300 ms, add a materialized cache (see the NFR in the [progress PRD](../../prd/features/progress.md)).
+- **Con:** Each records page recomputes. If p95 goes above 300 ms, add a materialized cache (see the NFR in the [progress PRD](../docs/prd/features/progress.md)).
 
 ## Consequences
 
@@ -78,6 +102,13 @@ Records are derived from `workout_entries`. There is no `personal_records` table
 
 ## Referenced by
 
-- [progress PRD](../../prd/features/progress.md)
-- [progress context](../contexts/progress/readme.md)
-- [ADR-021](./021-progression-engine.md)
+- [progress PRD](../docs/prd/features/progress.md)
+- [progress context](../docs/architecture/contexts/progress/readme.md)
+- [ADR-021](./DR-0021-progression-engine.md)
+
+## Log
+
+- 2026-10-01 accepted as ADR-020 (legacy record)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/020-personal-records.md; status mapped to the code as of today: accepted. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 T1: no validation.criteria required.
+- 2026-11-04 note: Rules give T0 (easy x local); kept as T1. Not built on 2026-11-04 (no PR/e1RM code found).

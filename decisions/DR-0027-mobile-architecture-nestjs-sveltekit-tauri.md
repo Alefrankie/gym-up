@@ -1,18 +1,47 @@
 ---
-id: ADR-027
-title: Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2
-type: decision
-status: accepted
+id: DR-0027
+title: "Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2"
+status: implemented
+tier: 3
 date: 2026-10-29
+owner: "@alefrank"
+deciders: ["@alefrank"]
+decided_by: human
+
+scope: system
+reversibility: costly
+risk_flags: [cost, data]
+
+depends_on: []
+supersedes: [DR-0001, DR-0002, DR-0010]
+superseded_by: null
+conflicts_with: []
+
+links:
+  code:
+    - "apps/api/"
+    - "apps/app/"
+    - "packages/contracts/"
+    - "turbo.json"
+  issues: []
+  prs: []
+
+validation:
+  criteria:
+    - "API runs on Cloudflare Workers with D1 and R2"
+    - "The same SvelteKit build ships as web app and Tauri Android app"
+  review_by: 2027-02-04
+  evidence: []
+  validated_on: null
+
+tags: []
+legacy_id: ADR-027
 ---
+# DR-0027 · Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2
 
-# ADR-027: Mobile Architecture — NestJS API, SvelteKit Static SPA, Tauri 2
+## Legacy status
 
-Parent: [./readme.md](./readme.md) · Up: [../../README.md](../../README.md)
-
-## Status
-
-Accepted on 2026-10-29 and implemented through Phase 4 of the migration plan (monorepo, API on Workers, Svelte app, offline workouts). The product owner decided on 2026-10-29: NestJS, SvelteKit SPA, Tauri 2, a Turborepo monorepo, remote push notifications **out of scope** for the first release, and Phase 2 features **built directly in the new stack**. Authentication stays simple (email and password, no OAuth). **Cloudflare is the platform** (Workers for the API and web, D1 database, R2 photos); Supabase is dropped. The Phase 0 deploy checks in [Cloudflare evaluation](#cloudflare-evaluation) can still send us to a fallback. Items under [Open questions](#open-questions) that are still open (token storage in the Tauri build) block only Phase 5. Execution order is in the [migration plan](../../planning/mobile-migration-plan.md).
+Accepted on 2026-10-29 and implemented through Phase 4 of the migration plan (monorepo, API on Workers, Svelte app, offline workouts). The product owner decided on 2026-10-29: NestJS, SvelteKit SPA, Tauri 2, a Turborepo monorepo, remote push notifications **out of scope** for the first release, and Phase 2 features **built directly in the new stack**. Authentication stays simple (email and password, no OAuth). **Cloudflare is the platform** (Workers for the API and web, D1 database, R2 photos); Supabase is dropped. The Phase 0 deploy checks in [Cloudflare evaluation](#cloudflare-evaluation) can still send us to a fallback. Items under [Open questions](#open-questions) that are still open (token storage in the Tauri build) block only Phase 5. Execution order is in the [migration plan](../docs/planning/mobile-migration-plan.md).
 
 ## Context
 
@@ -23,7 +52,7 @@ Constraints found while evaluating Tauri 2 mobile against the current code:
 | Constraint | Effect on the current design |
 |------------|------------------------------|
 | Tauri serves a **static bundle** from a custom scheme (`tauri://localhost` on iOS, `http://tauri.localhost` on Android) | No SSR in the mobile build. Pages that read the DB on the server must load data from an API. |
-| Service workers are **not reliable** under those schemes | The PWA shell and runtime caching of [ADR-025](./025-offline-live-workout.md) cannot be the offline mechanism. |
+| Service workers are **not reliable** under those schemes | The PWA shell and runtime caching of [ADR-025](./DR-0025-offline-live-workout.md) cannot be the offline mechanism. |
 | The app origin differs from the API origin | Cookie sessions do not work cross-origin. Auth needs bearer tokens and CORS. |
 | `better-sqlite3` is process-local and synchronous | It does not fit a stateless serverless API and cannot run in the app. |
 | WebView is suspended when the screen is off | Rest-timer alerts need OS-scheduled local notifications. |
@@ -53,18 +82,18 @@ packages/contracts   zod schemas + inferred types shared by api and app (request
 ### 2. Backend: NestJS
 
 - NestJS on the **Express** adapter (`@nestjs/platform-express`), TypeScript, one Nest module per bounded context (`auth`, `workout-tracking`, `progress`, `private-photos`, `public-view`, `nutrition`, plus the Phase 2 contexts as they are built).
-- The existing hexagonal layout ([ADR-013](./013-hexagonal-architecture.md)) carries over: `domain` and `application` code (use cases, repository ports) move **unchanged**; Nest controllers replace Astro API routes; Nest providers replace the hand-written `*.composition.ts` files ([ADR-010](./010-per-context-composition.md)). Abstract classes stay as interfaces ([ADR-011](./011-implements-not-extends.md)) and are used as Nest injection tokens.
-- Drizzle remains the data layer ([ADR-012](./012-drizzle-orm.md)). Production target is **D1** (SQLite). The Drizzle schema stays SQLite; the `STORAGE_BACKEND` switch and the Supabase repositories are deleted.
+- The existing hexagonal layout ([ADR-013](./DR-0013-hexagonal-architecture.md)) carries over: `domain` and `application` code (use cases, repository ports) move **unchanged**; Nest controllers replace Astro API routes; Nest providers replace the hand-written `*.composition.ts` files ([ADR-010](./DR-0010-per-context-composition.md)). Abstract classes stay as interfaces ([ADR-011](./DR-0011-implements-not-extends.md)) and are used as Nest injection tokens.
+- Drizzle remains the data layer ([ADR-012](./DR-0012-drizzle-orm.md)). Production target is **D1** (SQLite). The Drizzle schema stays SQLite; the `STORAGE_BACKEND` switch and the Supabase repositories are deleted.
 - Validation: zod schemas from `packages/contracts`, applied at the controller boundary. OpenAPI generated with `@nestjs/swagger`.
 - Auth stays **simple**: email and password as today (decided 2026-10-29, no OAuth). The cookie session of `LocalAuthService` is replaced by an opaque bearer token stored server-side in the `sessions` table (same model as today, sent in the `Authorization` header), because cookies do not work cross-origin from the Tauri app. Password hashing: see [section 7](#7-password-hashing-decided-2026-10-29).
-- Idempotent upserts by client-generated UUID, `updated_at` last-write-wins, and tombstones from [ADR-025](./025-offline-live-workout.md) §3 and §5 are implemented in the API from the first workout endpoint.
+- Idempotent upserts by client-generated UUID, `updated_at` last-write-wins, and tombstones from [ADR-025](./DR-0025-offline-live-workout.md) §3 and §5 are implemented in the API from the first workout endpoint.
 - Secrets (`GEMINI_API_KEY`, DB URL) exist only in the API environment.
 
 ### 3. Frontend: SvelteKit as a static SPA
 
 - SvelteKit with `@sveltejs/adapter-static`, `ssr = false`, `prerender = false`, SPA fallback `index.html`. This is the setup the Tauri documentation prescribes.
-- Svelte 5 with runes. Live workout state is a single rune-based store with a reducer, replacing the React island of [ADR-015](./015-live-workout-react-island.md); the outbox contract of ADR-015 does not change.
-- Chart.js is used directly (no wrapper); it supersedes the React-island part of [ADR-002](./002-chartjs-react-island.md).
+- Svelte 5 with runes. Live workout state is a single rune-based store with a reducer, replacing the React island of [ADR-015](./DR-0015-live-workout-react-island.md); the outbox contract of ADR-015 does not change.
+- Chart.js is used directly (no wrapper); it supersedes the React-island part of [ADR-002](./DR-0002-chartjs-react-island.md).
 - API client: one typed module built on `fetch` and the `packages/contracts` types. It attaches the bearer token, refreshes it once on 401, and **reads through an IndexedDB cache** (see §5).
 - No server-only code or `$env/*/private` in the app.
 
@@ -139,7 +168,7 @@ These are the newest releases the registry reported, not a tested combination. P
 - **Con:** Tauri mobile needs the Rust toolchain, Android Studio with SDK and NDK, and has fewer mobile plugins than Capacitor. Remote push in particular has no first-party plugin.
 - **Con:** Stack is on very recent majors (Nest 12, Kit 3, Vite 8, TypeScript 7); ecosystem lag is likely.
 
-## Alternatives considered
+## Alternatives
 
 | Option | Why not chosen |
 |--------|----------------|
@@ -155,15 +184,15 @@ Decided 2026-10-29: replace Supabase with Cloudflare so API, database, storage a
 | Piece | Cloudflare product | Fit |
 |-------|--------------------|-----|
 | API | Workers | **Main risk.** Workers is not Node. NestJS needs the `nodejs_compat` flag and the Express adapter. **Verified locally 2026-10-29, see the next section.** Not yet verified on deployed Cloudflare, with D1, or at startup under real load. |
-| Database | D1 (SQLite) | **Good fit.** The code already runs on SQLite and Drizzle ([ADR-012](./012-drizzle-orm.md)), and Drizzle supports D1. It removes the Postgres versus SQLite split. Limits: no interactive transactions (only batched statements), per-database size cap, single primary region. Every multi-statement use case must be checked for this. |
-| Photos | R2 | Good fit. S3-compatible, presigned URLs replace Supabase signed URLs ([ADR-005](./005-private-photos.md)). |
+| Database | D1 (SQLite) | **Good fit.** The code already runs on SQLite and Drizzle ([ADR-012](./DR-0012-drizzle-orm.md)), and Drizzle supports D1. It removes the Postgres versus SQLite split. Limits: no interactive transactions (only batched statements), per-database size cap, single primary region. Every multi-statement use case must be checked for this. |
+| Photos | R2 | Good fit. S3-compatible, presigned URLs replace Supabase signed URLs ([ADR-005](./DR-0005-private-photos.md)). |
 | Web hosting | Workers static assets / Pages | Good fit for the SvelteKit static build. |
 | Auth | none first-party | Cloudflare has no end-user auth service like Supabase Auth (Cloudflare Access targets internal apps). Auth is built in the API with a library (for example Better Auth or Arctic) on D1. |
 | Gemini calls | Workers `fetch` | Works; key stored as a Worker secret. |
 | `argon2` | n/a | Native addon, does not run on Workers. Email+password uses argon2id compiled to WASM with a single shared instance (see [section 7](#7-password-hashing-decided-2026-10-29)). |
 
 Consequences if adopted:
-- Supabase is dropped (database, storage, and its RLS). Row-level visibility rules of [ADR-004](./004-rls-visibility.md) must live in the API; they have to exist there anyway.
+- Supabase is dropped (database, storage, and its RLS). Row-level visibility rules of [ADR-004](./DR-0004-rls-visibility.md) must live in the API; they have to exist there anyway.
 - Existing SQLite data migrates with little dialect change.
 - Build: Wrangler bundles with esbuild, which cannot emit decorator metadata. The API is therefore **transpiled with SWC first** (`decoratorMetadata: true`) and Wrangler only bundles the resulting JavaScript. **Verified on a deployed Worker** (see spike result).
 - Fallbacks if Nest does not run acceptably on Workers: (a) keep Nest on a Node host and use D1 over its HTTP API or move to Postgres; (b) keep the hexagonal domain and replace Nest controllers with Hono, which is native to Workers. Either is chosen at the Phase 0 gate.
@@ -260,8 +289,16 @@ Resolved 2026-10-29: remote push is out of scope for the first release; Phase 2 
 
 - New workspace layout and a `docs/planning/mobile-migration-plan.md`.
 - Astro, its Vercel deployment and the Supabase code are deleted in Phase 1. `better-sqlite3` may stay as a **test-only** dependency if the moved tests keep their in-memory SQLite driver; whether to move tests to D1 through Miniflare is decided in Phase 1.
-- [ADR-001](./001-supabase-client-side.md) (browser talks to Supabase) is superseded in practice: the app talks only to the API.
-- [ADR-002](./002-chartjs-react-island.md) and [ADR-015](./015-live-workout-react-island.md) are superseded by the Svelte equivalents; [ADR-025](./025-offline-live-workout.md) is partially superseded (§5 above).
+- [ADR-001](./DR-0001-supabase-client-side.md) (browser talks to Supabase) is superseded in practice: the app talks only to the API.
+- [ADR-002](./DR-0002-chartjs-react-island.md) and [ADR-015](./DR-0015-live-workout-react-island.md) are superseded by the Svelte equivalents; [ADR-025](./DR-0025-offline-live-workout.md) is partially superseded (§5 above).
 - Auth contract changes from cookie sessions to a bearer session token; existing development hashes are discarded and the development database is reset (see section 7).
 - CORS allow-list for the web origin and the Tauri origins (`tauri://localhost`, `http://tauri.localhost`).
 - Stories in `docs/stories/phase-2` need re-scoping against the new stack.
+
+## Log
+
+- 2026-10-29 accepted as ADR-027 (legacy record)
+- 2026-11-04 migrated to DDE from docs/architecture/decisions/027-mobile-architecture-nestjs-sveltekit-tauri.md; status mapped to the code as of today: implemented. Tier computed from reversibility x scope (+ risk overrides). Deciders inferred from repo ownership.
+- 2026-11-04 validation.criteria derived from the Decision text at migration; no evidence recorded yet. review_by 2027-02-04 set at migration as a placeholder deadline.
+- 2026-11-04 note: Partially supersedes DR-0015..DR-0026 for implementation detail only (islands, Astro, Supabase, RLS, service worker); their domain decisions stand.
+- 2026-11-04 note: Also records the 2026-10-29 rows of the old docs/trace decisions log (Cloudflare replaces Supabase, auth stays email+password with argon2id, Astro removed, remote push out of scope).
