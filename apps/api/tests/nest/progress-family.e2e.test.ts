@@ -203,6 +203,22 @@ describe('community', () => {
     expect((await http('PUT', '/community/workouts/nope/like', { token: b.token })).status).toBe(404);
   });
 
+  it('hides soft-deleted members everywhere and blocks their sign-in', async () => {
+    const gone = await userWithOneWorkout('soft-gone@example.com', 'Borrado');
+    const viewer = await register('soft-viewer@example.com', 'Mira');
+    const [w] = await db.select().from(schema.workouts).where(eq(schema.workouts.userId, gone.session.user.id));
+    await db.update(schema.profiles).set({ deletedAt: new Date() }).where(eq(schema.profiles.id, gone.session.user.id));
+
+    const feed = communityPageSchema.parse((await http('GET', '/community/feed', { token: viewer.token })).json);
+    expect(feed.items.some((x) => x.author.id === gone.session.user.id)).toBe(false);
+    const members = communityMemberListSchema.parse((await http('GET', '/community/members', { token: viewer.token })).json);
+    expect(members.items.some((m) => m.id === gone.session.user.id)).toBe(false);
+    expect((await http('GET', `/community/members/${gone.session.user.id}`, { token: viewer.token })).status).toBe(404);
+    expect((await http('GET', `/community/workouts/${w!.id}`, { token: viewer.token })).status).toBe(404);
+    expect((await http('GET', '/community/feed', { token: gone.session.token })).status).toBe(401);
+    expect((await http('POST', '/auth/login', { body: { email: 'soft-gone@example.com', password: 'longenough' } })).status).toBe(401);
+  });
+
   it('answers 410 for the retired group routes', async () => {
     const s = await register('groups-gone@example.com', 'Gone');
     expect((await http('GET', '/groups', { token: s.token })).status).toBe(410);

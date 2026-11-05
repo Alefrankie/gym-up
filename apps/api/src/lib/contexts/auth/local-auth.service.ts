@@ -3,7 +3,7 @@
 // Local implementation of AuthService.
 // Uses SQLite for session storage and argon2 for password hashing.
 
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { profiles } from '@db/schema';
 import type { Db } from '@/lib/db/client';
 
@@ -161,7 +161,7 @@ export class LocalAuthService implements AuthService {
         createdAt: profiles.createdAt,
       })
       .from(profiles)
-      .where(sql`lower(${profiles.email}) = ${email} OR lower(${profiles.username}) = ${username}`);
+      .where(and(sql`(lower(${profiles.email}) = ${email} OR lower(${profiles.username}) = ${username})`, isNull(profiles.deletedAt)));
 
     if (userResult.length === 0) {
       throw new InvalidCredentialsError();
@@ -243,7 +243,7 @@ export class LocalAuthService implements AuthService {
         createdAt: profiles.createdAt,
       })
       .from(profiles)
-      .where(eq(profiles.id, session.userId))
+      .where(and(eq(profiles.id, session.userId), isNull(profiles.deletedAt)))
       .limit(1);
 
     if (userResult.length === 0) {

@@ -29,7 +29,8 @@ const DDL = `
     address_form_chosen INTEGER NOT NULL DEFAULT 0,
     active_program_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    last_access_at INTEGER
+    last_access_at INTEGER,
+    deleted_at INTEGER
   );
 `;
 

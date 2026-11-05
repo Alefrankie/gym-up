@@ -64,6 +64,8 @@ export const profiles = sqliteTable('profiles', {
     .default(sql`(unixepoch())`),
   /** Latest authenticated app activity; nullable for accounts predating its migration. */
   lastAccessAt: integer('last_access_at', { mode: 'timestamp' }),
+  /** Soft delete: set, the profile cannot sign in and is hidden from Community. Rows are kept. */
+  deletedAt: integer('deleted_at', { mode: 'timestamp' }),
 });
 
 export type Profile = typeof profiles.$inferSelect;

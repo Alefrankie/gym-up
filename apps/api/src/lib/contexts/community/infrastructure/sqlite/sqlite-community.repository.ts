@@ -3,7 +3,7 @@
 // SQLite/D1 implementation of the community read models (DR-0028). A page is one query for the workouts and
 // one batched query per relation (sets, likes, photos), never one query per card.
 
-import { and, asc, desc, eq, gte, inArray, lt, ne, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
 import {
   exercises,
@@ -38,7 +38,7 @@ export class SqliteCommunityRepository implements CommunityRepository {
     cursor: WorkoutCursor | null;
     limit: number;
   }): Promise<CommunityWorkout[]> {
-    const where: SQL[] = [eq(workouts.status, 'completed')];
+    const where: SQL[] = [eq(workouts.status, 'completed'), isNull(profiles.deletedAt)];
     if (opts.authorId) where.push(eq(workouts.userId, opts.authorId));
     if (opts.excludeAuthorId) where.push(ne(workouts.userId, opts.excludeAuthorId));
     if (opts.cursor) {
@@ -54,7 +54,7 @@ export class SqliteCommunityRepository implements CommunityRepository {
 
   async findWorkout(viewerId: string, workoutId: string): Promise<CommunityWorkout | undefined> {
     const rows = await this.baseQuery()
-      .where(and(eq(workouts.id, workoutId), eq(workouts.status, 'completed')))
+      .where(and(eq(workouts.id, workoutId), eq(workouts.status, 'completed'), isNull(profiles.deletedAt)))
       .limit(1);
     return (await this.hydrate(rows, viewerId))[0];
   }
@@ -153,11 +153,11 @@ export class SqliteCommunityRepository implements CommunityRepository {
   }
 
   async listMembers(): Promise<CommunityMember[]> {
-    return this.memberQuery().orderBy(asc(profiles.displayName));
+    return this.memberQuery().where(isNull(profiles.deletedAt)).orderBy(asc(profiles.displayName));
   }
 
   async findMember(memberId: string): Promise<CommunityMember | undefined> {
-    const [row] = await this.memberQuery().where(eq(profiles.id, memberId)).limit(1);
+    const [row] = await this.memberQuery().where(and(eq(profiles.id, memberId), isNull(profiles.deletedAt))).limit(1);
     return row;
   }
 
