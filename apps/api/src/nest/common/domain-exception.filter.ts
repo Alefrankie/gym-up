@@ -47,6 +47,10 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   ProgramOwnershipError: 403,
   ProgramLimitError: 409,
   InvalidProgramError: 400,
+  CommunityNotFoundError: 404,
+  OwnWorkoutLikeError: 409,
+  NotWorkoutOwnerError: 403,
+  PhotoStorageUnavailableError: 503,
 };
 
 const ERROR_LABEL: Record<number, string> = {

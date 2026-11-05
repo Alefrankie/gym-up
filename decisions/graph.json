@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-04",
+  "generated": "2026-11-05",
   "nodes": [
     {
       "id": "DR-0001",
@@ -216,6 +216,14 @@
       "tier": 3,
       "scope": "system",
       "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0028",
+      "title": "Authenticated global feed and member profiles without groups",
+      "status": "accepted",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
     }
   ],
   "edges": [
@@ -238,6 +246,16 @@
       "from": "DR-0027",
       "to": "DR-0010",
       "type": "supersedes"
+    },
+    {
+      "from": "DR-0028",
+      "to": "DR-0027",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0028",
+      "to": "DR-0024",
+      "type": "conflicts_with"
     }
   ]
 }

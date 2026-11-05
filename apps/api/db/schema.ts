@@ -371,6 +371,40 @@ export const groupMembers = sqliteTable(
 
 export type Group = typeof groups.$inferSelect;
 
+/** One like per member per completed workout (DR-0028). Authors cannot like their own workouts. */
+export const workoutLikes = sqliteTable(
+  'workout_likes',
+  {
+    workoutId: text('workout_id')
+      .notNull()
+      .references(() => workouts.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.workoutId, t.userId] })],
+);
+
+/**
+ * A photo the owner explicitly shared on one of their completed workouts (DR-0028). Separate from
+ * `progress_photos`, which stay owner-only (ADR-005). Bytes live in the object store under `shared/`.
+ */
+export const sharedWorkoutPhotos = sqliteTable('shared_workout_photos', {
+  workoutId: text('workout_id')
+    .primaryKey()
+    .references(() => workouts.id, { onDelete: 'cascade' }),
+  ownerId: text('owner_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  storageKey: text('storage_key').notNull(),
+  contentType: text('content_type').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: integer('created_at').notNull().default(0),
+});
+
+export type SharedWorkoutPhoto = typeof sharedWorkoutPhotos.$inferSelect;
+
 /** Daily supplements a user wants to tick off (creatine, pre-workout, protein…). Archived ones keep their log. */
 export const supplements = sqliteTable('supplements', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

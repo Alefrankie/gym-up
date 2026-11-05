@@ -36,6 +36,7 @@
     cloud: 'M7 18a4.5 4.5 0 0 1-.4-9 6 6 0 0 1 11.6 1.5A3.8 3.8 0 0 1 17.5 18H7Z',
     mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3ZM19 11a7 7 0 0 1-14 0M12 18v4M9 22h6',
     stop: 'M7 7h10v10H7z',
+    heart: 'M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z',
   } as const;
   export type IconName = keyof typeof PATHS;
   export { PATHS };
