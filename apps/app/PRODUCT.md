@@ -12,19 +12,19 @@ android
 SvelteKit static SPA inside Tauri 2 (Android WebView); the same build is served as a web app. Self-hosted fonts only (offline use).
 
 ## Users
-A small circle of friends who train together (a few people, not a public audience). They use the phone in the gym between sets: one hand, sweaty, glancing at the screen, often with bad signal. They follow a rotating routine, log sets, and look at each other's streaks inside a group.
+A small circle of friends who train together (a few people, not a public audience). They use the phone in the gym between sets: one hand, sweaty, glancing at the screen, often with bad signal. They follow a rotating routine, log sets, and see each other's workouts in Community.
 
 ## Product Purpose
-Track gym workouts quickly and offline: see today's routine, log each set, and see what you lifted last time so you know what to beat. Build your own programs from an exercise library, follow progress over time, and keep a friendly accountability loop inside groups. Success is logging a full workout in a few taps per set.
+Track gym workouts quickly and offline: see today's routine, log each set, and see what you lifted last time so you know what to beat. Build your own programs from an exercise library, follow progress over time, and keep a friendly accountability loop in Community. Success is logging a full workout in a few taps per set.
 
 ## Positioning
-A workout log built for the gym floor, not for the dashboard: offline-first, last-session load always beside the set you are about to do, and a private group (invite code) instead of a public social feed.
+A workout log built for the gym floor, not for the dashboard: offline-first, last-session load always beside the set you are about to do, and a members-only Community feed (no public web, no comments).
 
 ## Operating Context
 Used standing or sitting in a gym, between sets, under artificial light, one thumb. Rest timer runs between sets. Data is stored in kg, shown in kg or lbs.
 
 ## Capabilities and Constraints
-- Exercise library (system + custom exercises) with muscle illustrations; programs made of routines; routine rotation; workout logging with offline outbox; progress charts; nutrition log with optional AI analysis; private progress photos; groups joined by invite code.
+- Exercise library (system + custom exercises) with muscle illustrations; programs made of routines; routine rotation; workout logging with offline outbox; progress charts; nutrition log with optional AI analysis; private progress photos; Community feed with likes and opt-in workout photos.
 - Reps are a single target number (no min/max).
 - Weights are integers in kg in storage.
 - Cloud features (photo storage, AI analysis) are optional and may answer 503.
@@ -38,7 +38,7 @@ No testimonials, metrics or external proof. Real data is dev data only.
 ## Product Principles
 - The set you are about to do is the hero: target reps and last session's load are always visible together.
 - Everything the gym needs works with no signal.
-- Small and private: a group is a handful of friends, never a feed.
+- Small and members-only: Community is a handful of friends with likes, never comments or a public web (DR-0028).
 - Spanish, plain, short.
 
 ## Accessibility & Inclusion

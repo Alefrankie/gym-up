@@ -81,3 +81,4 @@ Hevy's home tab is a feed of workouts from people you follow, with likes and com
 - 2026-11-04 note: Not built on 2026-11-04 (no workout_likes / workout_comments tables).
 - 2026-11-04 note: Possible conflict with PRODUCT.md ("a private group, never a feed"): open owner decision, see PRODUCT.md.
 - 2026-11-04 note: Where it mentions Supabase/RLS, DR-0027 supersedes the implementation detail.
+- 2026-11-05 feed scope superseded in part by DR-0028: global authenticated feed with likes and opt-in workout photos, no comments.

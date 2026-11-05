@@ -8,20 +8,23 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
 import * as schema from '@db/schema';
 import { seedReferenceData } from '../../db/seed';
 import type { Db } from '@/lib/db/client';
 import type { PasswordHasher } from '@/lib/contexts/auth/auth.types';
 import { SqliteProgramRepository } from '../../src/lib/contexts/routines/infrastructure/sqlite/sqlite-program.repository';
 import { createApp } from '../../src/nest/create-app';
+import { InMemoryPhotoStorage } from '@/lib/contexts/private-photos/infrastructure/in-memory-photo-storage';
 import {
   calendarResponseSchema,
   exerciseHistoryResponseSchema,
   exerciseListResponseSchema,
-  groupDetailSchema,
-  groupListResponseSchema,
-  groupSummarySchema,
-  memberProfileSchema,
+  communityMemberListSchema,
+  communityPageSchema,
+  communityProfileSchema,
+  communityWorkoutSchema,
+  likeStateSchema,
   sessionResponseSchema,
   streakSchema,
 } from '@gym-up/contracts';
@@ -135,71 +138,120 @@ describe('progress', () => {
   });
 });
 
-describe('groups', () => {
-  const create = async (token: string, name: string) => {
-    const r = await http('POST', '/groups', { token, body: { name } });
-    expect(r.status).toBe(200);
-    return groupSummarySchema.parse(r.json);
-  };
-
-  it('requires authentication', async () => {
-    expect((await http('GET', '/groups')).status).toBe(401);
-    expect((await http('GET', '/family')).status).toBe(404);
+describe('community', () => {
+  it('requires a session for every community route', async () => {
+    for (const path of ['/community/feed', '/community/members', '/community/members/x', '/community/workouts/x', '/community/workouts/x/photo']) {
+      expect((await http('GET', path)).status).toBe(401);
+    }
   });
 
-  it('creates a group with an invite code and lets others join with it', async () => {
-    const a = await userWithOneWorkout('grp-a@example.com', 'Ana');
-    const b = await register('grp-b@example.com', 'Beto');
-    const group = await create(a.session.token, 'Los del gym');
-    expect(group).toMatchObject({ name: 'Los del gym', memberCount: 1, isOwner: true });
-    expect(group.code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
+  it('lets members who never shared a group see each other, without private fields', async () => {
+    const a = await userWithOneWorkout('community-a@example.com', 'Ana');
+    const b = await register('community-b@example.com', 'Beto');
+    const [w] = await db.select().from(schema.workouts).where(eq(schema.workouts.userId, a.session.user.id));
+    await db.update(schema.workoutEntries).set({ notes: 'secret note', bodyWeightKgAtSet: 81.5 }).where(eq(schema.workoutEntries.workoutId, w!.id));
+    await db.insert(schema.supplements).values([
+      { userId: a.session.user.id, name: 'Creatina' },
+      { userId: a.session.user.id, name: 'Vieja', archived: true },
+    ]);
 
-    const joined = groupSummarySchema.parse(
-      (await http('POST', '/groups/join', { token: b.token, body: { code: group.code.toLowerCase() } })).json,
-    );
-    expect(joined).toMatchObject({ id: group.id, memberCount: 2, isOwner: false });
-    // joining twice is harmless
-    expect(groupSummarySchema.parse((await http('POST', '/groups/join', { token: b.token, body: { code: group.code } })).json).memberCount).toBe(2);
+    const feedRes = await http('GET', '/community/feed', { token: b.token });
+    const feed = communityPageSchema.parse(feedRes.json);
+    const card = feed.items.find((x) => x.author.id === a.session.user.id)!;
+    expect(card).toMatchObject({ totalSets: 2, volumeKg: 10 * 60 + 8 * 70, likeCount: 0, viewerHasLiked: false, isMine: false, hasPhoto: false });
+    const raw = JSON.stringify(feedRes.json);
+    for (const leak of ['secret note', '81.5', 'community-a@example.com', 'bodyWeight', 'notes']) expect(raw).not.toContain(leak);
 
-    const detail = groupDetailSchema.parse((await http('GET', `/groups/${group.id}`, { token: b.token })).json);
-    expect(detail.members.find((m) => m.id === a.session.user.id)).toMatchObject({ displayName: 'Ana', totalWorkouts: 1 });
-    expect(detail.members.find((m) => m.id === b.user.id)).toMatchObject({ displayName: 'Beto', totalWorkouts: 0, lastWorkout: null });
+    // The author's own workout is not in their feed, but is in their profile history.
+    const own = communityPageSchema.parse((await http('GET', '/community/feed', { token: a.session.token })).json);
+    expect(own.items.some((x) => x.author.id === a.session.user.id)).toBe(false);
+    const history = communityPageSchema.parse((await http('GET', `/community/members/${a.session.user.id}/workouts`, { token: b.token })).json);
+    expect(history.items).toHaveLength(1);
 
-    const member = memberProfileSchema.parse((await http('GET', `/groups/members/${a.session.user.id}`, { token: b.token })).json);
-    expect(member.workouts).toHaveLength(1);
-    expect(groupListResponseSchema.parse((await http('GET', '/groups', { token: b.token })).json).items).toHaveLength(1);
+    const profile = communityProfileSchema.parse((await http('GET', `/community/members/${a.session.user.id}`, { token: b.token })).json);
+    expect(profile.supplements).toEqual(['Creatina']);
+    expect(profile.isMe).toBe(false);
+    expect(profile.thisWeek).toMatchObject({ sessions: 1, sets: 2, volumeKg: 1160 });
+    expect(JSON.stringify(profile)).not.toContain('community-a@example.com');
+    const members = communityMemberListSchema.parse((await http('GET', '/community/members', { token: b.token })).json);
+    expect(members.items.map((m) => m.displayName)).toContain('Ana');
   });
 
-  it('hides groups and members from people outside them', async () => {
-    const a = await userWithOneWorkout('grp-c@example.com', 'Carla');
-    const outsider = await register('grp-d@example.com', 'Dani');
-    const group = await create(a.session.token, 'Privado');
-    expect((await http('GET', `/groups/${group.id}`, { token: outsider.token })).status).toBe(404);
-    expect((await http('GET', `/groups/members/${a.session.user.id}`, { token: outsider.token })).status).toBe(404);
-    expect((await http('POST', '/groups/join', { token: outsider.token, body: { code: 'ZZZZZZ' } })).status).toBe(404);
-    expect(groupListResponseSchema.parse((await http('GET', '/groups', { token: outsider.token })).json).items).toEqual([]);
-  });
-
-  it('lets a member leave, and never exposes email or password hash', async () => {
-    const a = await register('grp-e@example.com', 'Eva');
-    const b = await register('grp-f@example.com', 'Fer');
-    const group = await create(a.token, 'Salida');
-    await http('POST', '/groups/join', { token: b.token, body: { code: group.code } });
-    const raw = JSON.stringify((await http('GET', `/groups/${group.id}`, { token: a.token })).json);
-    expect(raw).not.toContain('@example.com');
-    expect(raw).not.toContain('fake$');
-    expect((await http('DELETE', `/groups/${group.id}/members/me`, { token: b.token })).status).toBe(204);
-    expect((await http('GET', `/groups/${group.id}`, { token: b.token })).status).toBe(404);
-    expect((await http('DELETE', `/groups/${group.id}/members/me`, { token: b.token })).status).toBe(404);
-  });
-
-  it('replays an offline create by id without a second group', async () => {
-    const a = await register('grp-g@example.com', 'Gus');
+  it('never shows workouts that are still in progress', async () => {
+    const s = await register('community-live@example.com', 'Live');
+    const day = (await db.select().from(schema.routineDays).limit(1))[0]!;
     const id = crypto.randomUUID();
-    const first = groupSummarySchema.parse((await http('POST', '/groups', { token: a.token, body: { id, name: 'Una vez' } })).json);
-    const again = groupSummarySchema.parse((await http('POST', '/groups', { token: a.token, body: { id, name: 'Una vez' } })).json);
-    expect(again.code).toBe(first.code);
-    expect(groupListResponseSchema.parse((await http('GET', '/groups', { token: a.token })).json).items).toHaveLength(1);
+    await http('POST', '/workouts', { token: s.token, body: { id, routineDayId: day.id } });
+    expect((await http('GET', `/community/workouts/${id}`, { token: s.token })).status).toBe(404);
+    const viewer = await register('community-live-viewer@example.com', 'Viewer');
+    const feed = communityPageSchema.parse((await http('GET', '/community/feed', { token: viewer.token })).json);
+    expect(feed.items.some((x) => x.id === id)).toBe(false);
+  });
+
+  it('keeps likes idempotent and refuses liking your own workout', async () => {
+    const a = await userWithOneWorkout('like-a@example.com', 'Lia');
+    const b = await register('like-b@example.com', 'Bo');
+    const c = await register('like-c@example.com', 'Cy');
+    const [w] = await db.select().from(schema.workouts).where(eq(schema.workouts.userId, a.session.user.id));
+    const path = `/community/workouts/${w!.id}/like`;
+    expect(likeStateSchema.parse((await http('PUT', path, { token: b.token })).json)).toEqual({ likeCount: 1, viewerHasLiked: true });
+    expect(likeStateSchema.parse((await http('PUT', path, { token: b.token })).json)).toEqual({ likeCount: 1, viewerHasLiked: true });
+    expect(likeStateSchema.parse((await http('PUT', path, { token: c.token })).json).likeCount).toBe(2);
+    expect(likeStateSchema.parse((await http('DELETE', path, { token: b.token })).json)).toEqual({ likeCount: 1, viewerHasLiked: false });
+    expect(likeStateSchema.parse((await http('DELETE', path, { token: b.token })).json).likeCount).toBe(1);
+    expect((await http('PUT', path, { token: a.session.token })).status).toBe(409);
+    expect((await http('PUT', '/community/workouts/nope/like', { token: b.token })).status).toBe(404);
+  });
+
+  it('answers 410 for the retired group routes', async () => {
+    const s = await register('groups-gone@example.com', 'Gone');
+    expect((await http('GET', '/groups', { token: s.token })).status).toBe(410);
+    expect((await http('POST', '/groups/join', { token: s.token, body: { code: 'ABCDEF' } })).status).toBe(410);
+  });
+
+  it('answers 503 for shared photos when no object store is configured', async () => {
+    const s = await register('photo-none@example.com', 'NoStore');
+    expect((await http('GET', '/community/workouts/x/photo', { token: s.token })).status).toBe(503);
+  });
+});
+
+describe('community shared photos', () => {
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 2, 3, 0xff, 0xd9]);
+
+  it('lets only the author share a photo and any member read it', async () => {
+    const storage = new InMemoryPhotoStorage();
+    const photoApp = (await createApp({ db, hasher: fakeHasher, photoStorage: storage })).app;
+    await photoApp.listen(0, '127.0.0.1');
+    const root = (await photoApp.getUrl()).replace('[::1]', '127.0.0.1');
+    try {
+      const a = await userWithOneWorkout('photo-a@example.com', 'Pia');
+      const b = await register('photo-b@example.com', 'Pol');
+      const [w] = await db.select().from(schema.workouts).where(eq(schema.workouts.userId, a.session.user.id));
+      const url = `${root}/community/workouts/${w!.id}/photo`;
+      const auth = (token: string) => ({ authorization: `Bearer ${token}` });
+      const put = (token: string, bytes: Uint8Array, type = 'image/jpeg') =>
+        fetch(url, { method: 'PUT', headers: { ...auth(token), 'content-type': type }, body: bytes as unknown as BodyInit });
+
+      expect((await put(b.token, JPEG)).status).toBe(403);
+      expect((await put(a.session.token, new TextEncoder().encode('not an image at all'))).status).toBe(415);
+      expect((await put(a.session.token, JPEG)).status).toBe(204);
+      const firstKey = (await db.select().from(schema.sharedWorkoutPhotos))[0]!.storageKey;
+      expect((await put(a.session.token, JPEG)).status).toBe(204);
+      expect(await storage.get(firstKey)).toBeNull(); // replacing removes the old object
+
+      const got = await fetch(url, { headers: auth(b.token) });
+      expect(got.status).toBe(200);
+      expect(new Uint8Array(await got.arrayBuffer())).toEqual(JPEG);
+      expect((await fetch(url)).status).toBe(401);
+      const detail = await (await fetch(`${root}/community/workouts/${w!.id}`, { headers: auth(b.token) })).json();
+      expect(communityWorkoutSchema.parse(detail).hasPhoto).toBe(true);
+
+      expect((await fetch(url, { method: 'DELETE', headers: auth(a.session.token) })).status).toBe(204);
+      expect((await fetch(url, { headers: auth(b.token) })).status).toBe(404);
+      expect(await db.select().from(schema.workouts).where(eq(schema.workouts.id, w!.id))).toHaveLength(1);
+    } finally {
+      await photoApp.close();
+    }
   });
 });
 

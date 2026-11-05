@@ -7,10 +7,10 @@
 Starting at the gym is easy; tracking consistently is hard. No app fits "I follow a routine, I want to log what I did quickly, even with no signal, and see how my training partners are doing" without bloat.
 
 ## Users
-A small circle of people who train together (a few people, not a public audience). They use the phone in the gym between sets: one hand, sweaty, glancing at the screen, often with bad signal. They follow a rotating routine, log sets, and look at each other's streaks inside a group.
+A small circle of people who train together (a few people, not a public audience). They use the phone in the gym between sets: one hand, sweaty, glancing at the screen, often with bad signal. They follow a rotating routine, log sets, and see what the other members trained in the Community feed.
 
 ## Outcome
-Track gym workouts quickly and offline: see today's routine, log each set, and see what you lifted last time so you know what to beat. Build your own programs from an exercise library, follow progress over time, and keep a friendly accountability loop inside a private group.
+Track gym workouts quickly and offline: see today's routine, log each set, and see what you lifted last time so you know what to beat. Build your own programs from an exercise library, follow progress over time, and keep a friendly accountability loop through the Community feed (DR-0028).
 
 Signals:
 - Logging a full workout takes a few taps per set (legacy target: a set in under 30 seconds; with a suggestion, 1 tap).
@@ -36,5 +36,5 @@ Signals:
 Two intent documents existed and they disagree. This file follows the more recent one; the owner must settle these points and then record the outcome (a Log line or a new DR):
 
 1. **Audience: "family" or "friends".** `docs/prd/overview.md` (and DR-0004, DR-0017, DR-0024) speak of a family of siblings; `apps/app/PRODUCT.md` speaks of a small circle of friends in invite-code groups (the `groups` context exists in the code).
-2. **Social feed.** `docs/prd/overview.md` Phase 2 adds a feed with likes and comments ([DR-0024](decisions/DR-0024-social-interactions.md), accepted, not built). `apps/app/PRODUCT.md` says "a private group (invite code) instead of a public social feed" and "a handful of friends, never a feed". Either DR-0024 is narrowed to an in-group feed, or it is rejected/superseded.
+2. **Social feed.** `docs/prd/overview.md` Phase 2 adds a feed with likes and comments ([DR-0024](decisions/DR-0024-social-interactions.md), accepted, not built). `apps/app/PRODUCT.md` says "a private group (invite code) instead of a public social feed" and "a handful of friends, never a feed". **Settled 2026-11-05 by [DR-0028](decisions/DR-0028-global-feed-and-member-profiles.md):** groups retired; every signed-in member sees the others' completed workouts, with likes and no comments.
 3. **Phase 2 scope: Hevy + Gravl parity.** The overview commits to parity (progression, readiness, PRs, weekly AI summary: DR-0016, DR-0019..DR-0026, mostly not built). The newer intent does not mention parity. Confirm whether parity is still the goal.
