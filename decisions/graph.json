@@ -232,6 +232,14 @@
       "tier": 2,
       "scope": "cross-team",
       "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0030",
+      "title": "Release applies pending D1 migrations before deploying the API",
+      "status": "proposed",
+      "tier": 2,
+      "scope": "system",
+      "owner": "@alefrank"
     }
   ],
   "edges": [
@@ -288,6 +296,11 @@
     {
       "from": "DR-0029",
       "to": "DR-0028",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0030",
+      "to": "DR-0027",
       "type": "depends_on"
     }
   ]
