@@ -28,6 +28,7 @@ const env = {
   ANDROID_HOME: sdk,
   NDK_HOME: process.env.NDK_HOME ?? (existsSync(join(sdk, 'ndk')) ? join(sdk, 'ndk', readdirSync(join(sdk, 'ndk')).sort().at(-1)) : ''),
   GYM_UP_ANDROID_SIGNING_PROPERTIES: signingProps,
+  GYM_UP_SKIP_GRADLE_RUST: '1',
   PATH: `${join(homedir(), '.cargo', 'bin')}${isWin ? ';' : ':'}${process.env.PATH}`,
 };
 
@@ -100,12 +101,19 @@ function patchGradleSigning() {
 }
 
 ensureSigningMaterial();
+// Sign inside Tauri's own Gradle run so its APK can ship without a second Gradle pass.
+patchGradleSigning();
+
+const releaseLib = join(tauriDir, 'target', 'aarch64-linux-android', 'release', 'libapp_lib.so');
+const apk = join(androidDir, 'app', 'build', 'outputs', 'apk', 'arm64', 'release', 'app-arm64-release.apk');
+// A cached library or APK must never pass for this build's output.
+rmSync(releaseLib, { force: true });
+rmSync(apk, { force: true });
 
 const tauri = run('pnpm', ['exec', 'tauri', 'android', 'build', '--apk', '--target', 'aarch64'], { capture: true });
 const output = `${tauri.stdout ?? ''}${tauri.stderr ?? ''}`;
 process.stdout.write(output.split('\n').filter((line) => /Finished|Compiling|symbolic|error/i.test(line)).slice(-12).join('\n') + '\n');
 
-const releaseLib = join(tauriDir, 'target', 'aarch64-linux-android', 'release', 'libapp_lib.so');
 if (tauri.status !== 0 && !/symbolic link/i.test(output)) {
   console.error('\nThe optimized Android library build failed for a reason other than the expected Windows symlink restriction.');
   process.exit(tauri.status ?? 1);
@@ -115,18 +123,18 @@ if (!existsSync(releaseLib) || !/Finished.*\brelease\b.*profile/i.test(output)) 
   process.exit(1);
 }
 
-patchGradleSigning();
-const jni = join(androidDir, 'app', 'src', 'main', 'jniLibs', 'arm64-v8a');
-mkdirSync(jni, { recursive: true });
-copyFileSync(releaseLib, join(jni, 'libapp_lib.so'));
-
-const apk = join(androidDir, 'app', 'build', 'outputs', 'apk', 'arm64', 'release', 'app-arm64-release.apk');
-if (existsSync(apk)) rmSync(apk);
-const gradle = run(join(androidDir, isWin ? 'gradlew.bat' : 'gradlew'), [
-  'assembleArm64Release', '-x', 'rustBuildArm64Release', '-x', 'rustBuildArmRelease', '-x', 'rustBuildUniversalRelease',
-  '-x', 'rustBuildX86Release', '-x', 'rustBuildX86_64Release', '--console=plain',
-], { cwd: androidDir });
-if (gradle.status !== 0) process.exit(gradle.status ?? 1);
+// On Windows Tauri stops at the jniLibs symlink before Gradle runs, so package the APK here.
+if (tauri.status !== 0 || !existsSync(apk)) {
+  const jni = join(androidDir, 'app', 'src', 'main', 'jniLibs', 'arm64-v8a');
+  mkdirSync(jni, { recursive: true });
+  copyFileSync(releaseLib, join(jni, 'libapp_lib.so'));
+  rmSync(apk, { force: true });
+  const gradle = run(join(androidDir, isWin ? 'gradlew.bat' : 'gradlew'), [
+    'assembleArm64Release', '-x', 'rustBuildArm64Release', '-x', 'rustBuildArmRelease', '-x', 'rustBuildUniversalRelease',
+    '-x', 'rustBuildX86Release', '-x', 'rustBuildX86_64Release', '--console=plain',
+  ], { cwd: androidDir });
+  if (gradle.status !== 0) process.exit(gradle.status ?? 1);
+}
 if (!existsSync(apk)) throw new Error(`Expected release APK was not produced: ${apk}`);
 
 const buildTools = join(sdk, 'build-tools');

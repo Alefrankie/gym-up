@@ -1,7 +1,12 @@
 // Cut a semver release: bump from commits since the last v* tag, deploy API + web/APK, tag and push.
 // Usage: pnpm release [major|minor|patch]   (omit to infer from Conventional Commits)
+// CI runs the same steps as separate jobs:
+//   node scripts/release.mjs plan [major|minor|patch]   -> version, app_changed (GITHUB_OUTPUT)
+//   node scripts/release.mjs api <version>              -> deploy the Worker API
+//   node scripts/release.mjs app <version>              -> build the APK and deploy the web app
+//   node scripts/release.mjs publish <version>          -> commit the bump, tag and push
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { latestVersion, publishRelease } from './release-git.mjs';
 
@@ -11,8 +16,14 @@ const childEnv = { ...process.env };
 delete childEnv.CLOUDFLARE_API_TOKEN;
 delete childEnv.CLOUDFLARE_ACCOUNT_ID;
 delete childEnv.GH_TOKEN;
+const cloudflareEnv = { ...childEnv };
+if (process.env.CLOUDFLARE_API_TOKEN) cloudflareEnv.CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+if (process.env.CLOUDFLARE_ACCOUNT_ID) cloudflareEnv.CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const tauriConfigPath = join(root, 'apps', 'app', 'src-tauri', 'tauri.conf.json');
 const packageFiles = ['package.json', 'apps/app/package.json', 'apps/api/package.json'].map((file) => join(root, file));
+// Anything the web app or APK is built from. Version-only bumps live in the tagged
+// release commit, so they never appear in the diff since the last tag.
+const appPaths = ['apps/app', 'packages', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'turbo.json', 'tsconfig.base.json'];
 
 function run(command, args, { cwd = root, capture = false, env = childEnv } = {}) {
   console.log(`\n> ${command} ${args.join(' ')}`);
@@ -21,59 +32,98 @@ function run(command, args, { cwd = root, capture = false, env = childEnv } = {}
   return (result.stdout ?? '').trim();
 }
 
-if (run('git', ['status', '--porcelain'], { capture: true })) {
-  console.error('Working tree is not clean. Commit or stash changes before releasing.');
-  process.exit(1);
+function plan(requestedBump) {
+  if (run('git', ['status', '--porcelain'], { capture: true })) {
+    console.error('Working tree is not clean. Commit or stash changes before releasing.');
+    process.exit(1);
+  }
+
+  const current = JSON.parse(readFileSync(tauriConfigPath, 'utf8')).version;
+  const lastTag = spawnSync('git', ['describe', '--tags', '--abbrev=0', '--match', 'v*'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  // Without a tag yet, count commits since the version field last changed.
+  const base = lastTag || run('git', ['log', '-1', '--format=%H', '-S', `"version": "${current}"`, '--', tauriConfigPath], { capture: true });
+  const log = run('git', ['log', '--format=%s%n%b%x00', `${base}..HEAD`], { capture: true });
+  const commits = log.split('\0').map((entry) => entry.trim()).filter(Boolean);
+  if (commits.length === 0) {
+    console.error(`No commits since ${lastTag || current}; nothing to release.`);
+    process.exit(1);
+  }
+
+  let bump = requestedBump;
+  if (!bump) {
+    if (commits.some((c) => /^\w+(\(.+\))?!:/.test(c) || /BREAKING CHANGE/.test(c))) bump = 'major';
+    else if (commits.some((c) => /^feat(\(.+\))?:/.test(c))) bump = 'minor';
+    else bump = 'patch';
+  }
+  if (!['major', 'minor', 'patch'].includes(bump)) {
+    console.error(`Unknown bump "${bump}". Use major, minor or patch.`);
+    process.exit(1);
+  }
+
+  const publishedVersion = latestVersion(current, run('git', ['tag', '--list', 'v*'], { capture: true }));
+  const [major, minor, patch] = publishedVersion.split('.').map(Number);
+  const next = bump === 'major' ? `${major + 1}.0.0` : bump === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
+  const appChanged = Boolean(run('git', ['diff', '--name-only', `${base}..HEAD`, '--', ...appPaths], { capture: true }));
+  console.log(`Releasing ${current} -> ${next} (${bump}, ${commits.length} commits)`);
+  console.log(appChanged ? 'App sources changed: rebuilding the web app and APK.' : 'App sources unchanged since the last release: skipping the web app and APK.');
+  return { next, appChanged };
 }
 
-const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, 'utf8'));
-const current = tauriConfig.version;
-const lastTag = spawnSync('git', ['describe', '--tags', '--abbrev=0', '--match', 'v*'], { cwd: root, encoding: 'utf8' }).stdout.trim();
-// Without a tag yet, count commits since the version field last changed.
-const base = lastTag || run('git', ['log', '-1', '--format=%H', '-S', `"version": "${current}"`, '--', tauriConfigPath], { capture: true });
-const log = run('git', ['log', '--format=%s%n%b%x00', `${base}..HEAD`], { capture: true });
-const commits = log.split('\0').map((entry) => entry.trim()).filter(Boolean);
-if (commits.length === 0) {
-  console.error(`No commits since ${lastTag || current}; nothing to release.`);
-  process.exit(1);
+function applyVersion(next) {
+  const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, 'utf8'));
+  tauriConfig.version = next;
+  writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
+  for (const file of packageFiles) {
+    const pkg = JSON.parse(readFileSync(file, 'utf8'));
+    pkg.version = next;
+    writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
+  }
 }
 
-let bump = process.argv[2];
-if (!bump) {
-  if (commits.some((c) => /^\w+(\(.+\))?!:/.test(c) || /BREAKING CHANGE/.test(c))) bump = 'major';
-  else if (commits.some((c) => /^feat(\(.+\))?:/.test(c))) bump = 'minor';
-  else bump = 'patch';
-}
-if (!['major', 'minor', 'patch'].includes(bump)) {
-  console.error(`Unknown bump "${bump}". Use major, minor or patch.`);
-  process.exit(1);
+function deployApi() {
+  run('pnpm', ['--filter', '@gym-up/api', 'run', 'build:worker']);
+  run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'deploy'], { env: cloudflareEnv });
 }
 
-const publishedVersion = latestVersion(current, run('git', ['tag', '--list', 'v*'], { capture: true }));
-const [major, minor, patch] = publishedVersion.split('.').map(Number);
-const next = bump === 'major' ? `${major + 1}.0.0` : bump === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
-console.log(`Releasing ${current} -> ${next} (${bump}, ${commits.length} commits)`);
-
-tauriConfig.version = next;
-writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
-for (const file of packageFiles) {
-  const pkg = JSON.parse(readFileSync(file, 'utf8'));
-  pkg.version = next;
-  writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
+function deployApp() {
+  run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web'], { env: cloudflareEnv });
 }
 
-run('pnpm', ['--filter', '@gym-up/api', 'run', 'build:worker']);
-const cloudflareEnv = { ...childEnv };
-if (process.env.CLOUDFLARE_API_TOKEN) cloudflareEnv.CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-if (process.env.CLOUDFLARE_ACCOUNT_ID) cloudflareEnv.CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'deploy'], {
-  env: cloudflareEnv,
-});
-run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web'], { env: cloudflareEnv });
+function publish(next) {
+  run('git', ['add', tauriConfigPath, ...packageFiles]);
+  run('git', ['commit', '-m', `chore(release): v${next}`]);
+  const gitPushEnv = { ...childEnv };
+  if (process.env.GH_TOKEN) gitPushEnv.GH_TOKEN = process.env.GH_TOKEN;
+  publishRelease(run, next, gitPushEnv);
+  console.log(`\nReleased v${next}.`);
+}
 
-run('git', ['add', tauriConfigPath, ...packageFiles]);
-run('git', ['commit', '-m', `chore(release): v${next}`]);
-const gitPushEnv = { ...childEnv };
-if (process.env.GH_TOKEN) gitPushEnv.GH_TOKEN = process.env.GH_TOKEN;
-publishRelease(run, next, gitPushEnv);
-console.log(`\nReleased v${next}.`);
+function requireVersion(version) {
+  if (!/^\d+\.\d+\.\d+$/.test(version ?? '')) {
+    console.error(`Expected a version like 1.2.3, received "${version ?? ''}".`);
+    process.exit(1);
+  }
+  return version;
+}
+
+const [step, arg] = process.argv.slice(2);
+if (step === 'plan') {
+  const { next, appChanged } = plan(arg);
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `version=${next}\napp_changed=${appChanged}\n`);
+} else if (step === 'api') {
+  applyVersion(requireVersion(arg));
+  deployApi();
+} else if (step === 'app') {
+  applyVersion(requireVersion(arg));
+  deployApp();
+} else if (step === 'publish') {
+  const next = requireVersion(arg);
+  applyVersion(next);
+  publish(next);
+} else {
+  const { next, appChanged } = plan(step);
+  applyVersion(next);
+  deployApi();
+  if (appChanged) deployApp();
+  publish(next);
+}

@@ -73,6 +73,9 @@ open class RustPlugin : Plugin<Project> {
                         projectDir = project.projectDir.path
                         target = targetName
                         release = profile == "release"
+                        // scripts/android-release.mjs builds the library once through the Tauri CLI;
+                        // skip Gradle's second cargo run of the same target.
+                        onlyIf { System.getenv("GYM_UP_SKIP_GRADLE_RUST") == null }
                     }
 
                     buildTask.dependsOn(targetBuildTask)

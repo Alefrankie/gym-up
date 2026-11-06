@@ -12,12 +12,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Deploy API, web app, and Android APK
+  plan:
+    name: Plan the release version
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      ANDROID_BUILD_TOOLS_VERSION: '37.0.0'
+    timeout-minutes: 10
+    outputs:
+      sha: ${{ steps.checkout.outputs.sha }}
+      version: ${{ steps.plan.outputs.version }}
+      app_changed: ${{ steps.plan.outputs.app_changed }}
 
     steps:
       - name: Check out all commits and release tags
@@ -25,6 +27,35 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Record the commit every job releases
+        id: checkout
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test release publication safeguards
+        run: node --test scripts/release-git.test.mjs
+
+      - name: Compute the next version and whether the app changed
+        id: plan
+        run: node scripts/release.mjs plan
+
+  api:
+    name: Deploy API
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the planned commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
           persist-credentials: false
 
       - name: Set up pnpm
@@ -41,8 +72,45 @@ jobs:
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Test release publication safeguards
-        run: node --test scripts/release-git.test.mjs
+      - name: Build and deploy the Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          : "${CLOUDFLARE_API_TOKEN:?Add CLOUDFLARE_API_TOKEN to GitHub Actions secrets}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?Add CLOUDFLARE_ACCOUNT_ID to GitHub Actions secrets}"
+          node scripts/release.mjs api "${{ needs.plan.outputs.version }}"
+
+  app:
+    name: Deploy web app and Android APK
+    needs: plan
+    if: needs.plan.outputs.app_changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      ANDROID_BUILD_TOOLS_VERSION: '37.0.0'
+
+    steps:
+      - name: Check out the planned commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.18.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Set up Java
         uses: actions/setup-java@v6
@@ -68,10 +136,21 @@ jobs:
         with:
           targets: aarch64-linux-android
 
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+      # A per-run key so every release saves its build state; restore-keys pick the
+      # newest one. A fixed key hits forever and never refreshes the cached target dir.
+      - name: Cache Rust dependencies and build state
+        uses: actions/cache@v6
         with:
-          workspaces: apps/app/src-tauri -> apps/app/src-tauri/target
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ~/.cargo/bin/cargo-ndk
+            apps/app/src-tauri/target
+          key: rust-android-${{ hashFiles('apps/app/src-tauri/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            rust-android-${{ hashFiles('apps/app/src-tauri/Cargo.lock') }}-
+            rust-android-
 
       - name: Install cargo-ndk
         shell: bash
@@ -102,8 +181,7 @@ jobs:
           EOF
           chmod 600 "$signing_dir/gym-up-release.jks" "$signing_dir/keystore.properties"
 
-      - name: Check deployment credentials
-        shell: bash
+      - name: Build the APK and deploy the web app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -111,17 +189,38 @@ jobs:
           set -euo pipefail
           : "${CLOUDFLARE_API_TOKEN:?Add CLOUDFLARE_API_TOKEN to GitHub Actions secrets}"
           : "${CLOUDFLARE_ACCOUNT_ID:?Add CLOUDFLARE_ACCOUNT_ID to GitHub Actions secrets}"
+          node scripts/release.mjs app "${{ needs.plan.outputs.version }}"
+
+  publish:
+    name: Tag and push the release
+    needs: [plan, api, app]
+    # Publish only when the API deployed and the app either deployed or had nothing to deploy.
+    if: ${{ !cancelled() && needs.api.result == 'success' && (needs.app.result == 'success' || needs.app.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the planned commit and release tags
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
 
       - name: Configure release commit identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C main
 
-      - name: Bump version, deploy, tag, and push release
+      - name: Commit the version, tag, and push
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -134,4 +233,4 @@ jobs:
           chmod 700 "$credential_helper"
           git config --local credential.helper "$credential_helper"
           trap 'git config --local --unset-all credential.helper || true; rm -f "$credential_helper"' EXIT
-          pnpm release
+          node scripts/release.mjs publish "${{ needs.plan.outputs.version }}"
