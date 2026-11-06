@@ -60,16 +60,20 @@ answer normally.
 
 ## Decision
 
-The release applies `wrangler d1 migrations apply gym-up --remote` after building the worker and before
-deploying it, with the same Cloudflare credentials the deploy already uses. In a non-interactive run
-wrangler confirms by itself; with nothing pending the command is a no-op.
+**Not enabled yet.** The proposal is to apply `wrangler d1 migrations apply gym-up --remote` in
+`scripts/release.mjs` after building the worker and before deploying it, with the same Cloudflare
+credentials the deploy already uses. In a non-interactive run wrangler confirms by itself; with nothing
+pending the command is a no-op.
 
 Order matters: schema first, code second. A deployed worker that queries a table its migration has not
 created is exactly the outage above, while a schema ahead of the code is harmless because the previous
 worker does not know the new tables.
 
-`run()` exits on a non-zero status, so a failing migration stops the release before the deploy and
-production keeps running the previous version.
+`run()` exits on a non-zero status, so a failing migration would stop the release before the deploy and
+production would keep running the previous version.
+
+It stays out of the pipeline because the release credential cannot talk to D1 yet (see the log below), and
+a release step that always fails is worse than the manual one it replaces.
 
 ## Alternatives considered
 
@@ -83,9 +87,19 @@ production keeps running the previous version.
 
 ## Consequences
 
-- A release now changes the production schema, so a migration is reviewed as part of the commit that ships it
-  and a broken one blocks the release instead of production traffic.
-- Automatic application is forward-only. Rolling back a release does not roll back its migration; a revert
-  needs its own migration, the same rule [DR-0016](./DR-0016-workout-data-model-v2.md) follows for schema
-  evolution.
-- The manual commands stay in `apps/api/package.json` for local work and for emergencies.
+Once enabled: a release would change the production schema, so a migration is reviewed as part of the
+commit that ships it and a broken one blocks the release instead of production traffic.
+Automatic application is forward-only. Rolling back a release does not roll back its migration; a revert
+needs its own migration, the same rule [DR-0016](./DR-0016-workout-data-model-v2.md) follows for schema
+evolution. The manual commands stay in `apps/api/package.json` for local work and for emergencies.
+
+## Log
+
+- **2026-11-06 14:12** — `0026_recipes.sql` applied to production by hand with the operator's OAuth login
+  (`wrangler d1 migrations apply --remote`). Seven tables created; `/recipes` came back to life.
+- **2026-11-06 14:15** — the automated step was attempted in release run
+  [42232116192](https://github.com/Alefrankie/gym-up/actions/runs/42232116192) and failed with
+  `A request to the Cloudflare API (/accounts/***/d1/database/…/query) failed … code: 7403`, i.e. the
+  `CLOUDFLARE_API_TOKEN` secret can deploy a Worker but cannot query D1. The step was reverted the same day
+  so releases keep working; the proposal waits for a token with D1 read and edit.
+

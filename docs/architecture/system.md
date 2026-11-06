@@ -405,7 +405,7 @@ Live workouts are **local-first**: the snapshot and every set are written to Ind
 
 ## Deployment
 
-- **API:** `pnpm --filter @gym-up/api deploy` builds with SWC and runs `wrangler deploy`. `pnpm release` (and therefore the release workflow on `main`) applies pending D1 migrations with `wrangler d1 migrations apply --remote` **before** deploying the worker ([DR-0030](../decisions/DR-0030-release-applies-migrations.md)); `d1:migrate:remote` and `d1:seed:remote` stay for local work and emergencies.
+- **API:** `pnpm --filter @gym-up/api deploy` builds with SWC and runs `wrangler deploy`. D1: `pnpm --filter @gym-up/api d1:migrate:remote` and `d1:seed:remote`. **Apply pending migrations before the release that ships them** — a worker deployed ahead of its schema answers 500 on every request that touches the new tables (DR-0030 records the incident and the proposal to automate the step).
 - **Web:** `pnpm --filter @gym-up/app deploy:web` builds the SPA and serves it from Workers static assets (`apps/app/wrangler.jsonc`).
 - **Android:** `pnpm --filter @gym-up/app android:debug` builds and installs a debug APK on the connected phone (it works around the Windows symlink restriction; with Developer Mode on, `pnpm tauri android build --debug --apk --target aarch64` also works). Needs Rust, the Android SDK and NDK, and `ANDROID_HOME`/`NDK_HOME`; see the migration plan, Phase 5.
 - **Local:** `pnpm --filter @gym-up/api dev:worker` runs the API on `localhost:8787` with a local D1 (`d1:migrate:local`, `d1:seed:local`); `pnpm --filter @gym-up/app dev` runs the SPA.
