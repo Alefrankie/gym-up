@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     branches: [main]
+    # Decision records (including their generated index.md and graph.json) never change what ships.
+    paths-ignore:
+      - 'decisions/**'
 
 permissions:
   contents: write
