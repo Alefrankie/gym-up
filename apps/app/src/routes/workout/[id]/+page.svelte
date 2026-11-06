@@ -149,6 +149,7 @@
   onreorder={(next) => view.reorder(next)}
   onremove={view.isCompleted ? undefined : removeExercise}
   onreplace={view.isCompleted ? undefined : (ex) => openPicker({ mode: 'replace', target: ex })}
+  help={{ id: 'workout', text: t('routine.hint') }}
 >
   {#snippet row(ex)}
     <ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.isCompleted ? undefined : view.progress(ex)} sets={view.doneSets(ex)} lines={view.isCompleted} />

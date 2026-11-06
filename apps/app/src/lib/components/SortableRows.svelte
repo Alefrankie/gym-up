@@ -4,6 +4,7 @@
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
+  import OverflowMenu from './OverflowMenu.svelte';
 
   let {
     items,
@@ -15,6 +16,7 @@
     canRemove,
     reorderable = true,
     disabled = false,
+    help,
   }: {
     items: T[];
     key: (item: T) => string;
@@ -29,7 +31,55 @@
     /** False for lists that only swipe (no hold-and-drag to reorder). */
     reorderable?: boolean;
     disabled?: boolean;
+    /** Makes the swipe actions discoverable: a one-time peek of the first row, a ⋯ menu per row and a help line
+     *  below the list until the person has swiped once. `id` keys what is remembered on this device. */
+    help?: { id: string; text: string };
   } = $props();
+
+  const removable = (item: T) => !!onremove && (!canRemove || canRemove(item));
+  const actionable = $derived(!disabled && (!!onremove || !!onreplace));
+  const remembered = (name: string) => {
+    try {
+      return localStorage.getItem(`gymup.swipe.${name}.${help?.id}`) === '1';
+    } catch {
+      return false;
+    }
+  };
+  const remember = (name: string) => {
+    try {
+      localStorage.setItem(`gymup.swipe.${name}.${help?.id}`, '1');
+    } catch {
+      /* storage unavailable: the hint just shows again next time */
+    }
+  };
+  let swiped = $state(false);
+  const showHelp = $derived(!!help && actionable && !swiped);
+
+  // The peek: the first row slides open on its own, once per device, to show there is something underneath.
+  let peekKey = $state<string | null>(null);
+  let peekX = $state(0);
+  $effect(() => {
+    swiped = !help || remembered('used');
+  });
+  // Plain flag and timers on purpose: the effect re-runs while the peek moves the row, which must not cancel it.
+  let peekStarted = false;
+  const peekTimers: ReturnType<typeof setTimeout>[] = [];
+  onMount(() => () => peekTimers.forEach(clearTimeout));
+  $effect(() => {
+    if (peekStarted || !help || !actionable || !items.length || remembered('peek')) return;
+    peekStarted = true;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const first = items[0]!;
+    const steps: [number, number][] = [
+      [600, removable(first) ? 64 : 0],
+      [1150, 0],
+      [1450, onreplace ? -64 : 0],
+      [2000, 0],
+    ];
+    remember('peek');
+    for (const [at, x] of steps) peekTimers.push(setTimeout(() => ((peekKey = key(first)), (peekX = x)), at));
+    peekTimers.push(setTimeout(() => (peekKey = null), 2300));
+  });
 
   const HOLD_MS = 380;
   const SLOP = 9;
@@ -144,6 +194,10 @@
       const x = swipeX;
       suppressClick = true;
       reset();
+      if (item && Math.abs(x) > COMMIT && help) {
+        swiped = true;
+        remember('used');
+      }
       if (item && x > COMMIT) onremove?.(item);
       else if (item && x < -COMMIT) onreplace?.(item);
     } else if (mode === 'drag') {
@@ -162,6 +216,7 @@
 <ul bind:this={list} class="sortable">
   {#each shown as item, i (key(item))}
     {@const k = key(item)}
+    {@const x = swipeKey === k ? swipeX : peekKey === k ? peekX : 0}
     <li
       bind:this={() => rowEls.get(k) ?? null, (el) => (el ? rowEls.set(k, el) : rowEls.delete(k))}
       animate:flip={{ duration: dragKey === k ? 0 : 240, easing: cubicOut }}
@@ -175,19 +230,33 @@
       oncontextmenu={(e) => e.preventDefault()}
       ondragstart={(e) => e.preventDefault()}
     >
-      {#if swipeKey === k}
-        <span class="act remove" class:on={swipeX > COMMIT} style:opacity={swipeX > 0 ? 1 : 0}><Icon name="trash" size={22} /> {t('plan.delete')}</span>
-        <span class="act replace" class:on={swipeX < -COMMIT} style:opacity={swipeX < 0 ? 1 : 0}>{t('plan.replace')} <Icon name="swap" size={22} /></span>
+      {#if swipeKey === k || peekKey === k}
+        <span class="act remove" class:on={x > COMMIT} style:opacity={x > 0 ? 1 : 0}><Icon name="trash" size={22} /> {t('plan.delete')}</span>
+        <span class="act replace" class:on={x < -COMMIT} style:opacity={x < 0 ? 1 : 0}>{t('plan.replace')} <Icon name="swap" size={22} /></span>
       {/if}
       <div
         class="face"
-        style:transform={dragKey === k ? `translateY(${dragY}px) scale(1.02)` : swipeKey === k ? `translateX(${swipeX}px)` : undefined}
+        class:with-menu={help && actionable}
+        style:transform={dragKey === k ? `translateY(${dragY}px) scale(1.02)` : x ? `translateX(${x}px)` : undefined}
       >
-        {@render row(item, i)}
+        <div class="content">{@render row(item, i)}</div>
+        {#if help && actionable}
+          <div class="menu" data-nodrag>
+            <OverflowMenu
+              items={[
+                ...(onreplace ? [{ label: t('plan.replace'), icon: 'swap' as const, onselect: () => onreplace(item) }] : []),
+                ...(removable(item) ? [{ label: t('plan.delete'), icon: 'trash' as const, danger: true, onselect: () => onremove?.(item) }] : []),
+              ]}
+            />
+          </div>
+        {/if}
       </div>
     </li>
   {/each}
 </ul>
+{#if showHelp}
+  <p class="swipe-help">{help?.text}</p>
+{/if}
 
 <style>
   .sortable {
@@ -214,6 +283,24 @@
     position: relative;
     will-change: transform;
     transition: transform 280ms var(--ease);
+  }
+  .face.with-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .content {
+    min-width: 0;
+    flex: 1;
+  }
+  .menu {
+    flex: none;
+  }
+  .swipe-help {
+    margin: 0.75rem 0 0;
+    font-size: var(--t-sm);
+    color: var(--muted);
+    text-align: center;
   }
   li.swiping .face,
   li.dragging .face {

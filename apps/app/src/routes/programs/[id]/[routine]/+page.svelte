@@ -290,6 +290,7 @@
         }}
         onremove={editable ? remove : undefined}
         onreplace={editable ? (item) => (picker = { mode: 'replace', target: item }) : undefined}
+        help={{ id: 'routine', text: t('routine.hint') }}
       >
         {#snippet row(e)}
           <div class="ex">
@@ -304,9 +305,6 @@
           </div>
         {/snippet}
       </SortableRows>
-      {#if editable}
-        <p class="hint muted">{t('routine.hint')}</p>
-      {/if}
     {/if}
 
   {/if}
