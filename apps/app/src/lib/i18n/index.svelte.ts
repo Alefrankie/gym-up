@@ -1,5 +1,6 @@
 import * as common from './messages/common';
 import * as programs from './messages/programs';
+import * as recipes from './messages/recipes';
 import * as social from './messages/social';
 import * as workout from './messages/workout';
 
@@ -12,8 +13,8 @@ import * as workout from './messages/workout';
 export type Locale = 'es' | 'en';
 export type LocalePreference = Locale | 'system';
 
-const es = { ...common.es, ...workout.es, ...programs.es, ...social.es };
-const en: Record<keyof typeof es, string> = { ...common.en, ...workout.en, ...programs.en, ...social.en };
+const es = { ...common.es, ...workout.es, ...programs.es, ...social.es, ...recipes.es };
+const en: Record<keyof typeof es, string> = { ...common.en, ...workout.en, ...programs.en, ...social.en, ...recipes.en };
 export type MessageKey = keyof typeof es;
 
 const KEY = 'gymup.locale';
