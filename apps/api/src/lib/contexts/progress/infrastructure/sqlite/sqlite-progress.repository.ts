@@ -11,7 +11,7 @@
 
 import { and, asc, eq, gte } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
-import { profiles, routineDays, workoutEntries, workouts } from '@db/schema';
+import { profiles, routineDays, routineDayWeekdays, workoutEntries, workouts } from '@db/schema';
 import type { CalendarDay, Streak } from '../../domain/progress.types';
 import {
   type ProgressRepository,
@@ -123,11 +123,15 @@ export class SqliteProgressRepository implements ProgressRepository {
     const programId = profileRows[0]?.activeProgramId;
     if (!programId) return new Set();
 
-    const rows = await this.db
+    const [legacyRows, weekdayRows] = await Promise.all([this.db
       .select({ weekday: routineDays.weekday })
       .from(routineDays)
-      .where(eq(routineDays.routineId, programId));
-    const plannedDays = new Set(rows.flatMap((row) => row.weekday === null ? [] : [row.weekday]));
+      .where(eq(routineDays.routineId, programId)), this.db
+      .select({ weekday: routineDayWeekdays.weekday })
+      .from(routineDayWeekdays)
+      .innerJoin(routineDays, eq(routineDays.id, routineDayWeekdays.routineDayId))
+      .where(eq(routineDays.routineId, programId))]);
+    const plannedDays = new Set([...legacyRows.flatMap((row) => row.weekday === null ? [] : [row.weekday]), ...weekdayRows.map((row) => row.weekday)]);
     if (plannedDays.size === 0) return new Set();
 
     return new Set([0, 1, 2, 3, 4, 5, 6].filter((day) => !plannedDays.has(day)));

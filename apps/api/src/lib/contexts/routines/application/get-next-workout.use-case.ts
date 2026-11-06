@@ -106,7 +106,12 @@ export class GetNextWorkoutUseCase {
       existingWorkoutId: todays && today ? today.id : null,
       dayNumber: chosen.day.dayNumber,
       last: Object.fromEntries(last),
-      week: { done, target: tree.routines.length },
+      week: {
+        done,
+        target: tree.routines.some((r) => r.weekdays.length > 0)
+          ? tree.routines.reduce((n, r) => n + Math.max(1, r.weekdays.length), 0)
+          : tree.routines.length,
+      },
     };
   }
 }

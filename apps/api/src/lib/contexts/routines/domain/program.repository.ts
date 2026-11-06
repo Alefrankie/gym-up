@@ -15,6 +15,7 @@ export interface LastPerformance {
 export type ProgramSlot = RoutineExercise & { exercise: Exercise };
 export interface ProgramRoutine {
   day: RoutineDay;
+  weekdays: number[];
   slots: ProgramSlot[];
 }
 export interface ProgramTree {
@@ -38,7 +39,7 @@ export interface NewProgramRoutine {
   name: string;
   focus: string;
   notes: string | null;
-  weekday: number | null;
+  weekdays: number[];
   slots: NewProgramSlot[];
 }
 

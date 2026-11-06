@@ -4,6 +4,7 @@ import {
   exercises,
   profiles,
   routineDays,
+  routineDayWeekdays,
   routineExercises,
   routines,
   workoutEntries,
@@ -94,6 +95,9 @@ export class SqliteProgramRepository implements ProgramRepository {
       .from(routineDays)
       .where(eq(routineDays.routineId, programId))
       .orderBy(asc(routineDays.dayNumber));
+    const weekdayRows = days.length
+      ? await this.db.select().from(routineDayWeekdays).where(inArray(routineDayWeekdays.routineDayId, days.map((d) => d.id)))
+      : [];
     const slots = days.length
       ? await this.db
           .select({ slot: routineExercises, exercise: exercises })
@@ -106,6 +110,7 @@ export class SqliteProgramRepository implements ProgramRepository {
       program,
       routines: days.map((day) => ({
         day,
+        weekdays: weekdayRows.filter((r) => r.routineDayId === day.id).map((r) => r.weekday).sort((a, b) => a - b),
         slots: slots.filter((s) => s.slot.routineDayId === day.id).map((s) => ({ ...s.slot, exercise: s.exercise })),
       })),
     };
@@ -182,14 +187,18 @@ export class SqliteProgramRepository implements ProgramRepository {
     }
 
     for (const [i, r] of input.entries()) {
+      await this.db.delete(routineDayWeekdays).where(eq(routineDayWeekdays.routineDayId, r.id));
       await this.db
         .insert(routineDays)
-        .values({ id: r.id, routineId: programId, dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes, weekday: r.weekday })
+        .values({ id: r.id, routineId: programId, dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes, weekday: r.weekdays[0] ?? null })
         .onConflictDoUpdate({
           target: routineDays.id,
-          set: { dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes, weekday: r.weekday },
+          set: { dayNumber: i + 1, dayName: r.name, focus: r.focus, notes: r.notes, weekday: r.weekdays[0] ?? null },
           setWhere: eq(routineDays.routineId, programId),
         });
+      for (const weekday of r.weekdays) {
+        await this.db.insert(routineDayWeekdays).values({ routineDayId: r.id, weekday }).onConflictDoNothing();
+      }
       const slotIds = r.slots.map((s) => s.id);
       if (slotIds.length === 0) {
         await this.db.delete(routineExercises).where(eq(routineExercises.routineDayId, r.id));

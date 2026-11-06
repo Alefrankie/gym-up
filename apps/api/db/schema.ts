@@ -22,7 +22,7 @@
 // =============================================================
 
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, primaryKey, real, blob } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, index, real, blob } from 'drizzle-orm/sqlite-core';
 
 /**
  * User profile. Created on registration (Round 1: in LocalAuthService
@@ -143,6 +143,21 @@ export const routineDays = sqliteTable('routine_days', {
   /** Planned day of the week, 0 = Sunday … 6 = Saturday; null = no fixed day (rotation). */
   weekday: integer('weekday'),
 });
+
+/** Planned weekdays for a routine. The legacy nullable `routine_days.weekday` column is retained for compatibility. */
+export const routineDayWeekdays = sqliteTable(
+  'routine_day_weekdays',
+  {
+    routineDayId: text('routine_day_id')
+      .notNull()
+      .references(() => routineDays.id, { onDelete: 'cascade' }),
+    weekday: integer('weekday').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.routineDayId, table.weekday] }),
+    index('routine_day_weekdays_weekday_idx').on(table.weekday),
+  ],
+);
 
 export type RoutineDay = typeof routineDays.$inferSelect;
 export type NewRoutineDay = typeof routineDays.$inferInsert;

@@ -136,7 +136,7 @@
   });
 
   // Weekday programs: Home shows the routine named after today, not the next one in the rotation.
-  let planned = $state<TodayWorkoutResponse | null>(null);
+  let planned = $state<Extract<TodayWorkoutResponse, { kind: 'workout_day' }>[]>([]);
   // The routine coming up after today's (shown on rest days and once today's is done).
   let nextUp = $state<{ name: string; weekday: number } | null>(null);
   let restDay = $state(false);
@@ -156,12 +156,22 @@
       if (!pick) return;
       byWeekday = true;
       nextUp = pick.next && pick.nextWeekday !== null ? { name: pick.next.name, weekday: pick.nextWeekday } : null;
-      if (!pick.today) {
+      if (pick.matches.length === 0) {
         restDay = true;
         return;
       }
-      if (today?.kind === 'workout_day' && today.routineDay.id === pick.today.id) return;
-      planned = (await cachedGet(`/workouts/routine/${pick.today.id}`, todayWorkoutResponseSchema, { onCached: (c) => (planned = c.data) })).data;
+      const fetchRoutine = async (routineId: string) => {
+        const response = await cachedGet(`/workouts/routine/${routineId}`, todayWorkoutResponseSchema, {
+          onCached: (c) => {
+            if (c.data.kind !== 'workout_day') return;
+            planned = [...planned.filter((item) => item.routineDay.id !== routineId), c.data];
+          },
+        });
+        return response.data.kind === 'workout_day' ? response.data : null;
+      };
+      planned = (await Promise.all(pick.matches.map((routine) => fetchRoutine(routine.id)))).filter(
+        (routine): routine is Extract<TodayWorkoutResponse, { kind: 'workout_day' }> => routine !== null,
+      );
     } catch {
       /* offline with nothing saved: keep the rotation's suggestion */
     }
@@ -224,7 +234,31 @@
   <ActiveWorkoutCard oncancelled={() => location.reload()} />
 
   {#if !live}
-    {#if byWeekday && restDay}
+    {#if byWeekday && planned.length > 1}
+      <section class="today choices">
+        <span class="label">{t('home.todayRoutine')}</span>
+        <strong>{t('home.chooseRoutine')}</strong>
+        <span class="muted">{t('home.chooseRoutineHint')}</span>
+        <ul class="rows">
+          {#each planned as w (w.routineDay.id)}
+            <li class="choice">
+              <div class="choice-copy">
+                <strong>{w.routineDay.dayName}</strong>
+                <span class="muted">{w.routineDay.focus || sessionSummary(w.exercises)}</span>
+              </div>
+              {#if w.workoutStatus === 'completed'}
+                <a class="choice-action complete" href={w.existingWorkoutId ? `/workout/${w.existingWorkoutId}` : '/history'}>{t('home.doneToday')}</a>
+              {:else}
+                <button class="primary go" disabled={busy} onclick={() => start(w)}>
+                  <Icon name="bolt" size={16} />{w.workoutStatus === 'in_progress' ? t('home.resume') : t('home.start')}
+                </button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+        {#if nextUp}<span class="muted">{t('home.nextOn', { name: nextUp.name, day: weekdayName(nextUp.weekday) })}</span>{/if}
+      </section>
+    {:else if byWeekday && restDay}
       <!-- A planned rest day never blocks training: plans change, the gym is still open. -->
       <section class="today">
         <span class="label">{t('common.today')}</span>
@@ -235,8 +269,8 @@
           <button type="button" class="go secondary" onclick={() => (logDay = localDay())}><Icon name="bolt" size={16} /> {t('home.trainAnyway')}</button>
         </div>
       </section>
-    {:else if (planned ?? today)?.kind === 'workout_day'}
-      {@const w = (planned ?? today) as Extract<TodayWorkoutResponse, { kind: 'workout_day' }>}
+    {:else if (planned[0] ?? today)?.kind === 'workout_day'}
+      {@const w = (planned[0] ?? today) as Extract<TodayWorkoutResponse, { kind: 'workout_day' }>}
       {#if w.workoutStatus === 'completed'}
         <a class="today done" href={w.existingWorkoutId ? `/workout/${w.existingWorkoutId}` : '/history'}>
           <span class="label ok"><Icon name="check" size={14} /> {t('home.doneToday')}</span>
@@ -458,6 +492,28 @@
     display: grid;
     gap: 0.1rem;
   }
+  .choice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .choice-copy {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+  .choice-copy strong { font-size: var(--t-md); }
+  .choice-copy .muted { font-size: var(--t-xs); }
+  .choice-action {
+    flex: 0 0 auto;
+    font-size: var(--t-sm);
+    font-weight: 650;
+    text-decoration: none;
+  }
+  .choice-action.complete { color: var(--ok); }
   .block {
     margin-top: 1.5rem;
   }

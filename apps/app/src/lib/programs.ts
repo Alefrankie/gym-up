@@ -13,7 +13,8 @@ export function saveBody(
       name: r.name,
       focus: r.focus,
       notes: r.notes,
-      weekday: r.weekday ?? null,
+      weekday: (r.weekdays ?? (r.weekday == null ? [] : [r.weekday]))[0] ?? null,
+      weekdays: r.weekdays ?? (r.weekday === null || r.weekday === undefined ? [] : [r.weekday]),
       exercises: r.exercises.map((e) => ({
         id: e.id,
         exerciseId: e.exerciseId,

@@ -29,6 +29,7 @@ export interface ProgramRoutineInput {
   focus: string;
   notes?: string | null;
   weekday?: number | null;
+  weekdays?: number[];
   exercises: ProgramSlotInput[];
 }
 
@@ -106,7 +107,7 @@ export class AdoptProgramUseCase {
     const copy: NewProgramRoutine[] = source.routines.map((r) => ({
       id: crypto.randomUUID(),
       name: r.day.dayName,
-      weekday: r.day.weekday ?? null,
+      weekdays: r.weekdays,
       focus: r.day.focus,
       notes: r.day.notes,
       slots: r.slots.map((s) => ({
@@ -121,10 +122,11 @@ export class AdoptProgramUseCase {
       })),
     }));
     await this.repo.replaceRoutines(newId, copy);
+    const scheduledDays = copy.reduce((count, routine) => count + Math.max(1, routine.weekdays.length), 0);
     await this.repo.updateProgram(newId, {
       name: source.program.name,
       description: source.program.description,
-      daysPerWeek: copy.length,
+      daysPerWeek: scheduledDays || copy.length,
     });
     if (activate) await this.repo.setActiveProgram(userId, newId);
     const tree = await this.repo.findTree(newId);
@@ -176,7 +178,7 @@ export class SaveProgramUseCase {
       id: r.id ?? crypto.randomUUID(),
       name: r.name,
       focus: r.focus,
-      weekday: r.weekday ?? null,
+      weekdays: r.weekdays ?? (r.weekday === null || r.weekday === undefined ? [] : [r.weekday]),
       notes: r.notes ?? null,
       slots: r.exercises.map((e) => ({
         id: e.id ?? crypto.randomUUID(),
@@ -194,10 +196,11 @@ export class SaveProgramUseCase {
     }
 
     await this.repo.replaceRoutines(id, routines);
+    const scheduledDays = routines.reduce((count, routine) => count + Math.max(1, routine.weekdays.length), 0);
     await this.repo.updateProgram(id, {
       name: input.name,
       description: input.description ?? null,
-      daysPerWeek: routines.length,
+      daysPerWeek: scheduledDays || routines.length,
     });
     return (await this.repo.findTree(id))!;
   }

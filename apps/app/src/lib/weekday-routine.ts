@@ -22,28 +22,30 @@ export function weekdayOf(name: string): number | null {
   return first !== undefined && first in NAMES ? NAMES[first]! : null;
 }
 
-export type ByWeekday<R> = { today: R | null; next: R | null; nextWeekday: number | null };
+export type ByWeekday<R> = { today: R | null; matches: R[]; next: R | null; nextWeekday: number | null };
 
 /**
- * When every routine with exercises carries a weekday, returns today's routine (or null on a rest day)
+ * When every routine with exercises carries weekday assignments, returns all of today's routines (or an empty list on a rest day)
  * and the next one coming up. Returns null for programs that are not organised by weekday.
  */
-export function routineForDate<R extends { name: string; weekday?: number | null; exercises: readonly unknown[] }>(
+export function routineForDate<R extends { name: string; weekday?: number | null; weekdays?: readonly number[]; exercises: readonly unknown[] }>(
   routines: readonly R[],
   date: Date,
 ): ByWeekday<R> | null {
   const used = routines.filter((r) => r.exercises.length > 0);
-  const dayOf = (r: R) => r.weekday ?? weekdayOf(r.name);
-  // Days set on the routines win; names only matter when no routine has a day yet.
-  const anySet = used.some((r) => r.weekday !== null && r.weekday !== undefined);
-  const planned = anySet ? used.filter((r) => r.weekday !== null && r.weekday !== undefined) : used;
+  const daysOf = (r: R) => r.weekdays ?? (r.weekday === null || r.weekday === undefined ? [] : [r.weekday]);
+  // Explicit assignments win; old cached data may still carry just `weekday` or a weekday in its name.
+  const anySet = used.some((r) => daysOf(r).length > 0);
+  const planned = anySet ? used.filter((r) => daysOf(r).length > 0) : used;
   if (planned.length === 0 || (!anySet && planned.some((r) => weekdayOf(r.name) === null))) return null;
+  const matches = (r: R, day: number) => anySet ? daysOf(r).includes(day) : weekdayOf(r.name) === day;
   const dow = date.getDay();
-  const today = planned.find((r) => dayOf(r) === dow) ?? null;
+  const todaysRoutines = planned.filter((r) => matches(r, dow));
+  const today = todaysRoutines[0] ?? null;
   for (let i = 1; i <= 7; i++) {
     const d = (dow + i) % 7;
-    const next = planned.find((r) => dayOf(r) === d);
-    if (next) return { today, next, nextWeekday: d };
+    const next = planned.find((r) => matches(r, d));
+    if (next) return { today, matches: todaysRoutines, next, nextWeekday: d };
   }
-  return { today, next: null, nextWeekday: null };
+  return { today, matches: todaysRoutines, next: null, nextWeekday: null };
 }

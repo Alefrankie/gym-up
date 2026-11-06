@@ -77,9 +77,21 @@ Reorder routines inside a program (rotation order = `day_number`). Reorder exerc
 
 ### Next Workout (Rotation)
 
+#### FR-RT-009A · Planned weekdays
+
+A routine may be assigned to several weekdays without copying its exercise plan. A weekday may have
+several routines; on that day the dashboard lists all of them, marks completed routines and keeps
+the remaining choices available. Starting one does not automatically start or hide another.
+
+Routines with no assigned weekdays remain in the program rotation. Existing single-weekday
+assignments are preserved when the schedule data is upgraded.
+
 #### FR-RT-010
 
-The **next routine** is computed by rotation over the active program ([ADR-019 §1](../../architecture/decisions/019-rotation-scheduling-and-onboarding.md)). It is never tied to the weekday.
+For programs without weekday assignments, the **next routine** is computed by rotation over the
+active program ([ADR-019 §1](../../architecture/decisions/019-rotation-scheduling-and-onboarding.md)). For
+programs with weekday assignments, the dashboard follows those assignments for today's routines;
+the user may still start any other routine manually.
 
 #### FR-RT-011
 

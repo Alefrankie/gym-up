@@ -55,7 +55,8 @@ export function toProgramDetailDto(tree: ProgramTree): ProgramDetailDto {
       name: r.day.dayName,
       focus: r.day.focus,
       notes: r.day.notes,
-      weekday: r.day.weekday ?? null,
+      weekday: r.weekdays[0] ?? null,
+      weekdays: r.weekdays,
       exercises: r.slots.map((s) => ({
         id: s.id,
         exerciseId: s.exerciseId,

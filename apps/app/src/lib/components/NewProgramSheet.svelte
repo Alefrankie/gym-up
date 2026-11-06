@@ -50,6 +50,7 @@
           dayNumber: i + 1,
           name: t(DAY_NAMES[(wd + 6) % 7]!),
           weekday: wd,
+          weekdays: [wd],
           focus: '',
           notes: null,
           exercises: [],
