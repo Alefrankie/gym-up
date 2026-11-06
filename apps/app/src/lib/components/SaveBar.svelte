@@ -29,6 +29,7 @@
 
   // The check shows for a beat right after a save, then hands over to the idle action.
   let flash = $state(false);
+  let height = $state(0);
   let wasSaved = false;
   $effect(() => {
     if (saved && !wasSaved && !dirty) {
@@ -43,7 +44,9 @@
 </script>
 
 {#if dirty || flash || idle}
-  <div class="bar" transition:fly={{ y: 24, duration: 220, easing: cubicOut }}>
+  <!-- The bar floats over the page: this keeps the same room at the end so the last content can scroll clear of it. -->
+  <div class="room" style:height={`${height}px`} aria-hidden="true"></div>
+  <div class="bar" bind:offsetHeight={height} transition:fly={{ y: 24, duration: 220, easing: cubicOut }}>
     {#if dirty}
       <!-- White, not orange: saving must never look like the screen's own action (e.g. "Start routine"). -->
       <button class="primary save" disabled={busy || disabled} onclick={onsave} in:fade={{ duration: 150 }}>
@@ -74,6 +77,9 @@
     justify-items: center;
     background: linear-gradient(180deg, transparent, var(--bg) 55%);
     pointer-events: none;
+  }
+  .room {
+    flex: none;
   }
   .bar > :global(*) {
     pointer-events: auto;

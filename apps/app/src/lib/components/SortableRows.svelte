@@ -4,7 +4,7 @@
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
   import Icon from './Icon.svelte';
-  import OverflowMenu from './OverflowMenu.svelte';
+  import Sheet from './Sheet.svelte';
 
   let {
     items,
@@ -17,10 +17,12 @@
     reorderable = true,
     disabled = false,
     help,
+    label,
   }: {
     items: T[];
     key: (item: T) => string;
-    row: Snippet<[T, number]>;
+    /** The third argument opens the row's Replace/Delete sheet; the row draws its own ⋮ button with it. */
+    row: Snippet<[T, number, (() => void) | undefined]>;
     onreorder: (items: T[]) => void;
     /** Swipe right. */
     onremove?: (item: T) => void;
@@ -34,7 +36,17 @@
     /** Makes the swipe actions discoverable: a one-time peek of the first row, a ⋯ menu per row and a help line
      *  below the list until the person has swiped once. `id` keys what is remembered on this device. */
     help?: { id: string; text: string };
+    /** Names a row in its ⋯ sheet title. */
+    label?: (item: T) => string;
   } = $props();
+
+  // The ⋯ sheet lives outside the rows: a row's transform would trap a fixed-position sheet inside it.
+  let menuFor = $state<T | null>(null);
+  function act(fn: ((item: T) => void) | undefined) {
+    const item = menuFor;
+    menuFor = null;
+    if (item) fn?.(item);
+  }
 
   const removable = (item: T) => !!onremove && (!canRemove || canRemove(item));
   const actionable = $derived(!disabled && (!!onremove || !!onreplace));
@@ -236,26 +248,33 @@
       {/if}
       <div
         class="face"
-        class:with-menu={help && actionable}
         style:transform={dragKey === k ? `translateY(${dragY}px) scale(1.02)` : x ? `translateX(${x}px)` : undefined}
       >
-        <div class="content">{@render row(item, i)}</div>
-        {#if help && actionable}
-          <div class="menu" data-nodrag>
-            <OverflowMenu
-              items={[
-                ...(onreplace ? [{ label: t('plan.replace'), icon: 'swap' as const, onselect: () => onreplace(item) }] : []),
-                ...(removable(item) ? [{ label: t('plan.delete'), icon: 'trash' as const, danger: true, onselect: () => onremove?.(item) }] : []),
-              ]}
-            />
-          </div>
-        {/if}
+        {@render row(item, i, help && actionable ? () => (menuFor = item) : undefined)}
       </div>
     </li>
   {/each}
 </ul>
 {#if showHelp}
   <p class="swipe-help">{help?.text}</p>
+{/if}
+{#if menuFor}
+  <Sheet title={label?.(menuFor) ?? t('common.moreOptions')} onclose={() => (menuFor = null)}>
+    <div class="actions">
+      {#if onreplace}
+        <button type="button" class="action" onclick={() => act(onreplace)}>
+          <span class="glyph"><Icon name="swap" size={20} /></span>
+          {t('plan.replace')}
+        </button>
+      {/if}
+      {#if removable(menuFor)}
+        <button type="button" class="action danger" onclick={() => act(onremove)}>
+          <span class="glyph"><Icon name="trash" size={20} /></span>
+          {t('plan.delete')}
+        </button>
+      {/if}
+    </div>
+  </Sheet>
 {/if}
 
 <style>
@@ -284,17 +303,36 @@
     will-change: transform;
     transition: transform 280ms var(--ease);
   }
-  .face.with-menu {
+  .actions {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .action {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.75rem;
+    min-height: 56px;
+    padding: 0 0.75rem;
+    justify-content: flex-start;
+    border-radius: var(--radius);
+    background: var(--raised);
+    box-shadow: none;
+    color: var(--text);
+    font-weight: 550;
   }
-  .content {
-    min-width: 0;
-    flex: 1;
+  .action:active {
+    filter: brightness(1.15);
   }
-  .menu {
-    flex: none;
+  .glyph {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--surface);
+  }
+  .action.danger {
+    color: var(--danger);
   }
   .swipe-help {
     margin: 0.75rem 0 0;

@@ -7,6 +7,7 @@
   import Icon from './Icon.svelte';
   import MuscleFigure from './MuscleFigure.svelte';
   import SetTypeBadge from './SetTypeBadge.svelte';
+  import KebabButton from './KebabButton.svelte';
 
   let {
     ex,
@@ -16,6 +17,7 @@
     progress,
     sets,
     lines = false,
+    onmenu,
   }: {
     ex: RoutineExerciseDto;
     unit: 'kg' | 'lbs';
@@ -28,6 +30,8 @@
     sets?: { n: number; reps: number; weight: number; body?: number | null; type: SetType; record?: boolean }[];
     /** Sets one per line ("14 × 15 kg") with the exercise volume under them: the finished-workout summary. */
     lines?: boolean;
+    /** Opens the row's options; shows a ⋮ in place of the chevron. */
+    onmenu?: () => void;
   } = $props();
 
   const finished = $derived(!!progress && progress.total > 0 && progress.done >= progress.total);
@@ -65,17 +69,25 @@
     <span class="prog" class:done={finished}>
       {#if finished}<Icon name="check" size={14} />{:else}{progress.done}/{progress.total}{/if}
     </span>
-  {:else if href || onclick}
+  {:else if (href || onclick) && !onmenu}
     <Icon name="right" size={18} />
   {/if}
 {/snippet}
 
-{#if href}
-  <a class="row" {href} draggable="false">{@render inner()}</a>
-{:else if onclick}
-  <button type="button" class="row" {onclick}>{@render inner()}</button>
+{#snippet main()}
+  {#if href}
+    <a class="row" {href} draggable="false">{@render inner()}</a>
+  {:else if onclick}
+    <button type="button" class="row" {onclick}>{@render inner()}</button>
+  {:else}
+    <div class="row">{@render inner()}</div>
+  {/if}
+{/snippet}
+
+{#if onmenu}
+  <div class="with-menu">{@render main()}<KebabButton onclick={onmenu} /></div>
 {:else}
-  <div class="row">{@render inner()}</div>
+  {@render main()}
 {/if}
 
 <style>
@@ -143,6 +155,14 @@
     color: var(--text);
     font-size: var(--t-xs);
     font-variant-numeric: tabular-nums;
+  }
+  .with-menu {
+    display: flex;
+    align-items: center;
+  }
+  .with-menu > .row {
+    flex: 1;
+    min-width: 0;
   }
   button.row {
     width: 100%;

@@ -24,6 +24,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
   import SortableRows from '#lib/components/SortableRows.svelte';
+  import KebabButton from '#lib/components/KebabButton.svelte';
   import SetPlanEditor from '#lib/components/SetPlanEditor.svelte';
   import TargetMuscles from '#lib/components/TargetMuscles.svelte';
   import SaveBar from '#lib/components/SaveBar.svelte';
@@ -291,8 +292,9 @@
         onremove={editable ? remove : undefined}
         onreplace={editable ? (item) => (picker = { mode: 'replace', target: item }) : undefined}
         help={{ id: 'routine', text: t('routine.hint') }}
+        label={(e) => exerciseName(e.exerciseName)}
       >
-        {#snippet row(e)}
+        {#snippet row(e, _i, menu)}
           <div class="ex">
             <button type="button" class="head-row" onclick={() => (open = e.key)}>
               <span class="tile"><MuscleFigure primary={e.muscleGroup} secondary={e.secondaryMuscles} size={22} /></span>
@@ -300,8 +302,9 @@
                 <strong>{exerciseName(e.exerciseName)}</strong>
                 <span class="muted">{#if library.find((x) => x.id === e.exerciseId)?.equipment}{equipment(library.find((x) => x.id === e.exerciseId)!.equipment)} ·{' '}{/if}{muscle(e.muscleGroup)} · {tn('routine.sets', e.targetSets)} · {t('routine.reps', { n: e.targetReps })}{#if e.sets.some((s) => s.type !== 'normal')} · {e.sets.filter((s) => s.type !== 'normal').map((s) => ({ warmup: t('plan.short.warmup'), drop: t('plan.short.drop'), failure: t('plan.short.failure') })[s.type as 'warmup']).join(' ')}{/if}</span>
               </span>
-              <Icon name="right" size={18} />
+              {#if !menu}<Icon name="right" size={18} />{/if}
             </button>
+            {#if menu}<KebabButton onclick={menu} />{/if}
           </div>
         {/snippet}
       </SortableRows>
@@ -377,12 +380,16 @@
     color: var(--accent);
   }
   .ex {
+    display: flex;
+    align-items: center;
+    padding-right: 0.25rem;
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: var(--shadow-card);
   }
   .head-row {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     min-height: 56px;
     display: flex;
     align-items: center;

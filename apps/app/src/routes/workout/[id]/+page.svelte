@@ -150,9 +150,10 @@
   onremove={view.isCompleted ? undefined : removeExercise}
   onreplace={view.isCompleted ? undefined : (ex) => openPicker({ mode: 'replace', target: ex })}
   help={{ id: 'workout', text: t('routine.hint') }}
+  label={(ex) => exerciseName(ex.exerciseName)}
 >
-  {#snippet row(ex)}
-    <ExerciseRow {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.isCompleted ? undefined : view.progress(ex)} sets={view.doneSets(ex)} lines={view.isCompleted} />
+  {#snippet row(ex, _i, menu)}
+    <ExerciseRow onmenu={menu} {ex} unit={view.unit} href={`/workout/${id}/${ex.exerciseId}`} progress={view.isCompleted ? undefined : view.progress(ex)} sets={view.doneSets(ex)} lines={view.isCompleted} />
   {/snippet}
 </SortableRows>
 {#if !view.isCompleted}
