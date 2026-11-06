@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { latestVersion, publishRelease } from './release-git.mjs';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -18,7 +18,7 @@ test('integrates remote commits before tagging and publishes both refs atomicall
   publishRelease((...args) => calls.push(args), '0.33.0', env);
   assert.deepEqual(calls, [
     ['git', ['fetch', 'origin', 'main'], { env }],
-    ['git', ['rebase', 'origin/main'], { env }],
+    ['git', ['rebase', '--autostash', 'origin/main'], { env }],
     ['git', ['tag', '-a', 'v0.33.0', '-m', 'v0.33.0']],
     ['git', ['push', '--atomic', 'origin', 'HEAD:refs/heads/main', 'refs/tags/v0.33.0'], { env }],
   ]);
@@ -49,22 +49,29 @@ test('real Git preserves concurrent source changes and rejects a racing tag atom
     git(root, ['init', '--bare', '--initial-branch=main', remote]);
     git(root, ['clone', remote, source]);
     writeFileSync(join(source, 'version.txt'), '1');
+    writeFileSync(join(source, 'generated.txt'), 'original');
     git(source, ['add', '.']);
     git(source, ['commit', '-m', 'initial']);
     git(source, ['push', 'origin', 'main']);
     git(root, ['clone', remote, release]);
     writeFileSync(join(release, 'version.txt'), '2');
     git(release, ['commit', '-am', 'release']);
+    // Android/worker builds can modify tracked generated files after the
+    // version commit has been staged. Preserve them without publishing them.
+    writeFileSync(join(release, 'generated.txt'), 'build output');
     writeFileSync(join(source, 'source.txt'), 'concurrent source change');
     git(source, ['add', '.']);
     git(source, ['commit', '-m', 'concurrent source']);
     git(source, ['push', 'origin', 'main']);
     publishRelease((_command, args) => git(release, args), '0.2.0', env);
     assert.equal(git(release, ['show', 'HEAD:source.txt']), 'concurrent source change');
+    assert.equal(readFileSync(join(release, 'generated.txt'), 'utf8'), 'build output');
+    assert.equal(git(remote, ['show', 'main:generated.txt']), 'original');
     assert.equal(git(remote, ['rev-parse', 'main']), git(remote, ['rev-parse', 'v0.2.0^{}']));
 
     writeFileSync(join(release, 'version.txt'), '3');
-    git(release, ['commit', '-am', 'next release']);
+    git(release, ['add', 'version.txt']);
+    git(release, ['commit', '-m', 'next release']);
     assert.throws(() => publishRelease((_command, args) => {
       if (args[0] === 'push') {
         git(source, ['pull', '--rebase', 'origin', 'main']);

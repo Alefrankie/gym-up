@@ -15,7 +15,7 @@ export function publishRelease(run, version, env) {
   // A source commit can land while the APK builds. Replay only our generated
   // version commit on top of it; conflicts stop the release rather than overwrite work.
   run('git', ['fetch', 'origin', 'main'], { env });
-  run('git', ['rebase', 'origin/main'], { env });
+  run('git', ['rebase', '--autostash', 'origin/main'], { env });
   run('git', ['tag', '-a', `v${version}`, '-m', `v${version}`]);
   // If main advances again, reject BOTH refs. A failed branch push must not
   // leave a published tag pointing at an unmerged release commit.
