@@ -170,6 +170,17 @@
     touch();
   }
 
+  // Capture the draft before closing: `openDraft` (and the template's `d`) then becomes undefined.
+  function replaceFromDetail(item: Draft) {
+    open = null;
+    picker = { mode: 'replace', target: item };
+  }
+
+  function removeFromDetail(item: Draft) {
+    open = null;
+    remove(item);
+  }
+
   function undo() {
     if (!removed) return;
     exercises.splice(removed.index, 0, removed.item);
@@ -319,8 +330,8 @@
     exercise={library.find((x) => x.id === d.exerciseId) ?? { id: d.exerciseId, primaryMuscle: d.muscleGroup, secondaryMuscles: d.secondaryMuscles }}
     actions={editable
       ? [
-          { label: t('routine.replaceExercise'), icon: 'swap', onselect: () => ((open = null), (picker = { mode: 'replace', target: d })) },
-          { label: t('common.remove'), icon: 'trash', danger: true, onselect: () => ((open = null), remove(d)) },
+          { label: t('routine.replaceExercise'), icon: 'swap', onselect: () => replaceFromDetail(d) },
+          { label: t('common.remove'), icon: 'trash', danger: true, onselect: () => removeFromDetail(d) },
         ]
       : []}
     onclose={() => (open = null)}
