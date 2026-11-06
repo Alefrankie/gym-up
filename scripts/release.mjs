@@ -3,6 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { latestVersion, publishRelease } from './release-git.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const isWin = process.platform === 'win32';
@@ -48,7 +49,8 @@ if (!['major', 'minor', 'patch'].includes(bump)) {
   process.exit(1);
 }
 
-const [major, minor, patch] = current.split('.').map(Number);
+const publishedVersion = latestVersion(current, run('git', ['tag', '--list', 'v*'], { capture: true }));
+const [major, minor, patch] = publishedVersion.split('.').map(Number);
 const next = bump === 'major' ? `${major + 1}.0.0` : bump === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
 console.log(`Releasing ${current} -> ${next} (${bump}, ${commits.length} commits)`);
 
@@ -71,10 +73,7 @@ run('pnpm', ['--filter', '@gym-up/app', 'run', 'deploy:web'], { env: cloudflareE
 
 run('git', ['add', tauriConfigPath, ...packageFiles]);
 run('git', ['commit', '-m', `chore(release): v${next}`]);
-run('git', ['tag', '-a', `v${next}`, '-m', `v${next}`]);
 const gitPushEnv = { ...childEnv };
 if (process.env.GH_TOKEN) gitPushEnv.GH_TOKEN = process.env.GH_TOKEN;
-run('git', ['push', '--follow-tags', 'origin', 'HEAD:main'], {
-  env: gitPushEnv,
-});
+publishRelease(run, next, gitPushEnv);
 console.log(`\nReleased v${next}.`);
