@@ -50,6 +50,13 @@ const STATUS_BY_ERROR_NAME: Record<string, number> = {
   CommunityNotFoundError: 404,
   OwnWorkoutLikeError: 409,
   NotWorkoutOwnerError: 403,
+  RecipeNotFoundError: 404,
+  RecipePhotoNotFoundError: 404,
+  RecipeStepNotFoundError: 404,
+  NotRecipeAuthorError: 403,
+  OwnRecipeActionError: 409,
+  RecipeIdTakenError: 409,
+  RecipeMacrosMissingError: 409,
   PhotoStorageUnavailableError: 503,
 };
 

@@ -28,5 +28,7 @@ import { NutritionController } from './nutrition.controller';
     { provide: GetDailyCalorieSummaryUseCase, useFactory: (e: NutritionEntryRepository, g: NutritionGoalRepository) => new GetDailyCalorieSummaryUseCase(e, g), inject: [NutritionEntryRepository, NutritionGoalRepository] },
     { provide: SetCalorieGoalUseCase, useFactory: (g: NutritionGoalRepository) => new SetCalorieGoalUseCase(g), inject: [NutritionGoalRepository] },
   ],
+  // Consumed by `recipes`: "Añadir a hoy" logs a recipe as a meal (DR-0029). Nothing flows back.
+  exports: [LogMealUseCase],
 })
 export class NutritionModule {}

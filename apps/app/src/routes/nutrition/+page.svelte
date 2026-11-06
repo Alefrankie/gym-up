@@ -1,5 +1,7 @@
 <script lang="ts">
   import { t, dateLocale } from '#lib/i18n';
+  import { page } from '$app/state';
+  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import {
     analyzeMealResponseSchema,
@@ -18,6 +20,7 @@
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import RecipeBrowser from '#lib/components/RecipeBrowser.svelte';
 
   interface Draft extends MealAnalysisDto {
     id: string;
@@ -32,6 +35,14 @@
   let error = $state<string | null>(null);
   let notice = $state<string | null>(null);
   let busy = $state(false);
+
+  // The tab lives in the URL so coming back from a recipe lands on Recetas, not on the log.
+  let tab = $state<'today' | 'recipes'>('today');
+
+  function selectTab(next: 'today' | 'recipes') {
+    tab = next;
+    void goto(next === 'recipes' ? '/nutrition?tab=recetas' : '/nutrition', { replaceState: true });
+  }
 
   function describe(e: unknown, fallback: string): string {
     if (e instanceof NetworkError) return t('nutrition.needsConnection');
@@ -58,6 +69,7 @@
   }
 
   onMount(async () => {
+    if (page.url.searchParams.get('tab') === 'recetas') tab = 'recipes';
     if (await session.require()) await load();
   });
 
@@ -164,8 +176,19 @@
 <main>
   <p><a class="back" href="/more"><Icon name="left" size={18} /> {t('nav.more')}</a></p>
   <h1>{t('nutrition.title')}</h1>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
-  {#if notice}<p class="ok" role="status">{notice}</p>{/if}
+
+  <div class="seg" role="tablist" aria-label={t('nutrition.title')}>
+    <button type="button" role="tab" aria-selected={tab === 'today'} class:on={tab === 'today'} onclick={() => selectTab('today')}>
+      {t('recipes.tab.today')}
+    </button>
+    <button type="button" role="tab" aria-selected={tab === 'recipes'} class:on={tab === 'recipes'} onclick={() => selectTab('recipes')}>
+      {t('recipes.tab.recipes')}
+    </button>
+  </div>
+
+  {#if tab === 'today'}
+    {#if error}<p class="error" role="alert">{error}</p>{/if}
+    {#if notice}<p class="ok" role="status">{notice}</p>{/if}
 
   {#if summary}
     {@const goal = summary.goal}
@@ -246,11 +269,39 @@
       {/each}
     </ul>
   {/if}
+  {:else}
+    <RecipeBrowser />
+  {/if}
 </main>
 
 <AppNav />
 
 <style>
+  .seg {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.9rem;
+    padding: 0.25rem;
+    background: var(--surface);
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px var(--line) inset;
+  }
+  .seg button {
+    flex: 1;
+    min-height: 38px;
+    padding: 0;
+    border-radius: 999px;
+    background: none;
+    box-shadow: none;
+    color: var(--muted);
+    font-size: var(--t-sm);
+    font-weight: 550;
+  }
+  .seg button.on {
+    background: var(--surface-hi);
+    box-shadow: 0 0 0 1px var(--line-strong) inset;
+    color: var(--text);
+  }
   .eyebrow {
     margin: 0 0 0.35rem;
     color: var(--text);

@@ -345,6 +345,129 @@ export const nutritionGoals = sqliteTable('nutrition_goals', {
 export type NutritionGoal = typeof nutritionGoals.$inferSelect;
 export type NewNutritionGoal = typeof nutritionGoals.$inferInsert;
 
+/**
+ * Recipes (DR-0029). Member-only shared content: every signed-in member reads, likes and rates every
+ * published recipe. Comments are deliberately absent. A recipe without a cover photo is a draft, listed only
+ * to its author.
+ *
+ * Macros are per serving and nullable: substituting an ingredient never recomputes them.
+ */
+export const recipes = sqliteTable('recipes', {
+  /** Client-generated UUID (ADR-025). */
+  id: text('id').primaryKey(),
+  authorId: text('author_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  prepMinutes: integer('prep_minutes'),
+  cookMinutes: integer('cook_minutes'),
+  servings: integer('servings').notNull().default(2),
+  /** JSON-serialized RecipeTag[]. */
+  tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  /** JSON { calories, protein, carbs, fat } for ONE serving. null = not estimated. */
+  macros: text('macros', { mode: 'json' }).$type<{
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null>(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+export const recipeIngredients = sqliteTable('recipe_ingredients', {
+  id: text('id').primaryKey(),
+  recipeId: text('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  /** Numeric so the client can scale by servings; null means "al gusto". */
+  quantity: real('quantity'),
+  unit: text('unit'),
+  name: text('name').notNull(),
+  optional: integer('optional', { mode: 'boolean' }).notNull().default(false),
+});
+
+/** An alternative for one ingredient. Never used to recompute the recipe's macros. */
+export const recipeSubstitutes = sqliteTable('recipe_substitutes', {
+  id: text('id').primaryKey(),
+  ingredientId: text('ingredient_id')
+    .notNull()
+    .references(() => recipeIngredients.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  name: text('name').notNull(),
+  quantity: real('quantity'),
+  unit: text('unit'),
+  note: text('note'),
+});
+
+export const recipeSteps = sqliteTable(
+  'recipe_steps',
+  {
+    recipeId: text('recipe_id')
+      .notNull()
+      .references(() => recipes.id, { onDelete: 'cascade' }),
+    /** 1-based; the same value a step photo's `step_order` points at. */
+    position: integer('position').notNull(),
+    text: text('text').notNull(),
+    minutes: integer('minutes'),
+  },
+  (t) => [primaryKey({ columns: [t.recipeId, t.position] })],
+);
+
+/**
+ * A recipe photo: the cover (`stepOrder` null) or one step photo. Bytes live in the object store under
+ * `recipes/`. Separate from `progress_photos` (owner-only, ADR-005) and `shared_workout_photos` (DR-0028).
+ */
+export const recipePhotos = sqliteTable('recipe_photos', {
+  id: text('id').primaryKey(),
+  recipeId: text('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'cascade' }),
+  /** null = cover. */
+  stepOrder: integer('step_order'),
+  storageKey: text('storage_key').notNull(),
+  contentType: text('content_type').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: integer('created_at').notNull().default(0),
+});
+
+/** One like per member per recipe. Authors cannot like their own recipe. */
+export const recipeLikes = sqliteTable(
+  'recipe_likes',
+  {
+    recipeId: text('recipe_id')
+      .notNull()
+      .references(() => recipes.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.recipeId, t.userId] })],
+);
+
+/** One 1–5 rating per member per recipe, updatable. The average is read, never stored. */
+export const recipeRatings = sqliteTable(
+  'recipe_ratings',
+  {
+    recipeId: text('recipe_id')
+      .notNull()
+      .references(() => recipes.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    rating: integer('rating').notNull(),
+    createdAt: integer('created_at').notNull().default(0),
+    updatedAt: integer('updated_at').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.recipeId, t.userId] })],
+);
+
+export type Recipe = typeof recipes.$inferSelect;
+export type NewRecipe = typeof recipes.$inferInsert;
+
 /** A group of friends: members see each other's workout summaries, nobody else does. */
 export const groups = sqliteTable('groups', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

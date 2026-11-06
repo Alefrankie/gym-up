@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-05",
+  "generated": "2026-11-06",
   "nodes": [
     {
       "id": "DR-0001",
@@ -224,6 +224,14 @@
       "tier": 2,
       "scope": "cross-team",
       "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0029",
+      "title": "Recipe book in the Comida section — shared recipes with likes and ratings, no comments",
+      "status": "accepted",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
     }
   ],
   "edges": [
@@ -256,6 +264,31 @@
       "from": "DR-0028",
       "to": "DR-0024",
       "type": "conflicts_with"
+    },
+    {
+      "from": "DR-0029",
+      "to": "DR-0006",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0029",
+      "to": "DR-0014",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0029",
+      "to": "DR-0025",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0029",
+      "to": "DR-0027",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0029",
+      "to": "DR-0028",
+      "type": "depends_on"
     }
   ]
 }
