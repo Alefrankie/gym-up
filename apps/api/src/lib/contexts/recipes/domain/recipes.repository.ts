@@ -87,6 +87,9 @@ export interface RecipeDraftRecord {
   steps: Array<Omit<RecipeStep, 'photoId'>>;
 }
 
+/** What `create` did: a first write, a replay by the same author, or an id owned by someone else. */
+export type RecipeCreateOutcome = 'created' | 'replayed' | 'taken';
+
 export interface RecipePhotoRecord {
   id: string;
   recipeId: string;
@@ -126,10 +129,11 @@ export abstract class RecipeRepository {
   abstract findAuthorId(recipeId: string): Promise<string | undefined>;
 
   /**
-   * Inserts the recipe and its children. Resolves `false` without writing anything when the id already
-   * exists, which is how a replayed create stays harmless (ADR-025).
+   * Inserts the recipe and its children. The id is the guard, not a prior read: a replay by the same author
+   * rewrites the children (repairing an attempt that failed halfway) and an id owned by someone else writes
+   * nothing, which is how a replayed create stays harmless (ADR-025).
    */
-  abstract create(input: RecipeDraftRecord, at: number): Promise<boolean>;
+  abstract create(input: RecipeDraftRecord, at: number): Promise<RecipeCreateOutcome>;
 
   /** Replaces the draft's text, ingredients and steps. Photos are handled separately. */
   abstract update(recipeId: string, input: Omit<RecipeDraftRecord, 'id' | 'authorId'>, at: number): Promise<void>;

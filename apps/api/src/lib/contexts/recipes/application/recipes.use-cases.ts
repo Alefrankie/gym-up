@@ -190,8 +190,6 @@ export class RecipesUseCases {
   }
 
   async create(viewerId: string, body: CreateRecipeRequest): Promise<RecipeDetailDto> {
-    const authorId = await this.repo.findAuthorId(body.id);
-    if (authorId && authorId !== viewerId) throw new RecipeIdTakenError();
     const record: RecipeDraftRecord = {
       id: body.id,
       authorId: viewerId,
@@ -218,7 +216,8 @@ export class RecipesUseCases {
       })),
       steps: toSteps(body.steps),
     };
-    await this.repo.create(record, this.now().getTime());
+    const outcome = await this.repo.create(record, this.now().getTime());
+    if (outcome === 'taken') throw new RecipeIdTakenError();
     return this.requireDetail(viewerId, body.id);
   }
 

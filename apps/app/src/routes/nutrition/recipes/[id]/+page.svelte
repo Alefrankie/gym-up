@@ -12,7 +12,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet, invalidateCache } from '#lib/offline/cache';
   import { session } from '#lib/session';
-  import { amount, num, recipePhotoUrl, relativeWhen, scaled, tagKey } from '#lib/recipes';
+  import { amount, newLogAttempt, num, recipePhotoUrl, relativeWhen, scaled, sendLogAttempt, tagKey, type RecipeLogAttempt } from '#lib/recipes';
   import AppNav from '#lib/components/AppNav.svelte';
   import Avatar from '#lib/components/Avatar.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -32,7 +32,8 @@
   /** Ingredient amounts follow the servings the cook picks; macros stay per serving. */
   let servings = $state(1);
   let sheet = $state(false);
-  let logServings = $state(1);
+  /** The attempt in the sheet: one id per opening, reused on every retry (see `sendLogAttempt`). */
+  let attempt = $state<RecipeLogAttempt>(newLogAttempt());
   let logBusy = $state(false);
   let logError = $state<string | null>(null);
   let logged = $state(false);
@@ -155,7 +156,8 @@
   function openLog() {
     logged = false;
     logError = null;
-    logServings = 1;
+    // A new opening is a new entry; a retry inside the same opening reuses this one.
+    attempt = newLogAttempt();
     sheet = true;
   }
 
@@ -167,12 +169,11 @@
     }
     logBusy = true;
     logError = null;
+    const id = recipe.id;
     try {
-      await api(`/recipes/${recipe.id}/log`, {
-        method: 'POST',
-        body: { id: crypto.randomUUID(), servings: logServings },
-        schema: logRecipeResponseSchema,
-      });
+      await sendLogAttempt(attempt, (body) =>
+        api(`/recipes/${id}/log`, { method: 'POST', body, schema: logRecipeResponseSchema }),
+      );
       // The day screen reads from the cache, so the new meal must not be served from a stale copy.
       await invalidateCache(['/nutrition']);
       sheet = false;
@@ -378,26 +379,26 @@
           type="button"
           class="icon ghost"
           aria-label={t('recipes.decrease')}
-          disabled={logServings <= 0.5}
-          onclick={() => (logServings = clampServings(logServings - 0.5))}><Icon name="down" size={18} /></button
+          disabled={attempt.servings <= 0.5}
+          onclick={() => (attempt.servings = clampServings(attempt.servings - 0.5))}><Icon name="down" size={18} /></button
         >
-        <span>{tn('recipes.servings', logServings)}</span>
+        <span>{tn('recipes.servings', attempt.servings, { n: num(attempt.servings, 1) })}</span>
         <button
           type="button"
           class="icon ghost"
           aria-label={t('recipes.increase')}
-          disabled={logServings >= 20}
-          onclick={() => (logServings = clampServings(logServings + 0.5))}><Icon name="up" size={18} /></button
+          disabled={attempt.servings >= 20}
+          onclick={() => (attempt.servings = clampServings(attempt.servings + 0.5))}><Icon name="up" size={18} /></button
         >
       </div>
     </div>
 
     {#if recipe.macros}
       <div class="sheet-macros">
-        <div><b>{Math.round(recipe.macros.calories * logServings)}</b><span>kcal</span></div>
-        <div><b>{Math.round(recipe.macros.protein * logServings)}</b><span>g {t('recipes.macro.protein')}</span></div>
-        <div><b>{Math.round(recipe.macros.carbs * logServings)}</b><span>g {t('recipes.macro.carbs')}</span></div>
-        <div><b>{Math.round(recipe.macros.fat * logServings)}</b><span>g {t('recipes.macro.fat')}</span></div>
+        <div><b>{Math.round(recipe.macros.calories * attempt.servings)}</b><span>kcal</span></div>
+        <div><b>{Math.round(recipe.macros.protein * attempt.servings)}</b><span>g {t('recipes.macro.protein')}</span></div>
+        <div><b>{Math.round(recipe.macros.carbs * attempt.servings)}</b><span>g {t('recipes.macro.carbs')}</span></div>
+        <div><b>{Math.round(recipe.macros.fat * attempt.servings)}</b><span>g {t('recipes.macro.fat')}</span></div>
       </div>
     {/if}
 

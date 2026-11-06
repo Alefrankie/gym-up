@@ -96,3 +96,28 @@ export const RECIPE_TAGS: readonly RecipeTag[] = [
 export function photoMime(blob: Blob): 'image/jpeg' | 'image/png' | 'image/webp' {
   return blob.type === 'image/png' || blob.type === 'image/webp' ? blob.type : 'image/jpeg';
 }
+
+/**
+ * One "Añadir a hoy" attempt. The id is minted when the sheet opens and reused on every retry, so a
+ * response lost after the write returns the same entry instead of logging the meal twice.
+ */
+export interface RecipeLogAttempt {
+  entryId: string;
+  servings: number;
+}
+
+export function newLogAttempt(): RecipeLogAttempt {
+  return { entryId: crypto.randomUUID(), servings: 1 };
+}
+
+/**
+ * Sends the attempt to `POST /recipes/:id/log`. Retrying the same attempt is safe on purpose: that is what
+ * turns a lost response into a no-op. Opening the sheet again mints a new id, which is how a member logs
+ * the same recipe twice on purpose.
+ */
+export async function sendLogAttempt(
+  attempt: RecipeLogAttempt,
+  send: (body: { id: string; servings: number }) => Promise<unknown>,
+): Promise<void> {
+  await send({ id: attempt.entryId, servings: attempt.servings });
+}

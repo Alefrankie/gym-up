@@ -22,6 +22,7 @@ import type {
   RecipeDetailRecord,
   RecipeDraftRecord,
   RecipeIngredient,
+  RecipeCreateOutcome,
   RecipePhotoRecord,
   RecipeRepository,
   RecipeSubstitute,
@@ -263,7 +264,7 @@ export class SqliteRecipeRepository implements RecipeRepository {
     return row?.authorId;
   }
 
-  async create(input: RecipeDraftRecord, at: number): Promise<boolean> {
+  async create(input: RecipeDraftRecord, at: number): Promise<RecipeCreateOutcome> {
     const inserted = await this.db
       .insert(recipes)
       .values({
@@ -281,10 +282,18 @@ export class SqliteRecipeRepository implements RecipeRepository {
       })
       .onConflictDoNothing()
       .returning({ id: recipes.id });
-    // A replay of the same create converges on the recipe that already exists, and rewriting the children
-    // repairs an earlier attempt that failed halfway.
+    if (inserted.length === 0) {
+      // The insert is the ownership check. SQLite serialises writers, so the row we collided with is already
+      // committed and its author cannot change underneath us: reading it here is authoritative, whereas
+      // reading it before the insert left a window for another member's write to land in between.
+      const existingAuthor = await this.findAuthorId(input.id);
+      if (existingAuthor !== input.authorId) return 'taken';
+      // A replay by the same author: rewriting the children repairs an earlier attempt that failed halfway.
+      await this.replaceChildren(input.id, input);
+      return 'replayed';
+    }
     await this.replaceChildren(input.id, input);
-    return inserted.length > 0;
+    return 'created';
   }
 
   /**
