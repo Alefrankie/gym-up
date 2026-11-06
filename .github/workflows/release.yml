@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       sha: ${{ steps.checkout.outputs.sha }}
+      release: ${{ steps.plan.outputs.release }}
       version: ${{ steps.plan.outputs.version }}
       app_changed: ${{ steps.plan.outputs.app_changed }}
 
@@ -48,6 +49,7 @@ jobs:
   api:
     name: Deploy API
     needs: plan
+    if: needs.plan.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -85,7 +87,7 @@ jobs:
   app:
     name: Deploy web app and Android APK
     needs: plan
-    if: needs.plan.outputs.app_changed == 'true'
+    if: needs.plan.outputs.release == 'true' && needs.plan.outputs.app_changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:

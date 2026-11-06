@@ -46,7 +46,7 @@ function plan(requestedBump) {
   const commits = log.split('\0').map((entry) => entry.trim()).filter(Boolean);
   if (commits.length === 0) {
     console.error(`No commits since ${lastTag || current}; nothing to release.`);
-    process.exit(1);
+    return null;
   }
 
   let bump = requestedBump;
@@ -108,8 +108,10 @@ function requireVersion(version) {
 
 const [step, arg] = process.argv.slice(2);
 if (step === 'plan') {
-  const { next, appChanged } = plan(arg);
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `version=${next}\napp_changed=${appChanged}\n`);
+  // Nothing new (e.g. an earlier run already released these commits) is a clean no-op in CI.
+  const planned = plan(arg);
+  const outputs = planned ? `release=true\nversion=${planned.next}\napp_changed=${planned.appChanged}\n` : 'release=false\n';
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, outputs);
 } else if (step === 'api') {
   applyVersion(requireVersion(arg));
   deployApi();
@@ -121,7 +123,9 @@ if (step === 'plan') {
   applyVersion(next);
   publish(next);
 } else {
-  const { next, appChanged } = plan(step);
+  const planned = plan(step);
+  if (!planned) process.exit(1);
+  const { next, appChanged } = planned;
   applyVersion(next);
   deployApi();
   if (appChanged) deployApp();
