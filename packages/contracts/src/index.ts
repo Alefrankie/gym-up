@@ -16,3 +16,4 @@ export * from './coach';
 export * from './studio';
 export * from './coach-content';
 export * from './community';
+export * from './recipes';
