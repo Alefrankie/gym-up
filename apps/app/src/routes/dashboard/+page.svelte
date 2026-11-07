@@ -100,11 +100,12 @@
     void cachedGet('/workouts?page=1', workoutHistoryResponseSchema, { onCached: (c) => (recent = c.data.items.slice(0, 3)) })
       .then((r) => (recent = r.data.items.slice(0, 3)))
       .catch(() => {});
+    // In parallel with today's suggestion, so a weekday program never flashes the rotation's pick first.
+    void followWeekday();
     try {
       const res = await cachedGet('/workouts/today', todayWorkoutResponseSchema, { onCached: (c) => (today = c.data) });
       today = res.data;
       stale = res.stale;
-      void followWeekday();
     } catch (e) {
       error =
         e instanceof NetworkError
@@ -141,6 +142,8 @@
   let nextUp = $state<{ name: string; weekday: number } | null>(null);
   let restDay = $state(false);
   let byWeekday = $state(false);
+  // Until the program's weekdays are known, the rotation's suggestion may be the wrong day (e.g. Friday on a Saturday rest day).
+  let scheduleReady = $state(false);
   // Active program, so today's card can open its routine to edit.
   let activeProgramId = $state<string | null>(null);
   const editHref = (routineId: string, exerciseId?: string) =>
@@ -174,6 +177,8 @@
       );
     } catch {
       /* offline with nothing saved: keep the rotation's suggestion */
+    } finally {
+      scheduleReady = true;
     }
   }
 
@@ -269,6 +274,8 @@
           <button type="button" class="go secondary" onclick={() => (logDay = localDay())}><Icon name="bolt" size={16} /> {t('home.trainAnyway')}</button>
         </div>
       </section>
+    {:else if !scheduleReady && today?.kind === 'workout_day'}
+      <section class="today pending" aria-busy="true"></section>
     {:else if (planned[0] ?? today)?.kind === 'workout_day'}
       {@const w = (planned[0] ?? today) as Extract<TodayWorkoutResponse, { kind: 'workout_day' }>}
       {#if w.workoutStatus === 'completed'}
@@ -416,6 +423,9 @@
     font-size: var(--t-sm);
     font-weight: 600;
     text-decoration: none;
+  }
+  .today.pending {
+    min-height: 12rem;
   }
   .today {
     display: grid;
