@@ -45,6 +45,8 @@ export const workoutEntrySchema = z.object({
   completed: z.boolean(),
   notes: z.string().max(500).nullable(),
   setType: setTypeSchema.default('normal'),
+  /** 0 for the set itself, 1, 2, 3… for each weight drop of a drop set (DR-0033). */
+  dropIndex: z.number().int().min(0).max(5).default(0),
   /** Body weight captured when the set was logged; null outside bodyweight sets. */
   bodyWeightKgAtSet: bodyWeightAtSetSchema,
   createdAt: isoDateSchema,
@@ -63,6 +65,8 @@ export const upsertSetRequestSchema = z.object({
   completed: z.boolean().default(true),
   notes: z.string().max(500).nullable().default(null),
   setType: setTypeSchema.default('normal'),
+  /** 0 for the set itself, 1, 2, 3… for each weight drop of a drop set (DR-0033). */
+  dropIndex: z.number().int().min(0).max(5).default(0),
   /**
    * Body weight captured by the client for a bodyweight set, always in kg (`weightUnit` does not
    * apply to it). Replaying a queued set sends the value captured back then; null or absent (an
@@ -87,6 +91,8 @@ export const workoutDetailEntrySchema = z.object({
   completed: z.boolean(),
   notes: z.string().nullable(),
   setType: setTypeSchema.default('normal'),
+  /** 0 for the set itself, 1, 2, 3… for each weight drop of a drop set (DR-0033). */
+  dropIndex: z.number().int().min(0).max(5).default(0),
   /** Body weight captured when the set was logged; null outside bodyweight sets. */
   bodyWeightKgAtSet: bodyWeightAtSetSchema,
 });

@@ -18,7 +18,7 @@ export const sendCommand: Sender = async (command: Command) => {
       await api(`/workouts/${command.workoutId}/sets`, { method: 'PUT', body: command.set });
       return;
     case 'remove-set':
-      await api(`/workouts/${command.workoutId}/sets/${command.exerciseId}/${command.setNumber}`, { method: 'DELETE' });
+      await api(`/workouts/${command.workoutId}/sets/${command.exerciseId}/${command.setNumber}${command.drop ? `?drop=${command.drop}` : ''}`, { method: 'DELETE' });
       return;
     case 'discard-workout':
       await api(`/workouts/${command.workoutId}`, { method: 'DELETE' });

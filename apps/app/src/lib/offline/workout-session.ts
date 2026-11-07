@@ -23,6 +23,17 @@ export interface SetRow {
   type?: SetType;
   /** When the set was ticked (epoch ms): tells when the session really ended if finish was forgotten. */
   doneAt?: number;
+  /** Weight drops after the first weight of a drop set, in order (DR-0033). Sent with `dropIndex` 1, 2, 3… */
+  drops?: DropRow[];
+}
+
+/** One weight drop inside a drop set: same set number, its own id, weight, reps and tick. */
+export interface DropRow {
+  id: string;
+  reps: number;
+  weight: number;
+  completed: boolean;
+  doneAt?: number;
 }
 
 export interface WorkoutSnapshot {

@@ -55,6 +55,8 @@ export interface WorkoutDetailEntry {
   completed: boolean;
   notes: string | null;
   setType: 'normal' | 'warmup' | 'drop' | 'failure';
+  /** 0 for the set itself, 1, 2, 3… for each weight drop of a drop set (DR-0033). */
+  dropIndex: number;
   /** Body weight when the set was logged (kg); null outside bodyweight sets and on older rows. */
   bodyWeightKgAtSet: number | null;
 }

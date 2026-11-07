@@ -310,3 +310,43 @@ describe('LogSetUseCase — ownership + not found', () => {
     ).rejects.toBeInstanceOf(WorkoutNotFoundError);
   });
 });
+
+describe('LogSetUseCase — drops of a drop set (DR-0033)', () => {
+  const start = () => workoutRepo.create({ userId, routineDayId, workoutDate: MONDAY, status: 'in_progress' });
+
+  it('keeps each drop as its own row under the same set number', async () => {
+    const workout = await start();
+    const drop = { workoutId: workout.id, setType: 'drop' as const, completed: true };
+    await useCase.execute(input({ ...drop, weight: 80, reps: 8 }));
+    await useCase.execute(input({ ...drop, dropIndex: 1, weight: 60, reps: 6 }));
+    await useCase.execute(input({ ...drop, dropIndex: 2, weight: 40, reps: 5 }));
+    const entries = await workoutRepo.findEntries(workout.id);
+    expect(entries.map((e) => [e.setNumber, e.dropIndex, e.weight, e.reps])).toEqual([
+      [1, 0, 80, 8],
+      [1, 1, 60, 6],
+      [1, 2, 40, 5],
+    ]);
+  });
+
+  it('updates a drop in place when it is sent again', async () => {
+    const workout = await start();
+    await useCase.execute(input({ workoutId: workout.id, setType: 'drop', dropIndex: 1, reps: 6 }));
+    const result = await useCase.execute(input({ workoutId: workout.id, setType: 'drop', dropIndex: 1, reps: 7 }));
+    expect(result.kind).toBe('updated');
+    expect(await workoutRepo.findEntries(workout.id)).toHaveLength(1);
+  });
+
+  it('rejects a drop on a set that is not a drop set', async () => {
+    const workout = await start();
+    await expect(
+      useCase.execute(input({ workoutId: workout.id, setType: 'normal', dropIndex: 1 })),
+    ).rejects.toBeInstanceOf(LogSetValidationError);
+  });
+
+  it('rejects a drop index past the limit', async () => {
+    const workout = await start();
+    await expect(
+      useCase.execute(input({ workoutId: workout.id, setType: 'drop', dropIndex: 6 })),
+    ).rejects.toBeInstanceOf(LogSetValidationError);
+  });
+});

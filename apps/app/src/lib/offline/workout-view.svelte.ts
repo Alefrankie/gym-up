@@ -7,12 +7,21 @@ import { coachSay } from '#lib/coach/coach.svelte';
 import { reactToSet } from '#lib/coach/triggers';
 import { cancelWorkoutById } from './start-workout';
 import { sync } from './sync.svelte';
-import { loadSnapshot, rowKey, saveSnapshot, setActiveWorkoutId, type WorkoutSnapshot } from './workout-session';
+import { loadSnapshot, rowKey, saveSnapshot, setActiveWorkoutId, type DropRow, type WorkoutSnapshot } from './workout-session';
 import { session } from '#lib/session';
 import { t } from '#lib/i18n';
 
 const KG_TO_LBS = 2.20462;
 export const toDisplay = (kg: number, u: 'kg' | 'lbs') => (u === 'lbs' ? Math.round(kg * KG_TO_LBS * 10) / 10 : kg);
+
+/** Drops a drop set may have after its first weight; the API accepts the same (DR-0033). */
+export const MAX_DROPS = 5;
+
+/** Weight of the next drop: 25 % lighter, rounded to the plates a gym has (2.5 kg / 5 lbs). */
+export function dropWeight(weight: number, u: 'kg' | 'lbs'): number {
+  const step = u === 'lbs' ? 5 : 2.5;
+  return Math.max(0, Math.round((weight * 0.75) / step) * step);
+}
 
 /**
  * State and actions of one workout, shared by the routine overview and the single-exercise screen. Both read the
@@ -108,7 +117,7 @@ export class WorkoutView {
   }
 
   /** Completed sets of one exercise, in order, for summaries (history, finished workout). */
-  doneSets(ex: RoutineExerciseDto): { n: number; reps: number; weight: number; body: number | null; type: SetType; record?: boolean }[] {
+  doneSets(ex: RoutineExerciseDto): { n: number; reps: number; weight: number; body: number | null; type: SetType; drops: { reps: number; weight: number }[]; record?: boolean }[] {
     const sets = this.setNumbers(ex)
       .map((n) => ({ n, r: this.row(ex.exerciseId, n) }))
       .filter((x) => x.r?.completed)
@@ -121,6 +130,7 @@ export class WorkoutView {
         weight: r!.weight,
         body: this.isBodyweight(ex) && r!.bodyWeightKg ? toDisplay(r!.bodyWeightKg, this.unit) : null,
         type: r!.type ?? ('normal' as SetType),
+        drops: (r!.drops ?? []).filter((d) => d.completed).map((d) => ({ reps: d.reps, weight: d.weight })),
         record: false,
       }));
     const best = this.#recordSet(ex, sets);
@@ -252,6 +262,11 @@ export class WorkoutView {
         endedAt: detail.workout.completedAt ? Date.parse(detail.workout.completedAt) : undefined,
       };
       for (const e of detail.entries) {
+        if (e.dropIndex > 0) {
+          const parent = built.rows[rowKey(e.exerciseId, e.setNumber)];
+          if (parent) (parent.drops ??= [])[e.dropIndex - 1] = { id: e.id, reps: e.reps, weight: toDisplay(e.weight, u), completed: e.completed };
+          continue;
+        }
         built.rows[rowKey(e.exerciseId, e.setNumber)] = {
           id: e.id,
           reps: e.reps,
@@ -281,6 +296,11 @@ export class WorkoutView {
       for (const e of detail.entries) {
         const k = rowKey(e.exerciseId, e.setNumber);
         const mine = snap.rows[k];
+        if (e.dropIndex > 0) {
+          const drops = mine ? (mine.drops ??= []) : null;
+          if (drops && !pending.has(drops[e.dropIndex - 1]?.id ?? '')) drops[e.dropIndex - 1] = { id: e.id, reps: e.reps, weight: toDisplay(e.weight, snap.unit), completed: e.completed };
+          continue;
+        }
         if (mine && pending.has(mine.id)) continue;
         snap.rows[k] = {
           id: e.id,
@@ -290,6 +310,7 @@ export class WorkoutView {
           bodyWeightKg: e.bodyWeightKgAtSet ?? mine?.bodyWeightKg ?? null,
           completed: e.completed,
           type: e.setType,
+          drops: mine?.drops,
         };
       }
       if (detail.workout.completedAt) snap.endedAt = Date.parse(detail.workout.completedAt);
@@ -317,6 +338,7 @@ export class WorkoutView {
         id: r.id,
         exerciseId,
         setNumber,
+        dropIndex: 0,
         reps: r.reps,
         weight: r.weight,
         weightUnit: snap.unit,
@@ -330,9 +352,80 @@ export class WorkoutView {
       const ex = snap.exercises.find((e) => e.exerciseId === exerciseId);
       // Once per set: ticking it, not re-sending an edit.
       if (ex && !was) this.#reactToSet(ex, setNumber);
-      // Sets still to do: the Coach talks during the rest and calls you back to the bar when it ends.
-      restTimer.start(REST_SECONDS, this.pendingSets > 0 ? { exercise: ex?.exerciseName } : undefined);
+      // A drop set goes on with no rest: the timer waits for its last drop.
+      if (!r.drops?.some((d) => !d.completed)) this.#startRest(ex);
     }
+  }
+
+  #startRest(ex: RoutineExerciseDto | undefined) {
+    // Sets still to do: the Coach talks during the rest and calls you back to the bar when it ends.
+    restTimer.start(REST_SECONDS, this.pendingSets > 0 ? { exercise: ex?.exerciseName } : undefined);
+  }
+
+  // Drops of a drop set (DR-0033): rows with the set's number and `dropIndex` 1, 2, 3…, sent on their own.
+
+  /** Adds a weight drop under a drop set: 25 % lighter than the weight before it, same reps. */
+  async addDrop(ex: RoutineExerciseDto, n: number) {
+    const snap = this.snap;
+    const r = this.row(ex.exerciseId, n);
+    if (!snap || !r || r.type !== 'drop' || (r.drops?.length ?? 0) >= MAX_DROPS) return;
+    const prev = r.drops?.at(-1) ?? r;
+    (r.drops ??= []).push({ id: crypto.randomUUID(), reps: prev.reps, weight: dropWeight(prev.weight, snap.unit), completed: false });
+    // One more drop to do: the rest started by the last tick no longer applies.
+    restTimer.skip();
+    await saveSnapshot(snap);
+  }
+
+  /** Ticks or unticks one drop; the rest timer starts once the set and all its drops are done. */
+  async commitDrop(ex: RoutineExerciseDto, n: number, i: number, completed: boolean) {
+    const snap = this.snap;
+    const r = this.row(ex.exerciseId, n);
+    const d = r?.drops?.[i];
+    if (!snap || !r || !d) return;
+    d.completed = completed;
+    d.doneAt = completed ? Date.now() : undefined;
+    await saveSnapshot(snap);
+    await this.#sendDrop(ex.exerciseId, n, i, d);
+    if (completed && r.completed && r.drops!.every((x) => x.completed)) this.#startRest(ex);
+  }
+
+  /** Editing a ticked drop re-sends it; an open one only updates the local copy. */
+  async editedDrop(ex: RoutineExerciseDto, n: number, i: number) {
+    const snap = this.snap;
+    const d = this.row(ex.exerciseId, n)?.drops?.[i];
+    if (!snap || !d) return;
+    if (d.completed) await this.#sendDrop(ex.exerciseId, n, i, d);
+    else await saveSnapshot(snap);
+  }
+
+  /** Removes one drop; later drops move up one, here and on the server. */
+  async removeDrop(ex: RoutineExerciseDto, n: number, i: number) {
+    const snap = this.snap;
+    const r = this.row(ex.exerciseId, n);
+    if (!snap || !r?.drops?.[i]) return;
+    r.drops.splice(i, 1);
+    await saveSnapshot(snap);
+    await sync.enqueue({ type: 'remove-set', workoutId: this.#id, exerciseId: ex.exerciseId, setNumber: n, drop: i + 1 });
+  }
+
+  #sendDrop(exerciseId: string, setNumber: number, i: number, d: DropRow) {
+    return sync.enqueue({
+      type: 'upsert-set',
+      workoutId: this.#id,
+      set: {
+        id: d.id,
+        exerciseId,
+        setNumber,
+        dropIndex: i + 1,
+        reps: d.reps,
+        weight: d.weight,
+        weightUnit: this.snap!.unit,
+        completed: d.completed,
+        notes: null,
+        setType: 'drop',
+        bodyWeightKgAtSet: null,
+      },
+    });
   }
 
   /** Editing a set that is already completed re-sends it; editing an open one only updates the local copy. */
@@ -386,6 +479,13 @@ export class WorkoutView {
   async retype(exerciseId: string, setNumber: number, type: SetType) {
     const r = this.snap?.rows[rowKey(exerciseId, setNumber)];
     if (!r) return;
+    // Only a drop set has drops: leaving the type drops them, last first so the server never shifts one.
+    if (type !== 'drop' && r.drops?.length) {
+      for (let i = r.drops.length; i >= 1; i--) {
+        await sync.enqueue({ type: 'remove-set', workoutId: this.#id, exerciseId, setNumber, drop: i });
+      }
+      r.drops = undefined;
+    }
     r.type = type;
     await this.edited(exerciseId, setNumber);
   }
@@ -519,6 +619,12 @@ export class WorkoutView {
       const was = before[i];
       if (!now || now === was) continue;
       if (now.completed || was?.completed) await this.#send(ex.exerciseId, i + 1, now, now.completed);
+      // Drops travel with their set: the slot's old drops beyond the new count go, the rest are rewritten.
+      const nowDrops = now.drops ?? [];
+      for (let j = was?.drops?.length ?? 0; j > nowDrops.length; j--) {
+        await sync.enqueue({ type: 'remove-set', workoutId: this.#id, exerciseId: ex.exerciseId, setNumber: i + 1, drop: j });
+      }
+      for (let j = 0; j < nowDrops.length; j++) await this.#sendDrop(ex.exerciseId, i + 1, j, nowDrops[j]);
     }
   }
 
@@ -531,6 +637,7 @@ export class WorkoutView {
         id: r.id,
         exerciseId,
         setNumber,
+        dropIndex: 0,
         reps: r.reps,
         weight: r.weight,
         weightUnit: this.snap!.unit,

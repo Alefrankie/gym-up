@@ -261,6 +261,7 @@ export class SqliteProgramRepository implements ProgramRepository {
         reps: workoutEntries.reps,
         setNumber: workoutEntries.setNumber,
         setType: workoutEntries.setType,
+        dropIndex: workoutEntries.dropIndex,
         workoutId: workouts.id,
         date: workouts.workoutDate,
       })
@@ -277,10 +278,12 @@ export class SqliteProgramRepository implements ProgramRepository {
       .orderBy(desc(workouts.workoutDate), workoutEntries.setNumber);
     // Rows are newest first: the first workout seen for an exercise is its last session.
     // Warm-ups say nothing about strength, so they count neither for the last best nor for the record.
+    // The drops after a drop set's first weight (DR-0033) are lighter by design and would shift the
+    // set-by-set numbers the next session starts from.
     const sessionOf = new Map<string, string>();
     const records = new Map<string, LastPerformance['record']>();
     for (const r of rows) {
-      if (r.setType === 'warmup') continue;
+      if (r.setType === 'warmup' || r.dropIndex > 0) continue;
       const rec = records.get(r.exerciseId);
       if (!rec || r.weight > rec.weight || (r.weight === rec.weight && r.reps > rec.reps)) {
         records.set(r.exerciseId, { weight: r.weight, reps: r.reps, date: r.date.toISOString() });

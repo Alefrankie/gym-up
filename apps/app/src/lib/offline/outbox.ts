@@ -17,7 +17,7 @@ import { idb } from './idb';
 export type Command =
   | { type: 'start-workout'; id: string; routineDayId: string; date?: string }
   | { type: 'upsert-set'; workoutId: string; set: UpsertSetRequest }
-  | { type: 'remove-set'; workoutId: string; exerciseId: string; setNumber: number }
+  | { type: 'remove-set'; workoutId: string; exerciseId: string; setNumber: number; drop?: number }
   | { type: 'finish-workout'; workoutId: string; durationSeconds?: number }
   | { type: 'discard-workout'; workoutId: string }
   | { type: 'mark-supplement'; supplementId: string; day: string; taken: boolean };

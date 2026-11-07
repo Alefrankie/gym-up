@@ -251,12 +251,17 @@ export const workoutEntries = sqliteTable('workout_entries', {
   notes: text('notes'),
   /** normal | warmup | drop | failure. Warm-up sets do not count toward volume. */
   setType: text('set_type', { enum: ['normal', 'warmup', 'drop', 'failure'] }).notNull().default('normal'),
+  /**
+   * Position inside a drop set (DR-0033): 0 is the set itself, 1, 2, 3… each weight drop after it,
+   * all sharing the set's `set_number`. Always 0 outside drop sets.
+   */
+  dropIndex: integer('drop_index').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
 });
 
-export type WorkoutEntry = typeof workoutEntries.$inferSelect;
+export type WorkoutEntry =typeof workoutEntries.$inferSelect;
 export type NewWorkoutEntry = typeof workoutEntries.$inferInsert;
 
 /**

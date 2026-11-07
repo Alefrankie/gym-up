@@ -6,7 +6,8 @@
   import { muscle } from '#lib/labels';
   import { REST_SECONDS } from '#lib/offline/rest.svelte';
   import { useWorkoutView } from '#lib/offline/workout-context';
-  import { toDisplay } from '#lib/offline/workout-view.svelte';
+  import { MAX_DROPS, toDisplay } from '#lib/offline/workout-view.svelte';
+  import type { SetType } from '@gym-up/contracts';
   import { t, tn } from '#lib/i18n';
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
@@ -36,6 +37,13 @@
     if (!ex) return;
     const r = view.row(ex.exerciseId, n);
     if (!r?.completed || confirm(t('workout.removeSetConfirm', { n }))) void view.removeSet(ex, n);
+  }
+
+  /** Leaving drop set deletes its drops: asked first when there are any. */
+  function retype(n: number, type: SetType) {
+    if (!ex) return;
+    const drops = view.row(ex.exerciseId, n)?.drops?.length ?? 0;
+    if (type === 'drop' || !drops || confirm(t('workout.retypeDropsConfirm', { count: drops }))) void view.retype(ex.exerciseId, n, type);
   }
 
   function go(delta: number) {
@@ -105,7 +113,7 @@
       {@const r = view.row(ex.exerciseId, n)}
       {#if r}
         <div class="set" class:done={r.completed} class:active={active === n}>
-          <SetTypeCell n={view.displaySetNumber(ex, n)} type={r.type} disabled={view.isCompleted} onpick={(type) => view.retype(ex.exerciseId, n, type)} />
+          <SetTypeCell n={view.displaySetNumber(ex, n)} type={r.type} disabled={view.isCompleted} onpick={(type) => retype(n, type)} />
           <input
             type="text"
             inputmode="numeric"
@@ -156,6 +164,56 @@
             aria-label={r.completed ? t('workout.uncheckSet', { n }) : t('workout.checkSet', { n })}
           ><Icon name="check" size={18} /></button>
         </div>
+        {#if r.type === 'drop'}
+          {#each r.drops ?? [] as d, i (d.id)}
+            <div class="set drop" class:done={d.completed}>
+              {#if view.isCompleted}
+                <span class="drop-mark" aria-hidden="true">↳</span>
+              {:else}
+                <button type="button" class="drop-mark" onclick={() => view.removeDrop(ex, n, i)} aria-label={t('workout.removeDrop', { n, i: i + 1 })}>↳<Icon name="x" size={12} /></button>
+              {/if}
+              <input
+                type="text"
+                inputmode="numeric"
+                value={d.reps}
+                onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
+                oninput={(e) => {
+                  const value = Number((e.currentTarget as HTMLInputElement).value);
+                  if (Number.isInteger(value) && value >= 1 && value <= 100) d.reps = value;
+                }}
+                onblur={(e) => ((e.currentTarget as HTMLInputElement).value = String(d.reps))}
+                disabled={view.isCompleted}
+                onchange={() => view.editedDrop(ex, n, i)}
+                aria-label={t('workout.dropReps', { n, i: i + 1 })}
+              />
+              <input
+                type="text"
+                inputmode="decimal"
+                value={d.weight}
+                onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
+                oninput={(e) => {
+                  const raw = (e.currentTarget as HTMLInputElement).value.replace(',', '.');
+                  const value = Number(raw);
+                  if (raw !== '' && Number.isFinite(value) && value >= 0) d.weight = value;
+                }}
+                onblur={(e) => ((e.currentTarget as HTMLInputElement).value = String(d.weight))}
+                disabled={view.isCompleted}
+                onchange={() => view.editedDrop(ex, n, i)}
+                aria-label={t('workout.dropWeight', { n, i: i + 1, unit: view.unit })}
+              />
+              <button
+                type="button"
+                class="check"
+                disabled={view.isCompleted}
+                onclick={() => view.commitDrop(ex, n, i, !d.completed)}
+                aria-label={d.completed ? t('workout.uncheckDrop', { n, i: i + 1 }) : t('workout.checkDrop', { n, i: i + 1 })}
+              ><Icon name="check" size={18} /></button>
+            </div>
+          {/each}
+          {#if !view.isCompleted && (r.drops?.length ?? 0) < MAX_DROPS}
+            <button type="button" class="adddrop" onclick={() => view.addDrop(ex, n)}><Icon name="plus" size={14} /> {t('workout.addDrop')}</button>
+          {/if}
+        {/if}
       {/if}
       {/snippet}
     </SortableRows>
@@ -327,6 +385,45 @@
     box-shadow: 0 0 0 1px var(--line) inset;
     color: var(--muted);
     font-size: var(--t-sm);
+    font-weight: 500;
+  }
+  .set.drop {
+    margin-top: -0.25rem;
+  }
+  .set.drop input {
+    min-height: 40px;
+    font-size: var(--t-md);
+  }
+  .set.drop .check {
+    justify-self: center;
+    width: 40px;
+    min-height: 40px;
+    height: 40px;
+  }
+  .drop-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    min-height: 40px;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--faint);
+    font-size: var(--t-md);
+  }
+  .adddrop {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 36px;
+    margin-left: calc(48px + 0.5rem);
+    padding: 0 0.75rem;
+    background: none;
+    box-shadow: 0 0 0 1px var(--line) inset;
+    color: var(--muted);
+    font-size: var(--t-xs);
     font-weight: 500;
   }
   .cta {

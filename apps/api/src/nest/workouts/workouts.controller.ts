@@ -188,12 +188,17 @@ export class WorkoutsController {
       completed: body.completed,
       notes: body.notes,
       setType: body.setType,
+      dropIndex: body.dropIndex,
       bodyWeightKgAtSet: body.bodyWeightKgAtSet,
     });
     return toWorkoutEntryDto(result.entry);
   }
 
-  /** Removes one set; later sets of that exercise move up one number. Replaying it after the shift is a no-op only if nothing was logged there since. */
+  /**
+   * Removes one set with its drops; later sets of that exercise move up one number. Replaying it after the shift is a
+   * no-op only if nothing was logged there since. With `?drop=N` (N ≥ 1) it removes only that drop of the set and the
+   * later drops move up one (DR-0033).
+   */
   @Delete(':id/sets/:exerciseId/:setNumber')
   @HttpCode(204)
   async removeSet(
@@ -201,12 +206,21 @@ export class WorkoutsController {
     @Param('id') id: string,
     @Param('exerciseId') exerciseId: string,
     @Param('setNumber') setNumberParam: string,
+    @Query('drop') dropParam?: string,
   ): Promise<void> {
     const setNumber = Number.parseInt(setNumberParam, 10);
     if (!Number.isInteger(setNumber) || setNumber < 1) throw new BadRequestException('setNumber must be a positive integer');
+    const drop = dropParam === undefined ? null : Number.parseInt(dropParam, 10);
+    if (drop !== null && (!Number.isInteger(drop) || drop < 1)) throw new BadRequestException('drop must be a positive integer');
     const [owned] = await this.db.select({ id: workouts.id }).from(workouts).where(and(eq(workouts.id, id), eq(workouts.userId, user.id))).limit(1);
     if (!owned) throw new NotFoundException('Workout not found');
     const sameExercise = and(eq(workoutEntries.workoutId, id), eq(workoutEntries.exerciseId, exerciseId));
+    if (drop !== null) {
+      const sameSet = and(sameExercise, eq(workoutEntries.setNumber, setNumber));
+      await this.db.delete(workoutEntries).where(and(sameSet, eq(workoutEntries.dropIndex, drop)));
+      await this.db.update(workoutEntries).set({ dropIndex: sql`${workoutEntries.dropIndex} - 1` }).where(and(sameSet, gt(workoutEntries.dropIndex, drop)));
+      return;
+    }
     await this.db.delete(workoutEntries).where(and(sameExercise, eq(workoutEntries.setNumber, setNumber)));
     await this.db.update(workoutEntries).set({ setNumber: sql`${workoutEntries.setNumber} - 1` }).where(and(sameExercise, gt(workoutEntries.setNumber, setNumber)));
   }

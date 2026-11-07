@@ -40,6 +40,8 @@ export interface LogSetInput {
   completed: boolean;
   notes: string | null;
   setType?: 'normal' | 'warmup' | 'drop' | 'failure';
+  /** 0 for the set itself, 1, 2, 3… for each weight drop of a drop set (DR-0033). Defaults to 0. */
+  dropIndex?: number;
   /**
    * Body weight captured by the client for a bodyweight set, already in kg (`weightUnit` does not
    * apply to it). Null/undefined keeps whatever the entry already had, so replaying an old queued
@@ -98,10 +100,10 @@ export class LogSetUseCase {
     const weightKg =
       input.weightUnit === 'lbs' ? input.weight * LBS_TO_KG : input.weight;
 
-    // 4. Find existing entry for (workoutId, exerciseId, setNumber).
+    // 4. Find existing entry for (workoutId, exerciseId, setNumber, dropIndex).
     const allEntries = await this.workoutRepository.findEntries(input.workoutId);
     const existing = allEntries.find(
-      (e) => e.exerciseId === input.exerciseId && e.setNumber === input.setNumber,
+      (e) => e.exerciseId === input.exerciseId && e.setNumber === input.setNumber && e.dropIndex === (input.dropIndex ?? 0),
     );
 
     // 5. A body weight belongs only to a lift where the lifter's own mass is part of the load. On
@@ -137,6 +139,7 @@ export class LogSetUseCase {
           ...(input.id ? { id: input.id } : {}),
           exerciseId: input.exerciseId,
           setNumber: input.setNumber,
+          dropIndex: input.dropIndex ?? 0,
           reps: input.reps,
           weight: weightKg,
           completed: input.completed,
@@ -176,6 +179,15 @@ export class LogSetUseCase {
       throw new LogSetValidationError(
         `weight out of range: ${input.weight} (must be ${WorkoutEntryRules.MinWeight}..${WorkoutEntryRules.MaxWeight})`,
       );
+    }
+    const drop = input.dropIndex ?? 0;
+    if (!Number.isInteger(drop) || drop < 0 || drop > WorkoutEntryRules.MaxDropsPerSet) {
+      throw new LogSetValidationError(
+        `dropIndex out of range: ${drop} (must be 0..${WorkoutEntryRules.MaxDropsPerSet})`,
+      );
+    }
+    if (drop > 0 && input.setType !== undefined && input.setType !== 'drop') {
+      throw new LogSetValidationError('only a drop set has drops');
     }
     // Same range the profile accepts: a captured body weight outside it is a bad client, not a lifter.
     const body = input.bodyWeightKgAtSet;

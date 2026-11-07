@@ -188,6 +188,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       .orderBy(
         asc(workoutEntries.exerciseId),
         asc(workoutEntries.setNumber),
+        asc(workoutEntries.dropIndex),
       );
   }
 
@@ -251,7 +252,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         exerciseCount: sql<number>`COUNT(DISTINCT ${workoutEntries.exerciseId})`,
         totalVolume: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} != 'warmup' THEN ${workoutEntries.reps} * ${workoutEntries.weight} ELSE 0 END), 0)`,
         warmupSets: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} = 'warmup' THEN 1 ELSE 0 END), 0)`,
-        dropSets: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} = 'drop' THEN 1 ELSE 0 END), 0)`,
+        dropSets: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} = 'drop' AND ${workoutEntries.dropIndex} = 0 THEN 1 ELSE 0 END), 0)`,
         failureSets: sql<number>`COALESCE(SUM(CASE WHEN ${workoutEntries.completed} = 1 AND ${workoutEntries.setType} = 'failure' THEN 1 ELSE 0 END), 0)`,
       })
       .from(workouts)
@@ -307,6 +308,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         completed: workoutEntries.completed,
         notes: workoutEntries.notes,
         setType: workoutEntries.setType,
+        dropIndex: workoutEntries.dropIndex,
         bodyWeightKgAtSet: workoutEntries.bodyWeightKgAtSet,
       })
       .from(workoutEntries)
@@ -315,6 +317,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       .orderBy(
         asc(workoutEntries.exerciseId),
         asc(workoutEntries.setNumber),
+        asc(workoutEntries.dropIndex),
       );
 
     return rows.map((row) => ({
@@ -329,6 +332,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       completed: row.completed,
       notes: row.notes,
       setType: row.setType,
+      dropIndex: row.dropIndex,
       bodyWeightKgAtSet: row.bodyWeightKgAtSet ?? null,
     }));
   }

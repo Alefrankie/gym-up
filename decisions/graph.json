@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-06",
+  "generated": "2026-11-07",
   "nodes": [
     {
       "id": "DR-0001",
@@ -236,9 +236,33 @@
     {
       "id": "DR-0030",
       "title": "Release applies pending D1 migrations before deploying the API",
-      "status": "proposed",
+      "status": "accepted",
       "tier": 2,
       "scope": "system",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0031",
+      "title": "A routine can be scheduled on multiple weekdays",
+      "status": "proposed",
+      "tier": 2,
+      "scope": "cross-team",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0032",
+      "title": "A user can freeze one missed training day per week to keep the streak",
+      "status": "proposed",
+      "tier": 1,
+      "scope": "local",
+      "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0033",
+      "title": "A drop set holds several weight drops inside one set",
+      "status": "accepted",
+      "tier": 1,
+      "scope": "local",
       "owner": "@alefrank"
     }
   ],
@@ -301,6 +325,41 @@
     {
       "from": "DR-0030",
       "to": "DR-0027",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0031",
+      "to": "DR-0018",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0031",
+      "to": "DR-0019",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0031",
+      "to": "DR-0025",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0031",
+      "to": "DR-0027",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0032",
+      "to": "DR-0031",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0033",
+      "to": "DR-0016",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0033",
+      "to": "DR-0021",
       "type": "depends_on"
     }
   ]

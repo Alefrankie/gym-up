@@ -36,6 +36,7 @@ export const WorkoutEntryRules = {
   MinRestSeconds: 30, // safety: avoid overtraining
   MaxRestSeconds: 600, // 10 min upper bound
   MaxSetsPerExercise: 10,
+  MaxDropsPerSet: 5, // weight drops after a drop set's first weight (DR-0033)
 } as const;
 
 export const WorkoutSessionRules = {

@@ -27,7 +27,7 @@
     /** Sets done out of total, when the workout is under way. */
     progress?: { done: number; total: number };
     /** Logged sets to list under the name (summary of a workout). */
-    sets?: { n: number; reps: number; weight: number; body?: number | null; type: SetType; record?: boolean }[];
+    sets?: { n: number; reps: number; weight: number; body?: number | null; type: SetType; drops?: { reps: number; weight: number }[]; record?: boolean }[];
     /** Sets one per line ("14 × 15 kg") with the exercise volume under them: the finished-workout summary. */
     lines?: boolean;
     /** Opens the row's options; shows a ⋮ in place of the chevron. */
@@ -46,14 +46,14 @@
     {#if sets?.length && lines}
       <span class="lines">
         {#each sets as s (s.n)}
-          <span class="line" class:record={s.record}>{#if s.type !== 'normal'}<SetTypeBadge type={s.type} n={s.n} />{/if}{s.reps} × {#if s.body}{s.body} + {/if}{s.weight} {unit}{#if s.record}<span class="rec" title={t('workout.record')}><Icon name="flame" size={14} />{t('workout.record')}</span>{/if}</span>
+          <span class="line" class:record={s.record}>{#if s.type !== 'normal'}<SetTypeBadge type={s.type} n={s.n} />{/if}{s.reps} × {#if s.body}{s.body} + {/if}{s.weight} {unit}{#each s.drops ?? [] as d} → {d.reps} × {d.weight} {unit}{/each}{#if s.record}<span class="rec" title={t('workout.record')}><Icon name="flame" size={14} />{t('workout.record')}</span>{/if}</span>
         {/each}
-        <span class="vol">{t('summary.exerciseVolume', { v: Math.round(sets.filter((s) => s.type !== 'warmup').reduce((n, s) => n + s.reps * s.weight, 0)).toLocaleString(), unit })}</span>
+        <span class="vol">{t('summary.exerciseVolume', { v: Math.round(sets.filter((s) => s.type !== 'warmup').reduce((n, s) => n + s.reps * s.weight + (s.drops ?? []).reduce((m, d) => m + d.reps * d.weight, 0), 0)).toLocaleString(), unit })}</span>
       </span>
     {:else if sets?.length}
       <span class="sets">
         {#each sets as s (s.n)}
-          <span class="set" class:record={s.record}><SetTypeBadge type={s.type} n={s.n} />{s.reps}×{#if s.body}{s.body}+{/if}{s.weight}{#if s.record}<Icon name="flame" size={12} />{/if}</span>
+          <span class="set" class:record={s.record}><SetTypeBadge type={s.type} n={s.n} />{s.reps}×{#if s.body}{s.body}+{/if}{s.weight}{#each s.drops ?? [] as d}→{d.reps}×{d.weight}{/each}{#if s.record}<Icon name="flame" size={12} />{/if}</span>
         {/each}
       </span>
     {:else}
