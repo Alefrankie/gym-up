@@ -1,12 +1,12 @@
 ---
 id: DR-0030
 title: "Release applies pending D1 migrations before deploying the API"
-status: proposed
+status: accepted
 tier: 2
 date: 2026-11-06
 owner: "@alefrank"
 deciders: ["@alefrank"]
-decided_by: null
+decided_by: "@alefrank"
 
 scope: system
 reversibility: easy
@@ -60,7 +60,7 @@ answer normally.
 
 ## Decision
 
-**Not enabled yet.** The proposal is to apply `wrangler d1 migrations apply gym-up --remote` in
+Apply `wrangler d1 migrations apply gym-up --remote` in
 `scripts/release.mjs` after building the worker and before deploying it, with the same Cloudflare
 credentials the deploy already uses. In a non-interactive run wrangler confirms by itself; with nothing
 pending the command is a no-op.
@@ -71,9 +71,6 @@ worker does not know the new tables.
 
 `run()` exits on a non-zero status, so a failing migration would stop the release before the deploy and
 production would keep running the previous version.
-
-It stays out of the pipeline because the release credential cannot talk to D1 yet (see the log below), and
-a release step that always fails is worse than the manual one it replaces.
 
 ## Alternatives considered
 
@@ -103,3 +100,7 @@ evolution. The manual commands stay in `apps/api/package.json` for local work an
   `CLOUDFLARE_API_TOKEN` secret can deploy a Worker but cannot query D1. The step was reverted the same day
   so releases keep working; the proposal waits for a token with D1 read and edit.
 
+- **2026-11-07** — accepted by @alefrank, who asked for migrations in the pipeline. The step is back in
+  `deployApi()` in `scripts/release.mjs`, before `wrangler deploy`. `0029_drop_index.sql` (DR-0033) was
+  applied to production by hand first with the operator's login, so the first automated run has nothing
+  pending; it still needs `CLOUDFLARE_API_TOKEN` with D1 edit, or the API job fails before deploying.

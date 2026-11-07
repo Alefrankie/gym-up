@@ -82,6 +82,9 @@ function applyVersion(next) {
 
 function deployApi() {
   run('pnpm', ['--filter', '@gym-up/api', 'run', 'build:worker']);
+  // Schema first, code second (DR-0030): a failing migration stops the release and production keeps the previous
+  // worker. With nothing pending it is a no-op. Needs a token with D1 edit, not only Workers deploy.
+  run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'd1', 'migrations', 'apply', 'gym-up', '--remote'], { env: cloudflareEnv });
   run('pnpm', ['--filter', '@gym-up/api', 'exec', 'wrangler', 'deploy'], { env: cloudflareEnv });
 }
 
