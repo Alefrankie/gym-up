@@ -5,6 +5,7 @@
   import { cubicOut } from 'svelte/easing';
   import {
     calendarResponseSchema,
+    streakSchema,
     userSchema,
     programDetailDtoSchema,
     programListResponseSchema,
@@ -56,6 +57,8 @@
   let busy = $state(false);
   let showExercises = $state(false);
   let calendar = $state<CalendarDayDto[]>([]);
+  // Frozen days (DR-0032) show on the week strip like on /progress.
+  let frozenDays = $state<string[]>([]);
   let recent = $state<WorkoutHistoryItemDto[]>([]);
 
   // The Coach's line, in the user's tone (known once the session is loaded).
@@ -96,6 +99,9 @@
     // Charts and history fill in as they arrive; none of them blocks the screen.
     void cachedGet('/progress/calendar?days=56', calendarResponseSchema, { onCached: (c) => (calendar = c.data) })
       .then((r) => (calendar = r.data))
+      .catch(() => {});
+    void cachedGet('/progress/streak', streakSchema, { onCached: (c) => (frozenDays = c.data.frozenDays) })
+      .then((r) => (frozenDays = r.data.frozenDays))
       .catch(() => {});
     void cachedGet('/workouts?page=1', workoutHistoryResponseSchema, { onCached: (c) => (recent = c.data.items.slice(0, 3)) })
       .then((r) => (recent = r.data.items.slice(0, 3)))
@@ -335,7 +341,7 @@
         <span class="muted">{t('home.weekProgress', { done: Math.min(today.week.done, today.week.target), target: today.week.target })}</span>
       {/if}
     </div>
-    <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} today={localDay()} onpick={openDay} />
+    <WeekDays trained={calendar.filter((d) => d.hasWorkout).map((d) => d.date)} frozen={frozenDays} today={localDay()} onpick={openDay} />
     <p class="muted tap-hint">{t('logDay.tap')}</p>
   </section>
 

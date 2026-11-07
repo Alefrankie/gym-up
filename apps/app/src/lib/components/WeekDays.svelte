@@ -3,12 +3,13 @@
   import Icon from './Icon.svelte';
 
   /** This week, Monday to Sunday: a filled circle for each day trained, a ring around today. */
-  /** `onpick` makes today and past days tappable (to log a workout on that day). */
-  let { trained, today, onpick }: { trained: string[]; today: string; onpick?: (day: string) => void } = $props();
+  /** `onpick` makes today and past days tappable (to log a workout on that day). `frozen` days kept the streak (DR-0032). */
+  let { trained, frozen = [], today, onpick }: { trained: string[]; frozen?: string[]; today: string; onpick?: (day: string) => void } = $props();
 
   const days = $derived.by(() => {
     const LETTERS = [...t('week.letters')];
     const on = new Set(trained);
+    const ice = new Set(frozen);
     const base = new Date(`${today}T12:00:00`);
     const monday = new Date(base);
     monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
@@ -17,19 +18,19 @@
       d.setDate(monday.getDate() + i);
       const p = (n: number) => String(n).padStart(2, '0');
       const key = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-      return { letter, key, num: d.getDate(), on: on.has(key), isToday: key === today, future: key > today };
+      return { letter, key, num: d.getDate(), on: on.has(key), frozen: !on.has(key) && ice.has(key), isToday: key === today, future: key > today };
     });
   });
 </script>
 
 <ol class="week" aria-label={t('week.label')}>
   {#each days as d (d.key)}
-    <li class:on={d.on} class:today={d.isToday} class:future={d.future} aria-label={`${d.letter} ${d.num}${d.on ? t('week.trained') : ''}`}>
+    <li class:on={d.on} class:frozen={d.frozen} class:today={d.isToday} class:future={d.future} aria-label={`${d.letter} ${d.num}${d.on ? t('week.trained') : d.frozen ? t('week.frozen') : ''}`}>
       <span class="letter">{d.letter}</span>
       {#if onpick && !d.future}
-        <button type="button" class="dot" onclick={() => onpick(d.key)}>{#if d.on}<Icon name="check" size={16} />{:else}{d.num}{/if}</button>
+        <button type="button" class="dot" onclick={() => onpick(d.key)}>{#if d.on}<Icon name="check" size={16} />{:else if d.frozen}❄️{:else}{d.num}{/if}</button>
       {:else}
-        <span class="dot">{#if d.on}<Icon name="check" size={16} />{:else}{d.num}{/if}</span>
+        <span class="dot">{#if d.on}<Icon name="check" size={16} />{:else if d.frozen}❄️{:else}{d.num}{/if}</span>
       {/if}
     </li>
   {/each}
@@ -82,6 +83,10 @@
   }
   .today .letter {
     color: var(--accent-hi);
+  }
+  .frozen .dot {
+    background: #7cc4f0;
+    box-shadow: none;
   }
   .on .dot {
     background: var(--accent);
