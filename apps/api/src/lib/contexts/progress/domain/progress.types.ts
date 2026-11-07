@@ -32,6 +32,10 @@ export interface ChartDataPoint {
 export interface Streak {
   current: number; // consecutive days ending today (or yesterday if no workout today)
   total: number; // all-time completed workouts
+  /** Yesterday can be frozen (DR-0032: missed training day, streak to save, weekly freeze unused). */
+  canFreeze: boolean;
+  /** Frozen days, UTC YYYY-MM-DD, oldest first. */
+  frozenDays: string[];
 }
 
 /**
@@ -64,5 +68,9 @@ export interface GetCalendarDataInput {
 }
 
 export interface GetStreakInput {
+  userId: string;
+}
+
+export interface FreezeStreakInput {
   userId: string;
 }

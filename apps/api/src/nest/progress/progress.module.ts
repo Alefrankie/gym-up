@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { Db } from '@/lib/db/client';
 import { CalculateStreakUseCase } from '@/lib/contexts/progress/application/calculate-streak.use-case';
+import { FreezeStreakUseCase } from '@/lib/contexts/progress/application/freeze-streak.use-case';
 import { GetCalendarDataUseCase } from '@/lib/contexts/progress/application/get-calendar-data.use-case';
 import { GetExerciseHistoryUseCase } from '@/lib/contexts/progress/application/get-exercise-history.use-case';
 import { GetExerciseListUseCase } from '@/lib/contexts/progress/application/get-exercise-list.use-case';
@@ -19,6 +20,7 @@ import { ProgressController } from './progress.controller';
     { provide: GetExerciseListUseCase, useFactory: (r: ExerciseQueryRepository) => new GetExerciseListUseCase(r), inject: [ExerciseQueryRepository] },
     { provide: GetExerciseHistoryUseCase, useFactory: (r: ProgressRepository) => new GetExerciseHistoryUseCase(r), inject: [ProgressRepository] },
     { provide: CalculateStreakUseCase, useFactory: (r: ProgressRepository) => new CalculateStreakUseCase(r), inject: [ProgressRepository] },
+    { provide: FreezeStreakUseCase, useFactory: (r: ProgressRepository) => new FreezeStreakUseCase(r), inject: [ProgressRepository] },
     { provide: GetCalendarDataUseCase, useFactory: (r: ProgressRepository) => new GetCalendarDataUseCase(r), inject: [ProgressRepository] },
   ],
   exports: [CalculateStreakUseCase],

@@ -48,7 +48,10 @@ export abstract class ProgressRepository {
 
   /**
    * Count completed workouts across planned training days, skipping planned
-   * rest days. A missed planned training day breaks the streak.
+   * rest days and frozen days. A missed planned training day breaks the streak.
    */
   abstract getStreak(userId: string): Promise<Streak>;
+
+  /** Record a frozen day (UTC YYYY-MM-DD). Idempotent. Per DR-0032. */
+  abstract addFreeze(userId: string, day: string): Promise<void>;
 }

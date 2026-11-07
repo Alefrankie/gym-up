@@ -572,6 +572,19 @@ export const supplementLogs = sqliteTable(
 
 export type Supplement = typeof supplements.$inferSelect;
 
+/** A missed training day the user froze to keep the streak (UTC `YYYY-MM-DD`). Per DR-0032. */
+export const streakFreezes = sqliteTable(
+  'streak_freezes',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    day: text('day').notNull(),
+    createdAt: integer('created_at').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
+
 /** Shared feedback board visible to every authenticated Gym Up account. */
 export const feedbackItems = sqliteTable('feedback_items', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

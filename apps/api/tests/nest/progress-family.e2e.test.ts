@@ -98,8 +98,14 @@ describe('progress', () => {
 
   it('is empty for a user with no workouts', async () => {
     const s = await register('empty-progress@example.com', 'Empty');
-    expect(streakSchema.parse((await http('GET', '/progress/streak', { token: s.token })).json)).toEqual({ current: 0, total: 0 });
+    expect(streakSchema.parse((await http('GET', '/progress/streak', { token: s.token })).json)).toEqual({ current: 0, total: 0, canFreeze: false, frozenDays: [] });
     expect(exerciseListResponseSchema.parse((await http('GET', '/progress/exercises', { token: s.token })).json)).toEqual([]);
+  });
+
+  it('refuses a streak freeze when there is no streak to save', async () => {
+    expect((await http('POST', '/progress/streak/freeze')).status).toBe(401);
+    const s = await register('freeze-progress@example.com', 'Freeze');
+    expect((await http('POST', '/progress/streak/freeze', { token: s.token })).status).toBe(409);
   });
 
   it('reports streak, logged exercises, history and calendar after a finished workout', async () => {

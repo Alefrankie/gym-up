@@ -92,7 +92,7 @@ async function seedEntry(wid: string) {
 describe('CalculateStreakUseCase', () => {
   it('returns current=0, total=0 for new user', async () => {
     const result = await useCase.execute({ userId });
-    expect(result).toEqual({ current: 0, total: 0 });
+    expect(result).toEqual({ current: 0, total: 0, canFreeze: false, frozenDays: [] });
   });
 
   it('returns streak with completed workouts', async () => {

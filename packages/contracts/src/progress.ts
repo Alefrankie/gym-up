@@ -26,6 +26,10 @@ export const streakSchema = z.object({
   current: z.number().int(),
   /** All-time completed workouts. */
   total: z.number().int(),
+  /** Yesterday is a missed training day that can be frozen (1 per week, DR-0032). */
+  canFreeze: z.boolean().default(false),
+  /** Frozen days, YYYY-MM-DD (UTC). */
+  frozenDays: z.array(z.string()).default([]),
 });
 export type StreakDto = z.infer<typeof streakSchema>;
 

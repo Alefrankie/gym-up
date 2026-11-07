@@ -15,7 +15,7 @@
     type ExerciseDto,
     type StreakDto,
   } from '@gym-up/contracts';
-  import { ApiRequestError, NetworkError } from '#lib/api/client';
+  import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { cachedGet } from '#lib/offline/cache';
   import { session } from '#lib/session';
   import AppNav from '#lib/components/AppNav.svelte';
@@ -34,6 +34,19 @@
 
   let streak = $state<StreakDto | null>(null);
   let calendar = $state<CalendarDayDto[]>([]);
+  // DR-0032: yesterday's missed training day can be frozen once per week.
+  let freezing = $state(false);
+  async function freezeStreak() {
+    freezing = true;
+    try {
+      streak = await api('/progress/streak/freeze', { method: 'POST', schema: streakSchema });
+    } catch (e) {
+      fail(e, t('progress.freezeError'));
+    } finally {
+      freezing = false;
+    }
+  }
+  const frozen = $derived(new Set(streak?.frozenDays ?? []));
   // Tapping a past day (up to 60 days back) logs a workout on it.
   let logDay = $state<string | null>(null);
   // A day already trained opens what was done (to review or fix it); an empty one offers to log a routine.
@@ -65,14 +78,14 @@
   const weeks = $derived.by(() => {
     const end = new Date(now);
     end.setUTCDate(end.getUTCDate() + (6 - ((end.getUTCDay() + 6) % 7)));
-    const cols: { date: string; on: boolean; future: boolean }[][] = [];
+    const cols: { date: string; on: boolean; frozen: boolean; future: boolean }[][] = [];
     for (let w = 52; w >= 0; w--) {
       const col = [];
       for (let d = 6; d >= 0; d--) {
         const day = new Date(end);
         day.setUTCDate(end.getUTCDate() - w * 7 - d);
         const key = ymd(day);
-        col.push({ date: key, on: done.has(key), future: key > ymd(now) });
+        col.push({ date: key, on: done.has(key), frozen: frozen.has(key), future: key > ymd(now) });
       }
       cols.push(col);
     }
@@ -177,6 +190,13 @@
       </a>
     </div>
 
+    {#if streak.canFreeze}
+      <section class="card freeze">
+        <p>{t('progress.freezeHint')}</p>
+        <button type="button" class="primary" disabled={freezing} onclick={freezeStreak}>❄️ {t('progress.freeze')}</button>
+      </section>
+    {/if}
+
     <section class="card year">
       <div class="year-head">
         <h2 class="first">{tn('progress.workouts', thisYear)}</h2>
@@ -193,9 +213,9 @@
               <span class="m">{monthLabel(col, i)}</span>
               {#each col as day (day.date)}
                 {#if !day.future && day.date >= sixtyDaysAgo}
-                  <button type="button" class="cell" class:on={day.on} title={day.date} aria-label={t('logDay.title', { day: day.date })} onclick={() => openDay(day.date)}></button>
+                  <button type="button" class="cell" class:on={day.on} class:frozen={day.frozen} title={day.date} aria-label={t('logDay.title', { day: day.date })} onclick={() => openDay(day.date)}></button>
                 {:else}
-                  <span class="cell" class:on={day.on} class:future={day.future} title={day.date}></span>
+                  <span class="cell" class:on={day.on} class:frozen={day.frozen} class:future={day.future} title={day.date}></span>
                 {/if}
               {/each}
             </div>
@@ -363,6 +383,17 @@
   }
   .cell.on {
     background: var(--accent);
+  }
+  .cell.frozen {
+    background: #7cc4f0;
+  }
+  .freeze {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .freeze p {
+    margin: 0;
   }
   .cell.future {
     background: transparent;

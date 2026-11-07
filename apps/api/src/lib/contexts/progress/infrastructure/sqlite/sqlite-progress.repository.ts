@@ -11,7 +11,7 @@
 
 import { and, asc, eq, gte } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
-import { profiles, routineDays, routineDayWeekdays, workoutEntries, workouts } from '@db/schema';
+import { profiles, routineDays, routineDayWeekdays, streakFreezes, workoutEntries, workouts } from '@db/schema';
 import type { CalendarDay, Streak } from '../../domain/progress.types';
 import {
   type ProgressRepository,
@@ -71,46 +71,53 @@ export class SqliteProgressRepository implements ProgressRepository {
   }
 
   async getStreak(userId: string): Promise<Streak> {
-    const dateRows = await this.db
-      .selectDistinct({ workoutDate: workouts.workoutDate })
-      .from(workouts)
-      .where(
-        and(eq(workouts.userId, userId), eq(workouts.status, 'completed')),
-      )
-      .orderBy(asc(workouts.workoutDate));
+    const [dateRows, freezeRows, restDays] = await Promise.all([
+      this.db
+        .selectDistinct({ workoutDate: workouts.workoutDate })
+        .from(workouts)
+        .where(and(eq(workouts.userId, userId), eq(workouts.status, 'completed')))
+        .orderBy(asc(workouts.workoutDate)),
+      this.db.select({ day: streakFreezes.day }).from(streakFreezes).where(eq(streakFreezes.userId, userId)),
+      this.getPlannedRestDays(userId),
+    ]);
 
-    const dates = dateRows.map((r) => toDateKey(r.workoutDate));
-    const total = dates.length;
-
-    if (total === 0) {
-      return { current: 0, total: 0 };
-    }
-
-    const dateSet = new Set(dates);
-    const restDays = await this.getPlannedRestDays(userId);
+    const dateSet = new Set(dateRows.map((r) => toDateKey(r.workoutDate)));
+    const total = dateSet.size;
+    const frozen = new Set(freezeRows.map((r) => r.day));
+    const frozenDays = [...frozen].sort();
     const today = startOfTodayUtc();
-    const yesterday = new Date(today.getTime() - 86_400_000);
+    const yesterday = addDays(today, -1);
 
-    // Planned rest days are neutral; a missed planned training day breaks the streak.
-    let cursor = today;
-    if (!dateSet.has(toDateKey(today)) && !restDays.has(today.getUTCDay())) {
-      if (dateSet.has(toDateKey(yesterday))) {
-        cursor = yesterday;
-      } else {
-        return { current: 0, total };
+    // Planned rest days and frozen days are neutral; a missed planned training day breaks the streak.
+    const neutral = (d: Date) => restDays.has(d.getUTCDay()) || frozen.has(toDateKey(d));
+    const countFrom = (start: Date) => {
+      let n = 0;
+      // Neutral days never end the walk alone, so stop once we pass the oldest record.
+      const oldest = Math.min(...[...dateSet, ...frozen].map((k) => Date.parse(k)));
+      for (let c = start; c.getTime() >= oldest; c = addDays(c, -1)) {
+        if (dateSet.has(toDateKey(c))) n++;
+        else if (!neutral(c)) break;
       }
-    }
+      return n;
+    };
 
     let current = 0;
-    while (true) {
-      if (dateSet.has(toDateKey(cursor))) {
-        current++;
-      } else if (!restDays.has(cursor.getUTCDay())) {
-        break;
-      }
-      cursor = new Date(cursor.getTime() - 86_400_000);
+    if (total > 0) {
+      if (dateSet.has(toDateKey(today)) || neutral(today)) current = countFrom(today);
+      else if (dateSet.has(toDateKey(yesterday)) || neutral(yesterday)) current = countFrom(yesterday);
     }
-    return { current, total };
+
+    // One freeze per ISO week (Mon–Sun) of yesterday, only for a missed training day with a streak to save.
+    const monday = addDays(yesterday, -((yesterday.getUTCDay() + 6) % 7));
+    const weekUsed = [0, 1, 2, 3, 4, 5, 6].some((i) => frozen.has(toDateKey(addDays(monday, i))));
+    const canFreeze =
+      !dateSet.has(toDateKey(yesterday)) && !neutral(yesterday) && !weekUsed && countFrom(addDays(yesterday, -1)) > 0;
+
+    return { current, total, canFreeze, frozenDays };
+  }
+
+  async addFreeze(userId: string, day: string): Promise<void> {
+    await this.db.insert(streakFreezes).values({ userId, day, createdAt: Date.now() }).onConflictDoNothing();
   }
 
   /** Weekdays omitted from the active program schedule are planned rest days. */
@@ -143,6 +150,11 @@ export class SqliteProgressRepository implements ProgressRepository {
 /** YYYY-MM-DD key in UTC. */
 function toDateKey(d: Date): string {
   return d.toISOString().split('T')[0];
+}
+
+/** `d` shifted by whole UTC days. */
+function addDays(d: Date, days: number): Date {
+  return new Date(d.getTime() + days * 86_400_000);
 }
 
 /** Midnight UTC of the current calendar day. */

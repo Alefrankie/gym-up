@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Query, UseGuards } from '@nestjs/common';
+import { ConflictException, Controller, Get, HttpCode, Inject, Param, Post, Query, UseGuards } from '@nestjs/common';
 import {
   dateRangeSchema,
   type CalendarDayDto,
@@ -8,6 +8,7 @@ import {
 } from '@gym-up/contracts';
 import type { User } from '@/lib/contexts/auth/auth.types';
 import { CalculateStreakUseCase } from '@/lib/contexts/progress/application/calculate-streak.use-case';
+import { FreezeStreakUseCase, StreakFreezeNotAllowedError } from '@/lib/contexts/progress/application/freeze-streak.use-case';
 import { GetCalendarDataUseCase } from '@/lib/contexts/progress/application/get-calendar-data.use-case';
 import { GetExerciseHistoryUseCase } from '@/lib/contexts/progress/application/get-exercise-history.use-case';
 import { GetExerciseListUseCase } from '@/lib/contexts/progress/application/get-exercise-list.use-case';
@@ -22,6 +23,7 @@ export class ProgressController {
     @Inject(GetExerciseHistoryUseCase) private readonly history: GetExerciseHistoryUseCase,
     @Inject(CalculateStreakUseCase) private readonly streak: CalculateStreakUseCase,
     @Inject(GetCalendarDataUseCase) private readonly calendar: GetCalendarDataUseCase,
+    @Inject(FreezeStreakUseCase) private readonly freeze: FreezeStreakUseCase,
   ) {}
 
   /** Exercises the user has logged at least once. */
@@ -43,6 +45,18 @@ export class ProgressController {
   @Get('streak')
   async currentStreak(@CurrentUser() user: User): Promise<StreakDto> {
     return this.streak.execute({ userId: user.id });
+  }
+
+  /** Freeze yesterday's missed training day (1 per week). 409 when not allowed. Per DR-0032. */
+  @Post('streak/freeze')
+  @HttpCode(200)
+  async freezeStreak(@CurrentUser() user: User): Promise<StreakDto> {
+    try {
+      return await this.freeze.execute({ userId: user.id });
+    } catch (e) {
+      if (e instanceof StreakFreezeNotAllowedError) throw new ConflictException(e.message);
+      throw e;
+    }
   }
 
   @Get('calendar')
