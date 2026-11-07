@@ -18,6 +18,7 @@
   import { api, ApiRequestError, NetworkError } from '#lib/api/client';
   import { longDate } from '#lib/dates';
   import { muscleLoad } from '#lib/muscle-load';
+  import type { ZodType } from 'zod';
   import { cachedGet } from '#lib/offline/cache';
   import { getActiveWorkoutId, loadSnapshot } from '#lib/offline/workout-session';
   import { beginWorkout } from '#lib/offline/start-workout';
@@ -155,12 +156,19 @@
   const editHref = (routineId: string, exerciseId?: string) =>
     activeProgramId ? `/programs/${activeProgramId}/${routineId}${exerciseId ? `?exercise=${encodeURIComponent(exerciseId)}` : ''}` : undefined;
 
+  /** The saved copy when there is one (same frame), else the network's; the fetch still refreshes the cache. */
+  const savedFirst = <T,>(path: string, schema: ZodType<T>) =>
+    new Promise<T>((resolve, reject) => {
+      cachedGet(path, schema, { onCached: (c) => resolve(c.data) }).then((r) => resolve(r.data), reject);
+    });
+
   async function followWeekday() {
     try {
-      const list = (await cachedGet('/programs', programListResponseSchema)).data;
+      // The schedule changes rarely: paint it from the saved program so today's card never waits on the network.
+      const list = await savedFirst('/programs', programListResponseSchema);
       if (!list.activeProgramId) return;
       activeProgramId = list.activeProgramId;
-      const program = (await cachedGet(`/programs/${list.activeProgramId}`, programDetailDtoSchema)).data;
+      const program = await savedFirst(`/programs/${list.activeProgramId}`, programDetailDtoSchema);
       const pick = routineForDate(program.routines, new Date());
       if (!pick) return;
       byWeekday = true;
@@ -281,7 +289,12 @@
         </div>
       </section>
     {:else if !scheduleReady && today?.kind === 'workout_day'}
-      <section class="today pending" aria-busy="true"></section>
+      <!-- First load with nothing saved: the card's shape, so nothing jumps when the routine arrives. -->
+      <section class="today pending" aria-busy="true" aria-label={t('common.today')}>
+        <span class="bone short"></span>
+        <span class="bone wide"></span>
+        <span class="bone"></span>
+      </section>
     {:else if (planned[0] ?? today)?.kind === 'workout_day'}
       {@const w = (planned[0] ?? today) as Extract<TodayWorkoutResponse, { kind: 'workout_day' }>}
       {#if w.workoutStatus === 'completed'}
@@ -432,6 +445,33 @@
   }
   .today.pending {
     min-height: 12rem;
+    align-content: start;
+    gap: 0.6rem;
+  }
+  .bone {
+    display: block;
+    height: 0.9rem;
+    width: 55%;
+    border-radius: 6px;
+    background: var(--surface-hi);
+    animation: breathe 1.2s var(--ease) infinite alternate;
+  }
+  .bone.short {
+    width: 18%;
+  }
+  .bone.wide {
+    height: 1.5rem;
+    width: 40%;
+  }
+  @keyframes breathe {
+    to {
+      opacity: 0.45;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bone {
+      animation: none;
+    }
   }
   .today {
     display: grid;
