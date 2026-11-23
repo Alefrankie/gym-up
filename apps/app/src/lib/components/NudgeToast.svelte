@@ -5,7 +5,7 @@
   import { t } from '#lib/i18n';
   import Icon from './Icon.svelte';
 
-  let { inline = false }: { inline?: boolean } = $props();
+  let { workout = false }: { workout?: boolean } = $props();
 
   const DISMISS_DISTANCE = 88;
   let startX = $state<number | null>(null);
@@ -13,7 +13,7 @@
   let suppressClick = false;
 
   function pointerDown(e: PointerEvent) {
-    if (!e.isPrimary) return;
+    if (!e.isPrimary || e.button !== 0) return;
     suppressClick = false;
     startX = e.clientX;
     swipeX = 0;
@@ -21,17 +21,17 @@
   }
 
   function pointerMove(e: PointerEvent) {
-    if (startX === null) return;
+    if (!e.isPrimary || startX === null) return;
     swipeX = e.clientX - startX;
   }
 
-  function pointerUp() {
-    if (startX === null) return;
+  function pointerUp(e: PointerEvent) {
+    if (!e.isPrimary || startX === null) return;
     suppressClick = Math.abs(swipeX) > 8;
     const dismiss = Math.abs(swipeX) >= DISMISS_DISTANCE;
     startX = null;
     if (dismiss) nudge.hide();
-    else swipeX = 0;
+    swipeX = 0;
   }
 
   function pointerCancel() {
@@ -44,11 +44,12 @@
   <button
     type="button"
     class="nudge"
-    class:inline
+    class:workout
     class:swiping={swipeX !== 0}
     aria-live="polite"
     style:translate="{swipeX}px 0"
-    onclick={() => {
+    onclick={(e) => {
+      if (workout && e.detail !== 0) return;
       if (suppressClick) {
         suppressClick = false;
         return;
@@ -59,13 +60,12 @@
     onpointermove={pointerMove}
     onpointerup={pointerUp}
     onpointercancel={pointerCancel}
-    in:fly={{ y: -24, duration: inline || matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 420, easing: backOut }}
-    out:fly={{ y: -16, duration: inline || matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180, easing: cubicIn }}
+    in:fly={{ y: -24, duration: workout || matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 420, easing: backOut }}
+    out:fly={{ y: -16, duration: workout || matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180, easing: cubicIn }}
   >
-    {#if inline}
+    {#if workout}
       <span class="badge"><Icon name="bolt" size={18} /></span>
       <span class="message"><strong>{t('workout.coachNotice')}</strong><span>{nudge.text}</span></span>
-      <Icon name="x" size={16} />
     {:else}
       {nudge.text}
     {/if}
@@ -94,21 +94,16 @@
     transition: translate 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .nudge.swiping { transition: none; }
-  .nudge.inline {
-    position: relative;
-    inset: auto;
-    z-index: auto;
+  .nudge.workout {
+    top: calc(env(safe-area-inset-top) + 3.25rem);
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 0.65rem;
-    width: 100%;
-    max-width: none;
     padding: 0.65rem 0.75rem;
     border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--surface));
     border-radius: 12px;
     background: color-mix(in srgb, var(--accent) 13%, var(--surface));
-    box-shadow: none;
     color: var(--text);
     text-align: left;
   }

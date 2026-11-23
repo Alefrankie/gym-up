@@ -14,7 +14,7 @@ const exercise: RoutineExerciseDto = {
   exerciseOrder: 0,
 };
 
-it.each([false, true])('preserves the next set when completed is %s, otherwise carries the edit', async (completed) => {
+it.each([false, true])('carries weight to all pending sets of the same type when set 2 completed is %s', async (completed) => {
   const id = `weight-edit-${completed}`;
   const view = new WorkoutView(id);
   view.snap = {
@@ -25,7 +25,8 @@ it.each([false, true])('preserves the next set when completed is %s, otherwise c
     rows: {
       'press:1': { id: '1', weight: 12, reps: 10, completed: false },
       'press:2': { id: '2', weight: 10, reps: 8, completed },
-      'press:3': { id: '3', weight: 10, reps: 10, completed: false },
+      'press:3': { id: '3', weight: 10, reps: 10, completed: false, type: 'warmup' },
+      'press:4': { id: '4', weight: 10, reps: 10, completed: false, type: 'normal' },
     },
     status: 'in_progress',
     unit: 'kg',
@@ -40,4 +41,5 @@ it.each([false, true])('preserves the next set when completed is %s, otherwise c
   const saved = await loadSnapshot(id);
   expect(saved?.rows['press:2']).toMatchObject(expected);
   expect(saved?.rows['press:3']?.weight).toBe(10);
+  expect(saved?.rows['press:4']?.weight).toBe(12);
 });

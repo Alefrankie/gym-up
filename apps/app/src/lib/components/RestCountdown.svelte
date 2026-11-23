@@ -27,9 +27,9 @@
     overflow: hidden;
     border: 1px solid var(--accent);
     border-radius: 14px;
-    background: var(--surface);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   }
-  /* What is left of the rest drains away behind the numbers. */
+  /* The remaining-time fill runs behind all the controls. */
   .rest-countdown::before {
     content: '';
     position: absolute;
@@ -82,12 +82,13 @@
   .skip {
     position: relative;
     display: grid;
+    flex: 0 0 44px;
     place-items: center;
     width: 44px;
     height: 44px;
     padding: 0;
     border-radius: 50%;
-    background: var(--raised);
+    background: color-mix(in srgb, var(--text) 8%, transparent);
     box-shadow: none;
   }
   .skip span {

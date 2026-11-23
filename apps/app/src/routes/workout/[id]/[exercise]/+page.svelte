@@ -72,7 +72,7 @@
     {#if view.elapsed}
       <span class="elapsed" role="timer" aria-label={t('workout.elapsed')}><Icon name="timer" size={14} />{view.elapsed}</span>
     {/if}
-    <NudgeToast inline />
+    <NudgeToast workout />
     <div class="figs">
       <MuscleFigure primary={ex.muscleGroup} secondary={ex.secondaryMuscles ?? []} view="both" size={60} />
     </div>
@@ -240,8 +240,11 @@
   </div>
 
   {#if ex.last?.sets?.length}
-    <section class="last" aria-label={t('workout.lastSession')}>
-      <header><strong>{t('workout.lastSession')}</strong><span>{ago(ex.last.date)}</span></header>
+    <a class="last" href={`/progress?exercise=${encodeURIComponent(ex.exerciseId)}#exercise-history`} aria-label={`${t('workout.lastSession')} · ${t('progress.byExercise')}`}>
+      <header>
+        <strong>{t('workout.lastSession')}</strong>
+        <span>{ago(ex.last.date)} <Icon name="right" size={16} /></span>
+      </header>
       {#each ex.last.sets as s, i (i)}
         <div class="last-row">
           <span>{t('workout.set')} {i + 1}</span>
@@ -249,7 +252,7 @@
           <span>{s.reps} {t('workout.reps').toLowerCase()}</span>
         </div>
       {/each}
-    </section>
+    </a>
   {/if}
 
   <div class="cta">
@@ -317,9 +320,6 @@
     justify-content: center;
     height: 6rem;
     overflow: hidden;
-  }
-  .hero :global(.nudge.inline) {
-    margin-bottom: 0.65rem;
   }
   .title {
     margin-top: 0.5rem;
@@ -434,6 +434,9 @@
     font-size: var(--t-xs);
   }
   .last {
+    display: block;
+    color: inherit;
+    text-decoration: none;
     margin: 1.25rem 0 7rem;
     padding: 0.9rem 1rem;
     border-radius: var(--radius);
@@ -447,6 +450,9 @@
     margin-bottom: 0.5rem;
   }
   .last header span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     color: var(--muted);
     font-size: var(--t-xs);
   }

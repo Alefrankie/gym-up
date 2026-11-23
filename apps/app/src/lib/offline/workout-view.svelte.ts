@@ -442,14 +442,18 @@ export class WorkoutView {
   }
 
   /**
-   * Carry an edited weight into the immediately following open set. The Coach also reacts to a
+   * Carry an edited weight into other open sets of the same type. The Coach also reacts to a
    * decrease from last session, once per exercise in a workout.
    */
   weightChanged(ex: RoutineExerciseDto, n: number) {
     const r = this.row(ex.exerciseId, n);
     if (!r) return;
-    const next = this.row(ex.exerciseId, n + 1);
-    if (next && !next.completed) next.weight = r.weight;
+    const type = r.type ?? 'normal';
+    for (const number of this.setNumbers(ex)) {
+      if (number === n) continue;
+      const other = this.row(ex.exerciseId, number);
+      if (other && !other.completed && (other.type ?? 'normal') === type) other.weight = r.weight;
+    }
 
     const before = this.lastWeightFor(ex, n);
     if (before !== null && r.weight > 0 && r.weight < before && !this.#dropped.has(ex.exerciseId)) {

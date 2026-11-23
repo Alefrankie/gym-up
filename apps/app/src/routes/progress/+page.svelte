@@ -1,9 +1,10 @@
 <script lang="ts">
   import { exerciseName } from '#lib/exercise-name';
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import { t, tn, dateLocale, type MessageKey } from '#lib/i18n';
   import Select from '#lib/components/Select.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
     calendarResponseSchema,
     exerciseHistoryResponseSchema,
@@ -105,6 +106,7 @@
     if (heat && weeks.length) heat.scrollLeft = heat.scrollWidth;
   });
   let exercises = $state<ExerciseDto[]>([]);
+  let historySection = $state<HTMLElement>();
   let exerciseId = $state('');
   let range = $state<DateRange>('30d');
   let metric = $state<'weight' | 'volume'>('weight');
@@ -142,17 +144,25 @@
 
   onMount(async () => {
     if (!(await session.require())) return;
+    const requestedExercise = page.url.searchParams.get('exercise');
+    const initialExercise = (list: ExerciseDto[]) =>
+      list.find((exercise) => exercise.id === requestedExercise)?.id ?? list[0]?.id ?? '';
+    if (requestedExercise) range = 'all';
     try {
       const [s, c, x] = await Promise.all([
         cachedGet('/progress/streak', streakSchema, { onCached: (c) => (streak = c.data) }),
         cachedGet('/progress/calendar?days=371', calendarResponseSchema, { onCached: (c) => (calendar = c.data) }),
-        cachedGet('/progress/exercises', exerciseListResponseSchema, { onCached: (c) => ((exercises = c.data), (exerciseId ||= c.data[0]?.id ?? '')) }),
+        cachedGet('/progress/exercises', exerciseListResponseSchema, { onCached: (c) => ((exercises = c.data), (exerciseId ||= initialExercise(c.data))) }),
       ]);
       streak = s.data;
       calendar = c.data;
       exercises = x.data;
       stale = s.stale || c.stale || x.stale;
-      exerciseId = exercises[0]?.id ?? '';
+      exerciseId = initialExercise(exercises);
+      if (page.url.hash === '#exercise-history') {
+        await tick();
+        historySection?.scrollIntoView();
+      }
       await loadHistory();
     } catch (e) {
       fail(e, t('progress.loadError'));
@@ -235,7 +245,7 @@
       />
     </section>
 
-    <section class="card">
+    <section class="card" id="exercise-history" bind:this={historySection}>
       <h2 class="first">{t('progress.byExercise')}</h2>
       {#if exercises.length === 0}
         <p class="muted">{t('progress.noExercises')}</p>
