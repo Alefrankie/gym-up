@@ -77,7 +77,7 @@
       if (navigator.share) await navigator.share({ text });
       else {
         await navigator.clipboard.writeText(text);
-        nudge.show(t('summary.copied'));
+        nudge.show(t('summary.copied'), undefined, 'confirmation');
       }
     } catch {
       /* closed the share sheet */

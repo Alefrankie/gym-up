@@ -11,7 +11,6 @@
   import { t, tn } from '#lib/i18n';
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
-  import NudgeToast from '#lib/components/NudgeToast.svelte';
   import RestCountdown from '#lib/components/RestCountdown.svelte';
   import SetTypeBadge from '#lib/components/SetTypeBadge.svelte';
   import { SET_TYPES, setTypeOf } from '#lib/set-types';
@@ -72,7 +71,6 @@
     {#if view.elapsed}
       <span class="elapsed" role="timer" aria-label={t('workout.elapsed')}><Icon name="timer" size={14} />{view.elapsed}</span>
     {/if}
-    <NudgeToast workout />
     <div class="figs">
       <MuscleFigure primary={ex.muscleGroup} secondary={ex.secondaryMuscles ?? []} view="both" size={60} />
     </div>
@@ -240,7 +238,7 @@
   </div>
 
   {#if ex.last?.sets?.length}
-    <a class="last" href={`/progress?exercise=${encodeURIComponent(ex.exerciseId)}#exercise-history`} aria-label={`${t('workout.lastSession')} · ${t('progress.byExercise')}`}>
+    <a class="last" href={`/progress/${encodeURIComponent(ex.exerciseId)}`} aria-label={`${t('workout.lastSession')} · ${t('progress.byExercise')}`}>
       <header>
         <strong>{t('workout.lastSession')}</strong>
         <span>{ago(ex.last.date)} <Icon name="right" size={16} /></span>
@@ -264,7 +262,7 @@
           {view.finishing ? t('workout.finishingAlt') : t('workout.finishAlt')}
         </button>
       {:else}
-        <button type="button" class="primary next" onclick={() => go(1)}>{t('workout.nextExercise')} <Icon name="right" size={18} /></button>
+        <button type="button" class="primary" onclick={() => go(1)}>{t('workout.nextExercise')} <Icon name="right" size={18} /></button>
       {/if}
     </div>
   </div>
@@ -591,9 +589,6 @@
     justify-content: center;
     gap: 0.35rem;
     margin-top: 0;
-    min-height: 48px;
-  }
-  .pair .next {
     min-height: 52px;
     padding-inline: 1rem;
   }

@@ -33,5 +33,5 @@
 
 {@render children()}
 
-{#if page.route.id !== '/workout/[id]/[exercise]'}<NudgeToast />{/if}
+<NudgeToast workout={page.route.id === '/workout/[id]/[exercise]'} />
 <UpdateBanner />

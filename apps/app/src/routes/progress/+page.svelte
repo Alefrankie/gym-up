@@ -4,7 +4,7 @@
   import { page } from '$app/state';
   import { t, tn, dateLocale, type MessageKey } from '#lib/i18n';
   import Select from '#lib/components/Select.svelte';
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     calendarResponseSchema,
     exerciseHistoryResponseSchema,
@@ -106,7 +106,8 @@
     if (heat && weeks.length) heat.scrollLeft = heat.scrollWidth;
   });
   let exercises = $state<ExerciseDto[]>([]);
-  let historySection = $state<HTMLElement>();
+  const requestedExercise = $derived(page.params.exercise);
+  let historyReady = $state(false);
   let exerciseId = $state('');
   let range = $state<DateRange>('30d');
   let metric = $state<'weight' | 'volume'>('weight');
@@ -144,25 +145,32 @@
 
   onMount(async () => {
     if (!(await session.require())) return;
-    const requestedExercise = page.url.searchParams.get('exercise');
-    const initialExercise = (list: ExerciseDto[]) =>
-      list.find((exercise) => exercise.id === requestedExercise)?.id ?? list[0]?.id ?? '';
-    if (requestedExercise) range = 'all';
+    if (requestedExercise) {
+      exerciseId = requestedExercise;
+      range = 'all';
+      try {
+        const list = await cachedGet('/progress/exercises', exerciseListResponseSchema);
+        exercises = list.data;
+        stale = list.stale;
+        await loadHistory();
+      } catch (e) {
+        fail(e, t('progress.loadError'));
+      } finally {
+        historyReady = true;
+      }
+      return;
+    }
     try {
       const [s, c, x] = await Promise.all([
         cachedGet('/progress/streak', streakSchema, { onCached: (c) => (streak = c.data) }),
         cachedGet('/progress/calendar?days=371', calendarResponseSchema, { onCached: (c) => (calendar = c.data) }),
-        cachedGet('/progress/exercises', exerciseListResponseSchema, { onCached: (c) => ((exercises = c.data), (exerciseId ||= initialExercise(c.data))) }),
+        cachedGet('/progress/exercises', exerciseListResponseSchema, { onCached: (c) => ((exercises = c.data), (exerciseId ||= (c.data[0]?.id ?? ''))) }),
       ]);
       streak = s.data;
       calendar = c.data;
       exercises = x.data;
       stale = s.stale || c.stale || x.stale;
-      exerciseId = initialExercise(exercises);
-      if (page.url.hash === '#exercise-history') {
-        await tick();
-        historySection?.scrollIntoView();
-      }
+      exerciseId = exercises[0]?.id ?? '';
       await loadHistory();
     } catch (e) {
       fail(e, t('progress.loadError'));
@@ -245,15 +253,22 @@
       />
     </section>
 
-    <section class="card" id="exercise-history" bind:this={historySection}>
+  {/if}
+
+  {#if requestedExercise ? historyReady : streak}
+    <section class="card">
       <h2 class="first">{t('progress.byExercise')}</h2>
-      {#if exercises.length === 0}
+      {#if !requestedExercise && exercises.length === 0}
         <p class="muted">{t('progress.noExercises')}</p>
       {:else}
+        {#if requestedExercise}
+          <strong>{exerciseName(exercises.find((ex) => ex.id === exerciseId)?.name ?? '')}</strong>
+        {:else}
         <label>
           {t('progress.exercise')}
           <Select bind:value={exerciseId} options={exercises.map((ex) => ({ value: ex.id, label: exerciseName(ex.name) }))} onchange={loadHistory} />
         </label>
+        {/if}
         <div class="tabs" role="group" aria-label={t('progress.range')}>
           {#each RANGES as r (r.value)}
             <button type="button" class:active={range === r.value} onclick={() => { range = r.value; loadHistory(); }}>{t(r.label)}</button>
