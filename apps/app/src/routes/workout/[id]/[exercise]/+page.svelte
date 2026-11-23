@@ -11,8 +11,10 @@
   import { t, tn } from '#lib/i18n';
   import Icon from '#lib/components/Icon.svelte';
   import MuscleFigure from '#lib/components/MuscleFigure.svelte';
+  import NudgeToast from '#lib/components/NudgeToast.svelte';
   import RestCountdown from '#lib/components/RestCountdown.svelte';
-  import SetTypeCell from '#lib/components/SetTypeCell.svelte';
+  import SetTypeBadge from '#lib/components/SetTypeBadge.svelte';
+  import { SET_TYPES, setTypeOf } from '#lib/set-types';
   import SortableRows from '#lib/components/SortableRows.svelte';
 
   const view = useWorkoutView();
@@ -39,11 +41,16 @@
     if (!r?.completed || confirm(t('workout.removeSetConfirm', { n }))) void view.removeSet(ex, n);
   }
 
-  /** Leaving drop set deletes its drops: asked first when there are any. */
-  function retype(n: number, type: SetType) {
+  // The kind of set is chosen when the set is added; tapping a set's number marks it done.
+  let adding = $state(false);
+  let addRoot = $state<HTMLElement>();
+
+  async function addSet(type: SetType) {
+    adding = false;
     if (!ex) return;
-    const drops = view.row(ex.exerciseId, n)?.drops?.length ?? 0;
-    if (type === 'drop' || !drops || confirm(t('workout.retypeDropsConfirm', { count: drops }))) void view.retype(ex.exerciseId, n, type);
+    await view.addSet(ex);
+    const nums = view.setNumbers(ex);
+    if (type !== 'normal') await view.retype(ex.exerciseId, nums[nums.length - 1]!, type);
   }
 
   function go(delta: number) {
@@ -54,6 +61,8 @@
 </script>
 
 
+<svelte:window onpointerdown={(e) => adding && addRoot && !addRoot.contains(e.target as Node) && (adding = false)} />
+
 {#if !ex}
   <p class="muted">{t('workout.notInWorkout')}</p>
   <p><a class="back" href={`/workout/${id}`}><Icon name="left" size={18} /> {t('workout.backToRoutine')}</a></p>
@@ -63,6 +72,7 @@
     {#if view.elapsed}
       <span class="elapsed" role="timer" aria-label={t('workout.elapsed')}><Icon name="timer" size={14} />{view.elapsed}</span>
     {/if}
+    <NudgeToast inline />
     <div class="figs">
       <MuscleFigure primary={ex.muscleGroup} secondary={ex.secondaryMuscles ?? []} view="both" size={60} />
     </div>
@@ -93,14 +103,12 @@
 
   <div class="sets-heading">
     <h2>{t('workout.sets')}</h2>
-    <RestCountdown />
   </div>
   <div class="table" role="group" aria-label={t('workout.sets')}>
     <div class="heads">
       <span>{t('workout.set')}</span>
       <span>{t('workout.reps')}</span>
       <span>{bodyweight ? `${t('workout.addedWeight')} (${view.unit})` : view.unit.toUpperCase()}</span>
-      <span></span>
     </div>
     <SortableRows
       items={view.setNumbers(ex).map((n) => ({ n, id: view.row(ex.exerciseId, n)?.id ?? `${n}` }))}
@@ -113,7 +121,13 @@
       {@const r = view.row(ex.exerciseId, n)}
       {#if r}
         <div class="set" class:done={r.completed} class:active={active === n}>
-          <SetTypeCell n={view.displaySetNumber(ex, n)} type={r.type} disabled={view.isCompleted} onpick={(type) => retype(n, type)} />
+          <button
+            type="button"
+            class="mark st-{r.type ?? 'normal'}"
+            disabled={view.isCompleted}
+            onclick={() => view.commit(ex.exerciseId, n, !r.completed)}
+            aria-label={r.completed ? t('workout.uncheckSet', { n }) : t('workout.checkSet', { n })}
+          >{#if r.completed}<Icon name="check" size={20} />{:else}{setTypeOf(r.type).short || view.displaySetNumber(ex, n)}{/if}</button>
           <input
             type="text"
             inputmode="numeric"
@@ -138,31 +152,22 @@
             inputmode="decimal"
             value={r.weight}
             onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
-            oninput={(e) => {
-              const input = e.currentTarget as HTMLInputElement;
-              const raw = input.value.replace(',', '.');
-              const value = Number(raw);
-              if (raw !== '' && Number.isFinite(value) && value >= 0) r.weight = value;
-            }}
-            onblur={(e) => {
-              const input = e.currentTarget as HTMLInputElement;
-              const value = Number(input.value.replace(',', '.'));
-              if (input.value === '' || !Number.isFinite(value) || value < 0) input.value = String(r.weight);
-            }}
             disabled={view.isCompleted}
-            onchange={() => {
+            onchange={(e) => {
+              const input = e.currentTarget;
+              const raw = input.value.trim().replace(',', '.');
+              const weight = Number(raw);
+              if (!raw || !Number.isFinite(weight) || weight < 0) {
+                input.value = String(r.weight);
+                return;
+              }
+              if (r.weight === weight) return;
+              r.weight = weight;
               view.weightChanged(ex, n);
               view.edited(ex.exerciseId, n);
             }}
             aria-label={bodyweight ? t('workout.setAddedWeight', { n, unit: view.unit }) : t('workout.setWeight', { n, unit: view.unit })}
           />
-          <button
-            type="button"
-            class="check"
-            disabled={view.isCompleted}
-            onclick={() => view.commit(ex.exerciseId, n, !r.completed)}
-            aria-label={r.completed ? t('workout.uncheckSet', { n }) : t('workout.checkSet', { n })}
-          ><Icon name="check" size={18} /></button>
         </div>
         {#if r.type === 'drop'}
           {#each r.drops ?? [] as d, i (d.id)}
@@ -218,19 +223,45 @@
       {/snippet}
     </SortableRows>
     {#if !view.isCompleted}
-      <button type="button" class="addset" onclick={() => view.addSet(ex)}><Icon name="plus" size={16} /> {t('workout.addSet')}</button>
+      <div class="addwrap" bind:this={addRoot}>
+        <button type="button" class="addset" aria-haspopup="menu" aria-expanded={adding} onclick={() => (adding = !adding)}><Icon name="plus" size={16} /> {t('workout.addSet')}</button>
+        {#if adding}
+          <div class="addmenu" role="menu">
+            {#each SET_TYPES as o (o.value)}
+              <button type="button" role="menuitem" onclick={() => addSet(o.value)}>
+                <SetTypeBadge type={o.value} n={view.setNumbers(ex).length + 1} size="md" />
+                <span class="text"><strong>{o.label}</strong><small>{o.hint}</small></span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
   </div>
 
+  {#if ex.last?.sets?.length}
+    <section class="last" aria-label={t('workout.lastSession')}>
+      <header><strong>{t('workout.lastSession')}</strong><span>{ago(ex.last.date)}</span></header>
+      {#each ex.last.sets as s, i (i)}
+        <div class="last-row">
+          <span>{t('workout.set')} {i + 1}</span>
+          <span>{toDisplay(s.weight, view.unit)} {view.unit}</span>
+          <span>{s.reps} {t('workout.reps').toLowerCase()}</span>
+        </div>
+      {/each}
+    </section>
+  {/if}
+
   <div class="cta">
+    <div class="dock"><RestCountdown /></div>
     <div class="pair">
-      <button type="button" class="round" disabled={index === 0} onclick={() => go(-1)} aria-label={t('workout.prevExercise')}><Icon name="left" size={20} /></button>
       {#if isLast}
+        <button type="button" class="round" disabled={index === 0} onclick={() => go(-1)} aria-label={t('workout.prevExercise')}><Icon name="left" size={20} /></button>
         <button class="primary" disabled={view.finishing || !view.anyCompleted || view.isCompleted} onclick={() => (finishing = true)}>
           {view.finishing ? t('workout.finishingAlt') : t('workout.finishAlt')}
         </button>
       {:else}
-        <button class="primary" onclick={() => go(1)}>{t('workout.nextExercise')} <Icon name="right" size={16} /></button>
+        <button type="button" class="primary next" onclick={() => go(1)}>{t('workout.nextExercise')} <Icon name="right" size={18} /></button>
       {/if}
     </div>
   </div>
@@ -287,6 +318,9 @@
     height: 6rem;
     overflow: hidden;
   }
+  .hero :global(.nudge.inline) {
+    margin-bottom: 0.65rem;
+  }
   .title {
     margin-top: 0.5rem;
   }
@@ -334,9 +368,97 @@
   .heads,
   .set {
     display: grid;
-    grid-template-columns: 48px 1fr 1fr 48px;
+    grid-template-columns: 48px 1fr 1fr;
     gap: 0.5rem;
     align-items: center;
+  }
+  .set.drop {
+    grid-template-columns: 48px 1fr 1fr 48px;
+  }
+  .mark {
+    display: grid;
+    place-items: center;
+    min-height: 48px;
+    padding: 0;
+    background: var(--surface);
+    color: var(--muted);
+    font-weight: 600;
+    transition: background 0.2s var(--ease), color 0.2s var(--ease);
+  }
+  .set.active .mark {
+    box-shadow: 0 0 0 1px var(--accent) inset;
+    color: var(--accent-hi);
+  }
+  .set.done .mark {
+    background: var(--ok);
+    box-shadow: none;
+    color: #12220a;
+  }
+  .addwrap {
+    position: relative;
+    display: grid;
+  }
+  .addmenu {
+    position: absolute;
+    z-index: 20;
+    bottom: calc(100% + 0.35rem);
+    left: 0;
+    width: 15.5rem;
+    padding: 0.3rem;
+    display: grid;
+    gap: 0.1rem;
+    border-radius: var(--radius);
+    background: var(--surface-hi);
+    box-shadow: var(--shadow-pop);
+  }
+  .addmenu button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+    padding: 0.35rem 0.5rem;
+    background: none;
+    box-shadow: none;
+    text-align: left;
+    color: var(--text);
+  }
+  .addmenu button:active {
+    background: var(--raised);
+  }
+  .addmenu .text {
+    display: grid;
+    line-height: 1.25;
+  }
+  .addmenu small {
+    color: var(--muted);
+    font-size: var(--t-xs);
+  }
+  .last {
+    margin: 1.25rem 0 7rem;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .last header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+  }
+  .last header span {
+    color: var(--muted);
+    font-size: var(--t-xs);
+  }
+  .last-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 0.35rem 0;
+    color: var(--muted);
+    font-size: var(--t-sm);
+  }
+  .last-row span:not(:first-child) {
+    color: var(--text);
   }
   .heads {
     color: var(--faint);
@@ -428,12 +550,18 @@
   }
   .cta {
     position: fixed;
+    z-index: 6;
     left: 0;
     right: 0;
     bottom: 0;
     padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
     background: linear-gradient(180deg, transparent, var(--bg) 45%);
     pointer-events: none;
+  }
+  .dock {
+    max-width: 22rem;
+    margin: 0 auto 0.5rem;
+    pointer-events: auto;
   }
   .pair {
     display: flex;
@@ -458,6 +586,10 @@
     gap: 0.35rem;
     margin-top: 0;
     min-height: 48px;
+  }
+  .pair .next {
+    min-height: 52px;
+    padding-inline: 1rem;
   }
   .record {
     color: var(--ember);

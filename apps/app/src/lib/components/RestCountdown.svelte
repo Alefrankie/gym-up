@@ -5,55 +5,95 @@
 </script>
 
 {#if restTimer.seconds > 0}
-  <div class="rest-countdown" role="timer" aria-label={`${t('workout.rest')} ${restTimer.label}`}>
-    <span class="rest-copy">
-      <Icon name="timer" size={18} />
-      <span class="rest-label">{t('workout.rest')}</span>
+  <div class="rest-countdown" role="timer" aria-label={`${t('workout.rest')} ${restTimer.label}`} style:--left={restTimer.progress}>
+    <span class="rest-label"><Icon name="timer" size={16} />{t('workout.rest')}</span>
+    <div class="clock">
+      <button type="button" class="step" onclick={() => restTimer.adjust(-15)} aria-label="-15 s">−15s</button>
       <strong>{restTimer.label}</strong>
-    </span>
-    <button type="button" class="skip" onclick={() => restTimer.skip()}>{t('workout.skip')}</button>
+      <button type="button" class="step" onclick={() => restTimer.adjust(15)} aria-label="+15 s">+15s</button>
+    </div>
+    <button type="button" class="skip" onclick={() => restTimer.skip()} aria-label={t('workout.skip')}><span></span></button>
   </div>
 {/if}
 
 <style>
   .rest-countdown {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    min-height: 48px;
-    flex: none;
-    padding: 0 0.5rem 0 0.65rem;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--surface-hi);
+    gap: 0.5rem;
+    min-height: 56px;
+    padding: 0 0.4rem 0 0.85rem;
+    overflow: hidden;
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    background: var(--surface);
   }
-  .rest-copy {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--accent-hi);
+  /* What is left of the rest drains away behind the numbers. */
+  .rest-countdown::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent-soft);
+    transform: scaleX(var(--left));
+    transform-origin: left;
+    transition: transform 0.25s linear;
+    pointer-events: none;
   }
   .rest-label {
-    color: var(--muted);
-    font-size: var(--t-xs);
-    font-weight: 600;
-  }
-  .rest-copy strong {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     color: var(--accent-hi);
+    font-size: var(--t-xs);
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .clock {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+  }
+  .clock strong {
+    min-width: 3.4ch;
+    padding-inline: 0.6rem;
+    border-inline: 1px solid var(--line-strong);
+    color: var(--text);
     font-family: var(--font-display);
-    font-size: var(--t-lg);
+    font-size: var(--t-num);
     font-variant-numeric: tabular-nums;
     line-height: 1;
+    text-align: center;
+  }
+  .step {
+    min-width: 48px;
+    min-height: 44px;
+    padding: 0 0.4rem;
+    background: none;
+    box-shadow: none;
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-size: var(--t-lg);
   }
   .skip {
-    min-width: 48px;
-    min-height: 48px;
-    padding: 0 0.35rem;
-    border-radius: 9px;
-    background: var(--accent-soft);
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--raised);
     box-shadow: none;
-    color: var(--accent-hi);
-    font-size: var(--t-sm);
-    font-weight: 600;
+  }
+  .skip span {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: var(--text);
   }
 </style>

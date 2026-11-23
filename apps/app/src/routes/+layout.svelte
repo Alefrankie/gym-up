@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { onMount } from 'svelte';
+  import { page } from '$app/state';
   import { sync } from '#lib/offline/sync.svelte';
   import { i18n } from '#lib/i18n';
   import NudgeToast from '#lib/components/NudgeToast.svelte';
@@ -32,5 +33,5 @@
 
 {@render children()}
 
-<NudgeToast />
+{#if page.route.id !== '/workout/[id]/[exercise]'}<NudgeToast />{/if}
 <UpdateBanner />

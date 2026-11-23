@@ -442,13 +442,17 @@ export class WorkoutView {
   }
 
   /**
-   * The Coach reacts when a working set goes below what it weighed last session (any amount), once per exercise
-   * in a workout.
+   * Carry an edited weight into the immediately following open set. The Coach also reacts to a
+   * decrease from last session, once per exercise in a workout.
    */
   weightChanged(ex: RoutineExerciseDto, n: number) {
     const r = this.row(ex.exerciseId, n);
+    if (!r) return;
+    const next = this.row(ex.exerciseId, n + 1);
+    if (next && !next.completed) next.weight = r.weight;
+
     const before = this.lastWeightFor(ex, n);
-    if (r && before !== null && r.weight > 0 && r.weight < before && !this.#dropped.has(ex.exerciseId)) {
+    if (before !== null && r.weight > 0 && r.weight < before && !this.#dropped.has(ex.exerciseId)) {
       if (coachSay('weightDrop', { exercise: ex.exerciseName, weight: `${r.weight} ${this.unit}`, reps: r.reps })) this.#dropped.add(ex.exerciseId);
     }
   }

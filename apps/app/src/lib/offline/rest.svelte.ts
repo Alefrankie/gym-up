@@ -57,6 +57,28 @@ class RestTimer {
     this.#interval = setInterval(() => this.#tick(), 250);
   }
 
+  /** Adds (or, negative, takes) seconds from the running rest; at zero it ends like a rest that ran out. */
+  adjust(delta: number) {
+    if (!this.#interval) return;
+    this.#endsAt += delta * 1000;
+    this.#total = Math.max(1, this.#total + delta);
+    const left = Math.ceil((this.#endsAt - Date.now()) / 1000);
+    if (left <= 0) return this.#end();
+    this.seconds = left;
+    void scheduleRestEnd(left);
+    if (this.#endLine) {
+      const { text, locale } = this.#endLine;
+      const endsAt = this.#endsAt;
+      void coachVoice.cancelScheduled().then(() => coachVoice.scheduleAt(text, locale, endsAt)).then((ok) => {
+        if (this.#endsAt === endsAt) this.#nativeScheduled = ok;
+      });
+    }
+  }
+
+  get progress(): number {
+    return this.#total ? this.seconds / this.#total : 0;
+  }
+
   skip() {
     this.#clear();
     this.seconds = 0;
