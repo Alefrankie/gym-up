@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { exerciseName } from '#lib/exercise-name';
   import FinishSheet from '#lib/components/FinishSheet.svelte';
   import { goto } from '$app/navigation';
@@ -22,6 +23,10 @@
   const exercises = $derived(view.snap?.exercises ?? []);
   const index = $derived(exercises.findIndex((e) => e.exerciseId === page.params.exercise));
   const ex = $derived(index >= 0 ? exercises[index]! : null);
+  $effect(() => {
+    const exerciseId = ex?.exerciseId;
+    if (exerciseId) untrack(() => void view.loadExerciseHistory(exerciseId));
+  });
   const isLast = $derived(index === exercises.length - 1);
   const active = $derived(ex ? view.activeSet(ex) : null);
   // Bodyweight exercises load the body, not the bar: the number in the box is the added weight only.
@@ -132,6 +137,7 @@
             value={r.reps}
             onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
             oninput={(e) => {
+              r.awaitingHistory = false;
               const input = e.currentTarget as HTMLInputElement;
               const value = Number(input.value);
               if (input.value !== '' && Number.isInteger(value) && value >= 1 && value <= 100) r.reps = value;
@@ -149,6 +155,7 @@
             type="text"
             inputmode="decimal"
             value={r.weight}
+            oninput={() => (r.awaitingHistory = false)}
             onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
             disabled={view.isCompleted}
             onchange={(e) => {

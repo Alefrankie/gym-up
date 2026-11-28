@@ -24,6 +24,17 @@ beforeEach(async () => {
 });
 
 describe('Outbox', () => {
+  it('keeps changes on each side of a set removal in their original order', async () => {
+    const outbox = new Outbox(async () => {}, now);
+    const before: Command = { type: 'upsert-set', workoutId: W1, set: { ...set('a'), setNumber: 2 } };
+    const remove: Command = { type: 'remove-set', workoutId: W1, exerciseId: 'e1', setNumber: 1 };
+    await outbox.enqueue(before);
+    await outbox.enqueue(remove);
+    await outbox.enqueue(upsert(W1, 'a', 7));
+    await outbox.enqueue(upsert(W1, 'a', 8));
+    expect((await outbox.items()).map((i) => i.command)).toEqual([before, remove, upsert(W1, 'a', 8)]);
+  });
+
   it('sends commands in the order they were enqueued and empties the queue', async () => {
     const sent: Command[] = [];
     const outbox = new Outbox(async (c) => void sent.push(c), now);

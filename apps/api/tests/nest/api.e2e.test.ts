@@ -261,6 +261,20 @@ describe('workouts', () => {
 
     const detail = workoutDetailSchema.parse((await http('GET', `/workouts/${id}`, { token: s.token })).json);
     expect(detail.entries.map((e) => [e.setNumber, e.reps]).sort()).toEqual([[1, 10], [2, 6]]);
+
+    // A queued reorder can reuse an ID that the server still holds at the earlier position.
+    const moved = detail.entries.find((e) => e.setNumber === 2)!;
+    const body = { id: moved.id, exerciseId: exercise.id, setNumber: 3, reps: 7, weight: 60, weightUnit: 'kg', completed: true, notes: null };
+    const endpoint = `/workouts/${id}/sets`;
+    const first = await http('PUT', endpoint, { token: s.token, body });
+    expect(first.status).toBe(200);
+    const saved = workoutEntrySchema.parse(first.json);
+    expect(saved.id).not.toBe(moved.id);
+    const replay = await http('PUT', endpoint, { token: s.token, body });
+    expect(workoutEntrySchema.parse(replay.json).id).toBe(saved.id);
+    const updated = workoutDetailSchema.parse((await http('GET', `/workouts/${id}`, { token: s.token })).json);
+    expect(updated.entries.map((e) => [e.setNumber, e.reps])).toEqual([[1, 10], [2, 6], [3, 7]]);
+    expect((await http('POST', `/workouts/${id}/complete`, { token: s.token })).status).toBe(200);
   });
 
   it('runs the full flow: start, log sets idempotently, detail, complete, history', async () => {

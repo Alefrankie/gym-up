@@ -86,9 +86,7 @@ export class GetNextWorkoutUseCase {
     todays: ProgramRoutine | undefined,
     now?: Date,
   ): Promise<NextWorkoutResult> {
-    const startOfToday = new Date(now ?? new Date());
-    startOfToday.setHours(0, 0, 0, 0);
-    const last = await this.programs.lastPerformance(userId, chosen.slots.map((s) => s.exerciseId), startOfToday);
+    const last = await this.exerciseHistory(userId, chosen.slots.map((s) => s.exerciseId), now ?? new Date());
     // ISO week: Monday 00:00 UTC up to the next Monday.
     const monday = new Date(now ?? new Date());
     monday.setUTCHours(0, 0, 0, 0);
@@ -113,5 +111,11 @@ export class GetNextWorkoutUseCase {
           : tree.routines.length,
       },
     };
+  }
+
+  async exerciseHistory(userId: string, exerciseIds: string[], day: Date): Promise<Map<string, LastPerformance>> {
+    const cutoff = new Date(day);
+    cutoff.setUTCHours(0, 0, 0, 0);
+    return this.programs.lastPerformance(userId, exerciseIds, cutoff);
   }
 }

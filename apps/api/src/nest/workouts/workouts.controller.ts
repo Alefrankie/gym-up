@@ -90,6 +90,20 @@ export class WorkoutsController {
     return this.toResponse(user, await this.getToday.forRoutine({ userId: user.id, routineDayId }));
   }
 
+  @Get('exercise/:exerciseId/last')
+  async lastExercise(
+    @CurrentUser() user: User,
+    @Param('exerciseId') exerciseId: string,
+    @Query('day') day: string | undefined,
+  ) {
+    const at = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? new Date(`${day}T00:00:00Z`) : null;
+    if (!at || !Number.isFinite(at.getTime()) || at.toISOString().slice(0, 10) !== day) {
+      throw new BadRequestException('day must be a valid YYYY-MM-DD date');
+    }
+    const last = await this.getToday.exerciseHistory(user.id, [exerciseId], at);
+    return { last: last.get(exerciseId) ?? null };
+  }
+
   private toResponse(user: User, result: NextWorkoutResult): TodayWorkoutResponse {
     if (result.kind === 'no_routine') return { kind: 'no_routine' };
     return {

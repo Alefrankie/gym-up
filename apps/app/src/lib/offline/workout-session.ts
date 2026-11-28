@@ -7,6 +7,8 @@ import type { SetType } from '@gym-up/contracts';
 import { kv } from './idb';
 
 export interface SetRow {
+  /** A default row eligible for history that arrives after the workout opens. */
+  awaitingHistory?: boolean;
   /** Client-generated id; the same id is sent on every retry (idempotent upsert). */
   id: string;
   reps: number;

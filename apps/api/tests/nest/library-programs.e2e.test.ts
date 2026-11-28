@@ -293,6 +293,15 @@ describe('programs', () => {
     const last = (await new SqliteProgramRepository(db).lastPerformance(userId, [ex], new Date())).get(ex)!;
     expect(last).toMatchObject({ weight: 100, reps: 10, sets: [{ reps: 10, weight: 100 }, { reps: 8, weight: 100 }] });
     expect(last.record).toMatchObject({ weight: 110, reps: 6 });
+
+    const cutoff = at(2).toISOString().slice(0, 10);
+    const path = `/workouts/exercise/${ex}/last`;
+    const current = await http('GET', `${path}?day=${at(0).toISOString().slice(0, 10)}`, { token: s.token });
+    expect(current.json).toEqual({ last });
+    const earlier = await http('GET', `${path}?day=${cutoff}`, { token: s.token });
+    expect(earlier.json).toMatchObject({ last: { weight: 110, reps: 6 } });
+    const other = await register('no-record@example.com');
+    expect((await http('GET', `${path}?day=${cutoff}`, { token: other.token })).json).toEqual({ last: null });
   });
 
   it('logs a workout on an earlier day, and refuses future or too old days', async () => {

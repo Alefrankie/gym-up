@@ -59,7 +59,7 @@ const MAX_BACKOFF_MS = 5 * 60 * 1000;
 export const backoffMs = (attempts: number) => Math.min(MAX_BACKOFF_MS, 1000 * 2 ** Math.max(0, attempts - 1));
 
 function commandKey(c: Command): string | null {
-  if (c.type === 'upsert-set') return `${c.workoutId}:${c.set.id}`;
+  if (c.type === 'upsert-set') return `${c.workoutId}:${c.set.id}:${c.set.setNumber}:${c.set.dropIndex ?? 0}`;
   // Ticking and unticking the same supplement on the same day: only the last tap matters.
   if (c.type === 'mark-supplement') return `supplement:${c.supplementId}:${c.day}`;
   return null;
@@ -96,7 +96,19 @@ export class Outbox {
     const key = commandKey(command);
     if (key) {
       const items = await this.items();
-      const same = items.find((i) => commandKey(i.command) === key);
+      let same: OutboxItem | undefined;
+      for (const item of items.reverse()) {
+        const pending = item.command;
+        if (commandKey(pending) === key) {
+          same = item;
+          break;
+        }
+        if (command.type === 'upsert-set' &&
+          ((pending.type === 'remove-set' && pending.workoutId === command.workoutId && pending.exerciseId === command.set.exerciseId) ||
+            (pending.type === 'upsert-set' && pending.workoutId === command.workoutId && pending.set.id === command.set.id))) {
+          break;
+        }
+      }
       if (same) {
         await idb.put('outbox', { ...same, command, attempts: 0, nextAttemptAt: 0 });
         return;

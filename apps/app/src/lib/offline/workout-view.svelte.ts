@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
-import { todayWorkoutResponseSchema, workoutDetailSchema, type RoutineExerciseDto, type SetType } from '@gym-up/contracts';
+import { lastPerformanceSchema, todayWorkoutResponseSchema, workoutDetailSchema, type RoutineExerciseDto, type SetType } from '@gym-up/contracts';
+import { z } from 'zod';
 import { api, ApiRequestError } from '#lib/api/client';
 import { cachedGet } from './cache';
 import { REST_SECONDS, restTimer } from './rest.svelte';
@@ -12,6 +13,7 @@ import { session } from '#lib/session';
 import { t } from '#lib/i18n';
 
 const KG_TO_LBS = 2.20462;
+const exerciseHistorySchema = z.object({ last: lastPerformanceSchema });
 export const toDisplay = (kg: number, u: 'kg' | 'lbs') => (u === 'lbs' ? Math.round(kg * KG_TO_LBS * 10) / 10 : kg);
 
 /** Drops a drop set may have after its first weight; the API accepts the same (DR-0033). */
@@ -37,6 +39,7 @@ export class WorkoutView {
   #id: string;
   // Exercises the Coach already teased for lowering the weight in this workout (once each).
   #dropped = new Set<string>();
+  #historyRequested = new Set<string>();
   #tick: ReturnType<typeof setInterval> | undefined;
   #unsubscribe: (() => void) | undefined;
 
@@ -188,13 +191,39 @@ export class WorkoutView {
           : ex.last && type !== 'warmup'
             ? toDisplay(ex.last.weight, s.unit)
             : 0;
-    s.rows[k] ??= {
-      id: crypto.randomUUID(),
+    const existing = s.rows[k];
+    if (existing && !(ex.last && existing.awaitingHistory && !existing.completed)) return;
+    s.rows[k] = {
+      id: existing?.id ?? crypto.randomUUID(),
       reps: before?.reps ?? planned?.reps ?? ex.targetReps,
       type,
       weight,
       completed: false,
+      awaitingHistory: !ex.last && type !== 'warmup',
     };
+  }
+
+  /** Exercises outside the original routine and older snapshots may have no history attached. */
+  async loadExerciseHistory(exerciseId: string): Promise<void> {
+    const snap = this.snap;
+    const exercise = snap?.exercises.find((e) => e.exerciseId === exerciseId);
+    if (!snap || snap.status !== 'in_progress' || !exercise || exercise.last || this.#historyRequested.has(exerciseId)) return;
+    this.#historyRequested.add(exerciseId);
+    try {
+      const day = snap.day ?? new Date(snap.startedAt).toISOString().slice(0, 10);
+      const { data: { last } } = await cachedGet(
+        `/workouts/exercise/${encodeURIComponent(exerciseId)}/last?day=${day}`, exerciseHistorySchema,
+      );
+      if (this.snap !== snap || !snap.exercises.includes(exercise) || snap.status !== 'in_progress') return;
+      if (last) {
+        exercise.last = last;
+        this.#ensureRows(snap);
+        await saveSnapshot(snap);
+      }
+    } catch {
+      // The current workout remains usable without a history response.
+      this.#historyRequested.delete(exerciseId);
+    }
   }
 
   /** `onRemap` receives the new id when the server answered the start command with another workout of the day. */
@@ -327,6 +356,7 @@ export class WorkoutView {
     const r = snap?.rows[rowKey(exerciseId, setNumber)];
     if (!snap || !r) return;
     const was = r.completed;
+    r.awaitingHistory = false;
     r.completed = completed;
     r.doneAt = completed ? Date.now() : undefined;
     this.#capture(exerciseId, r);
@@ -433,6 +463,7 @@ export class WorkoutView {
     const snap = this.snap;
     const r = snap?.rows[rowKey(exerciseId, setNumber)];
     if (!snap || !r) return;
+    r.awaitingHistory = false;
     if (r.completed) await this.commit(exerciseId, setNumber, true);
     else {
       // Getting the next set ready: no need for the Coach to call you back.

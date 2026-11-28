@@ -169,15 +169,20 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
     }
     // Force the FK to the workout; ignore any workoutId in `input` to
     // prevent call-site injection.
-    const rows = await this.db
+    const [row] = await this.db
       .insert(workoutEntries)
       .values({ ...input, workoutId })
+      .onConflictDoNothing({ target: workoutEntries.id })
       .returning();
-    const row = rows[0];
-    if (!row) {
-      throw new Error('Failed to insert workout_entry: no row returned.');
-    }
-    return row;
+    if (row) return row;
+
+    // Reordering can replay a client ID that still belongs to another slot.
+    // Keep that row intact and give the new slot its own ID.
+    const [inserted] = await this.db.insert(workoutEntries)
+      .values({ ...input, id: crypto.randomUUID(), workoutId })
+      .returning();
+    if (!inserted) throw new Error('Failed to insert workout_entry: no row returned.');
+    return inserted;
   }
 
   async findEntries(workoutId: string): Promise<WorkoutEntry[]> {

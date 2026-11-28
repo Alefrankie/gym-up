@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-07",
+  "generated": "2026-11-28",
   "nodes": [
     {
       "id": "DR-0001",
@@ -264,6 +264,14 @@
       "tier": 1,
       "scope": "local",
       "owner": "@alefrank"
+    },
+    {
+      "id": "DR-0034",
+      "title": "Recover missing exercise history during a live workout",
+      "status": "proposed",
+      "tier": 1,
+      "scope": "local",
+      "owner": "@alefrank"
     }
   ],
   "edges": [
@@ -360,6 +368,11 @@
     {
       "from": "DR-0033",
       "to": "DR-0021",
+      "type": "depends_on"
+    },
+    {
+      "from": "DR-0034",
+      "to": "DR-0025",
       "type": "depends_on"
     }
   ]
