@@ -207,8 +207,8 @@ export class WorkoutView {
   async loadExerciseHistory(exerciseId: string): Promise<void> {
     const snap = this.snap;
     const exercise = snap?.exercises.find((e) => e.exerciseId === exerciseId);
-    if (!snap || snap.status !== 'in_progress' || !exercise || exercise.last || this.#historyRequested.has(exerciseId)) return;
-    this.#historyRequested.add(exerciseId);
+    if (!snap || snap.status !== 'in_progress' || !exercise || exercise.last || this.#historyRequested.has(exercise.id)) return;
+    this.#historyRequested.add(exercise.id);
     try {
       const day = snap.day ?? new Date(snap.startedAt).toISOString().slice(0, 10);
       const { data: { last } } = await cachedGet(
@@ -222,7 +222,7 @@ export class WorkoutView {
       }
     } catch {
       // The current workout remains usable without a history response.
-      this.#historyRequested.delete(exerciseId);
+      this.#historyRequested.delete(exercise.id);
     }
   }
 
@@ -554,8 +554,7 @@ export class WorkoutView {
       exerciseOrder: snap.exercises.length + 1,
     };
     snap.exercises = [...snap.exercises, added];
-    this.#ensureRows(snap);
-    await saveSnapshot(snap);
+    await this.#prepareAddedExercise(snap, ex.id);
   }
 
   /** Swaps an exercise for another in this session; sets already logged for the old one stay in the history. */
@@ -567,8 +566,19 @@ export class WorkoutView {
         ? { ...e, id: crypto.randomUUID(), exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscle, secondaryMuscles: ex.secondaryMuscles, last: null, sets: null }
         : e,
     );
+    await this.#prepareAddedExercise(snap, ex.id);
+  }
+
+  async #prepareAddedExercise(snap: WorkoutSnapshot, exerciseId: string) {
+    // A re-added exercise gets fresh drafts, but keeps any sets logged earlier in this workout.
+    for (const [key, row] of Object.entries(snap.rows)) {
+      if (key.startsWith(`${exerciseId}:`) && !row.completed && !row.drops?.some((drop) => drop.completed)) {
+        delete snap.rows[key];
+      }
+    }
     this.#ensureRows(snap);
     await saveSnapshot(snap);
+    void this.loadExerciseHistory(exerciseId);
   }
 
   /** Drops an exercise from this session's list. */

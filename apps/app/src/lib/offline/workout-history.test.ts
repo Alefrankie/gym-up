@@ -36,4 +36,14 @@ it('fills untouched defaults from recovered history and keeps user-entered value
   expect(view.snap.exercises[0]?.last).toEqual(last);
   expect(view.row(exerciseId, 1)).toMatchObject({ id: 'first', weight: 45, reps: 10 });
   expect(view.row(exerciseId, 2)).toMatchObject({ id: 'second', weight: 31, reps: 9 });
+
+  // A completed set stays in the workout; a removed draft must not mask the suggestion on re-add.
+  view.row(exerciseId, 1)!.completed = true;
+  await view.removeExercise(exerciseId);
+  await view.addExercise({ id: exerciseId, name: 'Pec Deck', primaryMuscle: 'chest', secondaryMuscles: [] });
+  await view.loadExerciseHistory(exerciseId);
+
+  await vi.waitFor(() => expect(view.snap?.exercises[0]?.last).toEqual(last));
+  expect(view.row(exerciseId, 1)).toMatchObject({ id: 'first', weight: 45, completed: true });
+  expect(view.row(exerciseId, 2)).toMatchObject({ weight: 50, reps: 8, completed: false });
 });
